@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import shutil
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
@@ -47,6 +48,13 @@ class LocalJsonVectorStore(VectorStore):
         revision: str,
         source_snapshot: str,
     ) -> None:
+        next_index_version = int(self._metadata.get("index_version", 0)) + 1
+        if self.path.is_file() and self._metadata.get("source_snapshot"):
+            snapshots = self.path.parent / "snapshots"
+            snapshots.mkdir(parents=True, exist_ok=True)
+            backup = snapshots / f"{self.path.stem}--{self._metadata['source_snapshot']}.json"
+            if not backup.exists():
+                shutil.copy2(self.path, backup)
         self._entries = [(chunk, list(vector)) for chunk, vector in entries]
         self._metadata = {
             "format_version": 1,
@@ -54,6 +62,7 @@ class LocalJsonVectorStore(VectorStore):
             "revision": revision,
             "source_snapshot": source_snapshot,
             "chunk_count": len(self._entries),
+            "index_version": next_index_version,
         }
         payload = {
             "metadata": self._metadata,
@@ -69,6 +78,22 @@ class LocalJsonVectorStore(VectorStore):
             encoding="utf-8",
         )
         os.replace(temporary, self.path)
+
+    def rollback(self, source_snapshot: str) -> None:
+        backup = (
+            self.path.parent
+            / "snapshots"
+            / f"{self.path.stem}--{source_snapshot}.json"
+        )
+        if not backup.is_file():
+            raise ValueError(f"인덱스 스냅샷을 찾을 수 없습니다: {source_snapshot}")
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.path.with_suffix(self.path.suffix + ".rollback")
+        shutil.copy2(backup, temporary)
+        os.replace(temporary, self.path)
+        self._entries = []
+        self._metadata = {}
+        self._load()
 
     def search(self, vector: Sequence[float], limit: int) -> list[RankedChunk]:
         scored = [

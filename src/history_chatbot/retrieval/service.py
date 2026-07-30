@@ -16,6 +16,7 @@ from history_chatbot.retrieval.query_normalizer import normalize_query
 from history_chatbot.retrieval.reranker import NoOpReranker
 from history_chatbot.retrieval.sparse import BM25Searcher
 from history_chatbot.retrieval.thresholds import apply_thresholds
+from history_chatbot.runtime import FIXTURE_NOTICE, ProductionNotReadyError, RuntimeMode
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,8 +34,13 @@ class RetrievalConfig:
     max_chunks_per_document: int = 2
     local_storage_path: Path = Path("data/retrieval_index")
     index_ready_path: Path = Path("data/index_ready")
+    runtime_mode: str = "production"
+    fixture_chunks_path: Path | None = None
 
     def validate(self) -> None:
+        mode = RuntimeMode.parse(self.runtime_mode)
+        if mode == RuntimeMode.PRODUCTION and self.fixture_chunks_path is not None:
+            raise ValueError("production 모드에는 fixture_chunks_path를 설정할 수 없습니다.")
         if self.backend != "local_json":
             raise ValueError("현재 다운로드 없는 기본 백엔드는 local_json만 지원합니다.")
         if self.embedding_model != "hashing-v1":
@@ -71,6 +77,8 @@ class RetrievalConfig:
                 values[key] = float(value)
             elif key in {"local_storage_path", "index_ready_path"}:
                 values[key] = Path(value)
+            elif key == "fixture_chunks_path":
+                values[key] = Path(value) if value else None
             else:
                 values[key] = value
         config = cls(**values)
@@ -87,12 +95,14 @@ class BuildReport:
     source_snapshot: str
     model_id: str
     revision: str
+    index_version: int
     index_path: Path
 
 
 class IndexReadyReader:
-    def __init__(self, directory: Path) -> None:
+    def __init__(self, directory: Path, *, runtime_mode: RuntimeMode = RuntimeMode.PRODUCTION) -> None:
         self.directory = directory
+        self.runtime_mode = runtime_mode
 
     @property
     def chunks_path(self) -> Path:
@@ -122,11 +132,19 @@ class IndexReadyReader:
         seen: set[str] = set()
         seen_content: set[str] = set()
         for record in records:
+            if record.get("data_classification") == "fictional_fixture":
+                raise ValueError("개발용 fixture는 data/index_ready에 포함할 수 없습니다.")
             document_id = str(record.get("document_id", ""))
             if document_id not in active_documents or document_id in tombstones:
                 raise ValueError(f"비활성 문서가 index_ready에 포함됨: {document_id}")
             if str(record.get("review_status", "reviewed")) != "reviewed":
                 raise ValueError(f"검수 전 문서가 index_ready에 포함됨: {document_id}")
+            if record.get("allowed_for_rag") is not True:
+                raise ValueError(f"RAG 사용이 허용되지 않은 문서가 index_ready에 포함됨: {document_id}")
+            if str(record.get("copyright_status", "")) in {"unknown", "restricted"}:
+                raise ValueError(f"저작권 검증을 통과하지 않은 문서가 index_ready에 포함됨: {document_id}")
+            if str(record.get("source_reliability", "")) not in {"A", "B"}:
+                raise ValueError(f"신뢰도 A/B가 아닌 문서가 index_ready에 포함됨: {document_id}")
             if not str(record.get("reviewed_by", "")).strip() or not str(
                 record.get("reviewed_at", "")
             ).strip():
@@ -139,6 +157,33 @@ class IndexReadyReader:
             seen_content.add(content_key)
             chunks.append(chunk)
         return chunks, expected
+
+
+class FixtureReader:
+    """운영 데이터 경로와 분리된 명시적 개발 fixture 로더."""
+
+    def __init__(self, path: Path, runtime_mode: RuntimeMode) -> None:
+        self.path = path
+        self.runtime_mode = runtime_mode
+
+    def load(self) -> tuple[list[RetrievalChunk], str]:
+        if not self.runtime_mode.allows_fixtures:
+            raise ValueError("production 모드에서는 fixture를 사용할 수 없습니다.")
+        if not self.path.is_file():
+            return [], ""
+        records = [
+            json.loads(line)
+            for line in self.path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        chunks: list[RetrievalChunk] = []
+        for record in records:
+            if record.get("data_classification") != "fictional_fixture":
+                raise ValueError("fixture 파일에 실제 자료 또는 분류되지 않은 자료가 섞여 있습니다.")
+            if FIXTURE_NOTICE not in str(record.get("text", "")):
+                raise ValueError("fixture 문장에 필수 가상 자료 표시가 없습니다.")
+            chunks.append(RetrievalChunk.from_record(record))
+        return chunks, stable_json_hash(records)
 
 
 class HybridRetrievalService:
@@ -157,13 +202,28 @@ class HybridRetrievalService:
         self.reranker = NoOpReranker()
 
     @property
+    def runtime_mode(self) -> RuntimeMode:
+        return RuntimeMode.parse(self.config.runtime_mode)
+
+    def _reader(self):
+        if self.config.fixture_chunks_path is not None:
+            return FixtureReader(self.config.fixture_chunks_path, self.runtime_mode)
+        return IndexReadyReader(
+            self.config.index_ready_path, runtime_mode=self.runtime_mode
+        )
+
+    @property
     def index_filename(self) -> str:
         safe_model = self.config.embedding_model.replace("/", "--")
         safe_revision = self.config.embedding_revision.replace("/", "-")
         return f"{safe_model}--{safe_revision}.json"
 
     def build_index(self, *, force: bool = False) -> BuildReport:
-        chunks, snapshot = IndexReadyReader(self.config.index_ready_path).load()
+        chunks, snapshot = self._reader().load()
+        if self.runtime_mode == RuntimeMode.PRODUCTION and not chunks:
+            raise ProductionNotReadyError(
+                "현재 운영 인덱싱 가능한 reviewed + allowed_for_rag 실제 자료가 없습니다."
+            )
         previous = self.store.entries()
         can_reuse = (
             not force
@@ -208,6 +268,7 @@ class HybridRetrievalService:
             snapshot,
             self.encoder.model_id,
             self.encoder.revision,
+            int(self.store.metadata().get("index_version", 1)),
             self.store.path,
         )
 
@@ -220,7 +281,11 @@ class HybridRetrievalService:
             errors.append("임베딩 모델 ID가 검색 인덱스와 일치하지 않습니다.")
         if metadata.get("revision") != self.encoder.revision:
             errors.append("임베딩 모델 revision이 검색 인덱스와 일치하지 않습니다.")
-        _, current_snapshot = IndexReadyReader(self.config.index_ready_path).load()
+        try:
+            _, current_snapshot = self._reader().load()
+        except (ValueError, ProductionNotReadyError) as error:
+            errors.append(str(error))
+            return errors
         if metadata.get("source_snapshot") != current_snapshot:
             errors.append("index_ready 스냅샷이 변경되어 재색인이 필요합니다.")
         return errors
@@ -255,3 +320,6 @@ class HybridRetrievalService:
             "revision": metadata.get("revision", self.encoder.revision),
             "errors": self.validate_index(),
         }
+
+    def rollback(self, source_snapshot: str) -> None:
+        self.store.rollback(source_snapshot)

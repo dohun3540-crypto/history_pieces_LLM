@@ -1,5 +1,21 @@
 # 목포 근대역사 다국어 RAG 챗봇
 
+## 현재 자료 준비 상태
+
+- 실제 `reviewed + allowed_for_rag=true` 승인 자료는 현재 0건입니다.
+- 개발 기능은 `tests/fixtures/rag`의 **테스트용 가상 자료이며 실제 역사 사실이
+  아닌 fixture**로 검증합니다.
+- fixture 테스트 통과는 소프트웨어 동작 검증이며 실제 역사 서비스나 역사 정확도
+  검증 완료를 의미하지 않습니다.
+- production 모드는 fixture와 MockLLM을 금지하며, 승인 자료가 0건이면 준비 미완료
+  오류를 표시합니다.
+- 공식 자료가 추가되면 모델을 재학습하지 않고 증분 인덱싱으로 반영합니다.
+- LoRA·QLoRA는 자료 추가가 아니라 답변 방식 개선이 필요할 때만 별도로 수행합니다.
+
+자세한 내용은 [개발 모드](docs/DEVELOPMENT_MODE.md),
+[증분 갱신](docs/INCREMENTAL_UPDATE_GUIDE.md),
+[API 대기 상태](docs/API_PENDING_STATUS.md)를 참고하세요.
+
 목포 근대역사 자료를 검색(Retrieval)하고, 검색된 근거만으로 답변을 생성하는
 다국어 확장형 챗봇의 1차 프로토타입입니다. 현재는 한국어 입력을 중심으로 하며,
 실제 Llama 모델 대신 `MockLLM`을 사용합니다.

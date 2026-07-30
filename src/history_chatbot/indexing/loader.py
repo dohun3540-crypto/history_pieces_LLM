@@ -31,6 +31,8 @@ class IndexChunk:
     attribution_required: bool
     attribution_text: str
     source_reliability: str
+    review_status: str
+    allowed_for_rag: bool
     reviewed_by: str
     reviewed_at: str
     period_start: int | None
@@ -182,6 +184,8 @@ class ReviewedChunkLoader:
             attribution_required=document.attribution_required,
             attribution_text=document.attribution_text,
             source_reliability=document.source_reliability,
+            review_status=document.review_status.value,
+            allowed_for_rag=document.allowed_for_rag,
             reviewed_by=document.reviewed_by,
             reviewed_at=document.reviewed_at,
             period_start=document.period_start,

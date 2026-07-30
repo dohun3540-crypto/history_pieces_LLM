@@ -40,6 +40,9 @@ def chunk(document_id: str, index: int, text: str, **overrides):
         "publisher": "테스트 기관",
         "source_url": f"https://example.invalid/{document_id}",
         "review_status": "reviewed",
+        "allowed_for_rag": True,
+        "copyright_status": "open_license",
+        "source_reliability": "A",
         "reviewed_by": "검수자",
         "reviewed_at": "2026-07-30T00:00:00+09:00",
         "content_sha256": stable_json_hash(" ".join(text.split())),
@@ -78,6 +81,7 @@ def make_service(tmp_path: Path, records: list[dict]) -> HybridRetrievalService:
         minimum_dense_score=0.70,
         local_storage_path=tmp_path / "retrieval",
         index_ready_path=ready,
+        runtime_mode="test",
     )
     return HybridRetrievalService(config, encoder=FixtureEncoder())
 

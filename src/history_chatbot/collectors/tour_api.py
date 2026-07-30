@@ -15,6 +15,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from history_chatbot.collectors.base import CollectedCandidate
+from history_chatbot.collectors.status import tour_api_status
 from history_chatbot.ingestion.source_registry import SourceRegistry
 
 
@@ -98,6 +99,9 @@ class TourApiCollector:
 
     @classmethod
     def from_environment(cls, **kwargs) -> "TourApiCollector":
+        status = tour_api_status()
+        if not status.network_allowed:
+            raise TourApiError(status.message)
         return cls(
             os.environ.get("TOUR_API_SERVICE_KEY", ""),
             base_url=os.environ.get("TOUR_API_BASE_URL", DEFAULT_BASE_URL),

@@ -23,7 +23,7 @@
 | 운영체제 | Windows 11 Home, 64비트 |
 | Windows 버전 | 10.0.26200, 빌드 26200 |
 | Python | 3.13.9, 64비트 |
-| Python 실행 파일 | `C:\Users\dohun\anaconda3\python.exe` |
+| Python 실행 파일 | Anaconda 환경의 `python.exe` |
 | CPU | AMD Ryzen 7 8845HS with Radeon 780M Graphics |
 | CPU 코어 | 물리 8코어, 논리 16코어 |
 | 시스템 RAM | 33,618,251,776 bytes (31.31 GiB) |

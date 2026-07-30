@@ -62,7 +62,7 @@ data/source_catalog/*
 !data/source_catalog/collected_sources.jsonl
 
 # Model artifacts and checkpoints
-models/
+/models/
 weights/
 checkpoints/
 *.bin
