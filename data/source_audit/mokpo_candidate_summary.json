@@ -4,6 +4,15 @@
   "body_exists_count": 51,
   "candidate_count": 36,
   "current_approved_documents": 0,
+  "detailed_review": {
+    "approval_recommended": 0,
+    "assessed_count": 20,
+    "conditional_permission": 0,
+    "expected_first_pilot_approvals_now": 0,
+    "permission_request_required": 17,
+    "potential_after_written_permission": "5~10",
+    "unsuitable_for_rag": 3
+  },
   "direct_mokpo_count": 36,
   "duplicate_count": 0,
   "estimated_chunks": {
