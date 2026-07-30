@@ -1,7 +1,9 @@
 # 공식 출처 Seed 감사 기록
 
-감사일: 2026-07-30  
-범위: `data/source_catalog/seed_sources.json`에 등록된 기관·정책·API 정보  
+감사일: 2026-07-30
+
+범위: `data/source_catalog/seed_sources.json`에 등록된 기관·정책·API 정보
+
 제외: 원문, 검색 결과, 첨부파일 및 데이터셋 수집
 
 ## 판정 기준
