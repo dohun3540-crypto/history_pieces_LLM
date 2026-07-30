@@ -13,6 +13,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .test-tmp/
+.pytest-temp/
 .mypy_cache/
 .ruff_cache/
 *.egg-info/
