@@ -3,11 +3,55 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 from history_chatbot.collectors.base import load_collector_configs
 from history_chatbot.collectors.pilot import build_pilot_plan, run_pilot
 from history_chatbot.collectors.registry import CandidateRegistry
+from history_chatbot.collectors.tour_api import TourApiError, TourApiCollector
+
+
+def _tour_api_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="한국관광공사 Tour API 파일럿")
+    parser.add_argument("action", choices=("dry-run", "collect"))
+    parser.add_argument("--raw-dir", type=Path, default=Path("data/raw/tour_api"))
+    parser.add_argument("--extracted-dir", type=Path, default=Path("data/extracted/tour_api"))
+    parser.add_argument(
+        "--catalog",
+        type=Path,
+        default=Path("data/source_catalog/collected_sources.jsonl"),
+    )
+    parser.add_argument(
+        "--manifest", type=Path, default=Path("data/manifests/sources.jsonl")
+    )
+    return parser
+
+
+def _tour_api_main(argv: list[str]) -> None:
+    args = _tour_api_parser().parse_args(argv)
+    try:
+        collector = TourApiCollector.from_environment()
+        items = collector.dry_run()
+    except TourApiError as error:
+        raise SystemExit(str(error)) from None
+
+    print(f"수집 예정 {len(items)}건 (전체 최대 20건, 검색어별 최대 5건)")
+    for item in items:
+        print(f"- [{item.keyword}] {item.title} (contentid={item.content_id})")
+        print(f"  원본 URL: {item.source_url}")
+    if args.action == "dry-run":
+        print("dry-run 완료: 파일, manifest, RAG 인덱스를 변경하지 않았습니다.")
+        return
+
+    result = collector.collect(
+        raw_dir=args.raw_dir,
+        extracted_dir=args.extracted_dir,
+        catalog_path=args.catalog,
+        manifest_path=args.manifest,
+        prepared_items=items,
+    )
+    print(f"수집 완료: {len(result.candidates)}건, 제외 {len(result.excluded)}건")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -35,6 +79,9 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    if len(sys.argv) >= 2 and sys.argv[1] == "tour-api":
+        _tour_api_main(sys.argv[2:])
+        return
     args = _parser().parse_args()
     configs = load_collector_configs(args.seed)
     if args.source_id:
