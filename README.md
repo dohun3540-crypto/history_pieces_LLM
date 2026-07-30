@@ -71,6 +71,21 @@ python -m history_chatbot.ingestion.cli list --manifest "data/manifests/sources.
 이용 정책은 [출처 정책](docs/SOURCE_POLICY.md)을 따릅니다. `reviewed`가 아닌
 자료는 서비스용 RAG 색인 대상이 아닙니다.
 
+사람 검수자는 다음 명령으로 manifest 문서를 조회·승인·거절할 수 있습니다.
+manifest 기본값은 `data/manifests/sources.jsonl`, 로컬 감사 로그 기본값은
+`data/manifests/review_audit.jsonl`입니다.
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m history_chatbot.ingestion.cli review show --document-id "mokpo-source-001"
+python -m history_chatbot.ingestion.cli review approve --document-id "mokpo-source-001" --reviewer "검수자"
+python -m history_chatbot.ingestion.cli review reject --document-id "mokpo-source-001" --reviewer "검수자" --reason "출처를 확인할 수 없음"
+```
+
+`unknown`·`restricted` 저작물은 승인할 수 없습니다. 검수 승인은
+`allowed_for_rag`를 자동 변경하지 않으므로 이 값이 `false`이면 승인 후에도
+서비스 RAG 색인 대상이 아닙니다.
+
 ## 공식 자료 후보 수집
 
 공식 출처 seed를 이용한 제한적 후보 수집기는 robots.txt와 허용 도메인을 먼저

@@ -8,6 +8,7 @@ from pathlib import Path
 
 from history_chatbot.ingestion.models import SourceDocument
 from history_chatbot.ingestion.pipeline import IngestionPipeline
+from history_chatbot.ingestion.review import ReviewAuditLog, ReviewError, ReviewService
 from history_chatbot.ingestion.source_registry import SourceRegistry
 from history_chatbot.ingestion.validator import (
     can_index_for_service,
@@ -26,6 +27,28 @@ def _parser() -> argparse.ArgumentParser:
             command.add_argument("--document-id", required=True)
         if name == "register":
             command.add_argument("--metadata", required=True, type=Path)
+
+    review = subparsers.add_parser("review")
+    review_commands = review.add_subparsers(dest="review_command", required=True)
+    for name in ("show", "approve", "reject"):
+        command = review_commands.add_parser(name)
+        command.add_argument(
+            "--manifest",
+            type=Path,
+            default=Path("data/manifests/sources.jsonl"),
+        )
+        command.add_argument(
+            "--audit-log",
+            type=Path,
+            default=Path("data/manifests/review_audit.jsonl"),
+        )
+        command.add_argument("--document-id", required=True)
+        if name in {"approve", "reject"}:
+            command.add_argument("--reviewer", required=True)
+        if name == "approve":
+            command.add_argument("--notes", default="")
+        if name == "reject":
+            command.add_argument("--reason", required=True)
     return parser
 
 
@@ -36,7 +59,39 @@ def _project_data_root() -> Path:
 def main() -> None:
     args = _parser().parse_args()
     registry = SourceRegistry(args.manifest)
-    if args.command == "register":
+    if args.command == "review":
+        service = ReviewService(
+            registry,
+            ReviewAuditLog(args.audit_log),
+            _project_data_root() / "raw",
+        )
+        try:
+            if args.review_command == "show":
+                document = service.show(args.document_id)
+                payload = document.to_dict()
+                payload["rag_index_eligible"] = can_index_for_service(document)
+                print(json.dumps(payload, ensure_ascii=False, indent=2))
+            elif args.review_command == "approve":
+                document = service.approve(
+                    args.document_id,
+                    args.reviewer,
+                    args.notes,
+                )
+                eligibility = "가능" if can_index_for_service(document) else "불가"
+                print(
+                    f"검수 승인 완료: {document.document_id} | "
+                    f"서비스 RAG 색인: {eligibility}"
+                )
+            elif args.review_command == "reject":
+                document = service.reject(
+                    args.document_id,
+                    args.reviewer,
+                    args.reason,
+                )
+                print(f"검수 거절 완료: {document.document_id}")
+        except (KeyError, ReviewError, ValueError) as error:
+            raise SystemExit(f"검수 실패: {error}") from error
+    elif args.command == "register":
         payload = json.loads(args.metadata.read_text(encoding="utf-8"))
         document = SourceDocument.from_dict(payload)
         errors = validate_source_document(document)

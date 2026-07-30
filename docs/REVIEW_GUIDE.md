@@ -33,3 +33,40 @@
 중대한 사실 오류, 출처 불명, 권리 문제를 해결할 수 없으면 `rejected`로 기록하고
 서비스 색인 및 `data/reviewed` 승격을 금지합니다. 수정 후 재검수가 필요하면
 `metadata_added`로 되돌려 검수 이력을 별도로 보존합니다.
+
+## 검수 CLI
+
+저장소 루트의 Windows PowerShell에서 실행합니다.
+
+```powershell
+$env:PYTHONPATH = "src"
+
+python -m history_chatbot.ingestion.cli review show `
+  --document-id "mokpo-source-001"
+
+python -m history_chatbot.ingestion.cli review approve `
+  --document-id "mokpo-source-001" `
+  --reviewer "검수자" `
+  --notes "원본 URL, 기관, 권리 조건을 확인함"
+
+python -m history_chatbot.ingestion.cli review reject `
+  --document-id "mokpo-source-001" `
+  --reviewer "검수자" `
+  --reason "역사 본문이 없고 자료 적합성을 확인할 수 없음"
+```
+
+다른 manifest 또는 감사 로그를 사용할 때는 각 하위 명령에 `--manifest`와
+`--audit-log`를 지정합니다. 기본 경로는 각각
+`data/manifests/sources.jsonl`과 `data/manifests/review_audit.jsonl`입니다.
+
+승인 시 다음 조건을 모두 확인합니다.
+
+- 필수 메타데이터, 유효한 HTTP(S) 원본 URL과 출처 기관이 존재함
+- 원본 파일이 `data/raw` 아래에 실제로 존재함
+- `copyright_status`가 `unknown` 또는 `restricted`가 아님
+- 출처표시가 필요하면 `attribution_text`가 존재함
+
+승인과 거절은 `reviewed_by`, `reviewed_at`, `verification_notes`를 manifest에
+기록하고 append-only JSONL 감사 로그에 이전·이후 상태와 사유를 남깁니다.
+원본 파일은 읽거나 수정하지 않습니다. 승인 명령은 `allowed_for_rag`나
+`allowed_for_training`을 변경하지 않습니다.
