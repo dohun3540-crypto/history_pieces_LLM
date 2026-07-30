@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/source_document.schema.json",
+  "title": "목포 근대역사 출처 문서",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_id",
+    "title",
+    "source_type",
+    "publisher",
+    "author",
+    "source_url",
+    "local_path",
+    "published_date",
+    "accessed_date",
+    "language",
+    "license_name",
+    "license_url",
+    "copyright_status",
+    "allowed_for_rag",
+    "allowed_for_training",
+    "redistribution_allowed",
+    "attribution_required",
+    "attribution_text",
+    "notes",
+    "review_status",
+    "reviewed_by",
+    "reviewed_at"
+  ],
+  "properties": {
+    "document_id": {"type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9._-]+$"},
+    "title": {"type": "string", "minLength": 1},
+    "source_type": {"type": "string", "minLength": 1},
+    "publisher": {"type": "string", "minLength": 1},
+    "author": {"type": "string"},
+    "source_url": {"type": "string"},
+    "local_path": {"type": "string", "minLength": 1},
+    "published_date": {"type": "string"},
+    "accessed_date": {"type": "string", "format": "date"},
+    "language": {"type": "string", "minLength": 2},
+    "license_name": {"type": "string"},
+    "license_url": {"type": "string"},
+    "copyright_status": {
+      "enum": ["public_domain", "open_license", "permission_granted", "restricted", "unknown"]
+    },
+    "allowed_for_rag": {"type": "boolean"},
+    "allowed_for_training": {"type": "boolean"},
+    "redistribution_allowed": {"type": "boolean"},
+    "attribution_required": {"type": "boolean"},
+    "attribution_text": {"type": "string"},
+    "notes": {"type": "string"},
+    "review_status": {
+      "enum": ["draft", "extracted", "cleaned", "metadata_added", "reviewed", "rejected"]
+    },
+    "reviewed_by": {"type": "string"},
+    "reviewed_at": {"type": "string"},
+    "period_start": {"type": ["integer", "null"]},
+    "period_end": {"type": ["integer", "null"]},
+    "historical_period": {"type": "string"},
+    "people": {"type": "array", "items": {"type": "string"}},
+    "places": {"type": "array", "items": {"type": "string"}},
+    "organizations": {"type": "array", "items": {"type": "string"}},
+    "events": {"type": "array", "items": {"type": "string"}},
+    "keywords": {"type": "array", "items": {"type": "string"}},
+    "source_reliability": {"type": "string"},
+    "verification_notes": {"type": "string"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"attribution_required": {"const": true}}},
+      "then": {"properties": {"attribution_text": {"minLength": 1}}}
+    },
+    {
+      "if": {
+        "properties": {
+          "copyright_status": {"enum": ["restricted", "unknown"]}
+        }
+      },
+      "then": {
+        "properties": {
+          "allowed_for_rag": {"const": false},
+          "allowed_for_training": {"const": false}
+        }
+      }
+    }
+  ]
+}

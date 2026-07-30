@@ -49,3 +49,24 @@ pytest
 설정 파일은 `configs/`, 검증된 원문 데이터의 작성 지침은
 `docs/DATA_GUIDE.md`, 전체 구조와 향후 GPU 튜닝 계획은 `docs/`에서 확인할
 수 있습니다.
+
+## 자료 수집·정제 파이프라인
+
+파이프라인은 인터넷 수집 없이 로컬 UTF-8 TXT/Markdown 자료를 등록하고, 저작권
+정책 검증, 텍스트 정제, 청킹, JSONL 출력을 수행합니다. PDF는 선택적 `pypdf`가
+설치된 경우만 텍스트 추출을 시도하며 HTML과 크롤링은 지원하지 않습니다.
+
+PowerShell에서 저장소 루트를 현재 디렉터리로 두고 실행합니다.
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m history_chatbot.ingestion.cli register --manifest "data/manifests/sources.jsonl" --metadata "C:\작업\source-metadata.json"
+python -m history_chatbot.ingestion.cli process --manifest "data/manifests/sources.jsonl" --document-id "mokpo-source-001"
+python -m history_chatbot.ingestion.cli validate --manifest "data/manifests/sources.jsonl" --document-id "mokpo-source-001"
+python -m history_chatbot.ingestion.cli list --manifest "data/manifests/sources.jsonl"
+```
+
+원문은 `data/raw` 아래에 두되 대용량 원문·PDF·데이터셋은 Git에 커밋하지 않습니다.
+등록 형식과 검수 승격 절차는 [자료 처리 가이드](docs/INGESTION_GUIDE.md),
+이용 정책은 [출처 정책](docs/SOURCE_POLICY.md)을 따릅니다. `reviewed`가 아닌
+자료는 서비스용 RAG 색인 대상이 아닙니다.

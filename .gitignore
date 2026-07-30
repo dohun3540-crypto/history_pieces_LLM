@@ -12,6 +12,7 @@ env/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.test-tmp/
 .mypy_cache/
 .ruff_cache/
 *.egg-info/
@@ -28,11 +29,29 @@ Thumbs.db
 *.log
 logs/
 
-# Large datasets (keep the small documented sample)
+# Large datasets (keep structure, manifests, schemas, and documented samples)
 data/*
 !data/sample/
 data/sample/*
 !data/sample/mokpo_history_sample.json
+!data/raw/
+data/raw/*
+!data/raw/.gitkeep
+!data/extracted/
+data/extracted/*
+!data/extracted/.gitkeep
+!data/processed/
+data/processed/*
+!data/processed/.gitkeep
+!data/reviewed/
+data/reviewed/*
+!data/reviewed/.gitkeep
+!data/manifests/
+data/manifests/*
+!data/manifests/sources.jsonl
+!data/schemas/
+data/schemas/*
+!data/schemas/source_document.schema.json
 
 # Model artifacts and checkpoints
 models/

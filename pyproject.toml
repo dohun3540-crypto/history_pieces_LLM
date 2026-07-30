@@ -20,6 +20,6 @@ history-chatbot = "history_chatbot.cli:main"
 where = ["src"]
 
 [tool.pytest.ini_options]
-addopts = "-q -p no:cacheprovider"
+addopts = "-q -p no:cacheprovider --basetemp=.test-tmp"
 testpaths = ["tests"]
 pythonpath = ["src"]
