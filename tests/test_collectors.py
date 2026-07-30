@@ -181,10 +181,28 @@ def test_seed_sources_include_conservative_audit_fields() -> None:
         / "seed_sources.json"
     )
     configs = load_collector_configs(seed_path)
+    configs_by_id = {config.source_id: config for config in configs}
     assert len(configs) == 7
     assert all(config.robots_url for config in configs)
-    assert all(config.collection_status == "manual_review" for config in configs)
-    assert all(config.robots_verification == "unknown" for config in configs)
+    assert {
+        source_id: config.collection_status
+        for source_id, config in configs_by_id.items()
+    } == {
+        "heritage_portal": "manual_review",
+        "history_database": "blocked",
+        "mokpo_city": "manual_review",
+        "national_archives": "allowed",
+        "public_nuri": "manual_review",
+        "oak": "allowed",
+        "kci": "blocked",
+    }
+    assert configs_by_id["national_archives"].robots_verification == "verified"
+    assert configs_by_id["oak"].robots_verification == "verified"
+    assert configs_by_id["history_database"].robots_verification == "verified"
+    assert configs_by_id["kci"].robots_verification == "verified"
+    assert configs_by_id["heritage_portal"].robots_verification == "unknown"
+    assert configs_by_id["mokpo_city"].robots_verification == "unknown"
+    assert configs_by_id["public_nuri"].robots_verification == "unknown"
     assert all(config.api_available in {"yes", "no", "unknown"} for config in configs)
     assert all(config.audit_date == "2026-07-30" for config in configs)
 
