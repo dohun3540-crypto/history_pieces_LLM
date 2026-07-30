@@ -1,4 +1,5 @@
 from dataclasses import replace
+from pathlib import Path
 
 from history_chatbot.collectors.base import (
     BaseCollector,
@@ -6,6 +7,7 @@ from history_chatbot.collectors.base import (
     CollectionError,
     CollectorConfig,
     FetchResponse,
+    load_collector_configs,
 )
 from history_chatbot.collectors.registry import CandidateRegistry
 from history_chatbot.ingestion.license_policy import can_use_for_rag
@@ -156,3 +158,19 @@ def test_collected_item_is_draft_and_not_service_indexed(tmp_path) -> None:
     assert not can_index_for_service(item.to_source_document())
     assert (tmp_path / "raw" / "official").is_dir()
     assert (tmp_path / "extracted" / "official").is_dir()
+
+
+def test_seed_sources_include_conservative_audit_fields() -> None:
+    seed_path = (
+        Path(__file__).resolve().parents[1]
+        / "data"
+        / "source_catalog"
+        / "seed_sources.json"
+    )
+    configs = load_collector_configs(seed_path)
+    assert len(configs) == 7
+    assert all(config.robots_url for config in configs)
+    assert all(config.collection_status == "manual_review" for config in configs)
+    assert all(config.robots_verification == "unknown" for config in configs)
+    assert all(config.api_available in {"yes", "no", "unknown"} for config in configs)
+    assert all(config.audit_date == "2026-07-30" for config in configs)

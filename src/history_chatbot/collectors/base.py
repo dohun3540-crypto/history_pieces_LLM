@@ -74,6 +74,16 @@ class CollectorConfig:
     allowed_domains: tuple[str, ...]
     discovery_urls: tuple[str, ...]
     api_url: str = ""
+    terms_url: str = "unknown"
+    copyright_policy_url: str = "unknown"
+    license_mark_location: str = "unknown"
+    api_available: str = "unknown"
+    api_docs_url: str = "unknown"
+    api_auth_requirement: str = "unknown"
+    collection_status: str = "manual_review"
+    robots_verification: str = "unknown"
+    audit_date: str = ""
+    audit_notes: str = ""
     request_delay_seconds: float = 1.0
     timeout_seconds: float = 10.0
     max_retries: int = 2
@@ -83,6 +93,12 @@ class CollectorConfig:
     def __post_init__(self) -> None:
         if self.trust_grade not in {"A", "B", "C", "D"}:
             raise ValueError("trust_grade는 A, B, C, D 중 하나여야 합니다.")
+        if self.api_available not in {"yes", "no", "unknown"}:
+            raise ValueError("api_available은 yes, no, unknown 중 하나여야 합니다.")
+        if self.collection_status not in {"allowed", "manual_review", "blocked"}:
+            raise ValueError(
+                "collection_status는 allowed, manual_review, blocked 중 하나여야 합니다."
+            )
         if not self.allowed_domains or not self.discovery_urls:
             raise ValueError("allowed_domains와 discovery_urls는 비어 있을 수 없습니다.")
         if not 1 <= self.max_pages <= 5:
