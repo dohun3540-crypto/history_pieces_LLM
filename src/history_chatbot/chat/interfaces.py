@@ -11,10 +11,16 @@ from history_chatbot.retrieval.base import RankedChunk
 
 @dataclass(frozen=True, slots=True)
 class Citation:
+    source_id: str
     document_id: str
     title: str
-    publisher: str
+    institution: str
     source_url: str
+    chunk_id: str
+    excerpt: str
+    retrieval_score: float
+    license_status: str
+    is_fixture: bool
 
 
 class ConversationSession(Protocol):

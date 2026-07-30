@@ -29,6 +29,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
+.runtime/
 
 # Large datasets (keep structure, manifests, schemas, and documented samples)
 data/*

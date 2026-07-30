@@ -16,6 +16,28 @@
 [증분 갱신](docs/INCREMENTAL_UPDATE_GUIDE.md),
 [API 대기 상태](docs/API_PENDING_STATUS.md)를 참고하세요.
 
+### Development 대화형 RAG 실행
+
+실제 역사 자료나 Llama 모델 없이 가상 fixture와 MockLLM으로 전체 경로를
+확인할 수 있습니다. 출력은 반드시 테스트용 응답으로 표시됩니다.
+
+```powershell
+python -m history_chatbot.chat.cli ask "붉은 등대 전시관을 알려줘"
+python -m history_chatbot.chat.cli ask "그 건물은 어떤 설정이야?" --session-id "<SESSION_ID>"
+python -m history_chatbot.chat.cli reset --session-id "<SESSION_ID>"
+```
+
+HTTP API는 선택 사항입니다.
+
+```powershell
+python -m pip install -e ".[api]"
+uvicorn history_chatbot.chat.api:create_app --factory
+```
+
+자세한 흐름과 응답 형식은 [E2E RAG](docs/END_TO_END_RAG.md),
+[Chat API](docs/CHAT_API.md), [세션 관리](docs/SESSION_MANAGEMENT.md)를
+참고하세요.
+
 목포 근대역사 자료를 검색(Retrieval)하고, 검색된 근거만으로 답변을 생성하는
 다국어 확장형 챗봇의 1차 프로토타입입니다. 현재는 한국어 입력을 중심으로 하며,
 실제 Llama 모델 대신 `MockLLM`을 사용합니다.
