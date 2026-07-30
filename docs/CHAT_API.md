@@ -11,7 +11,7 @@ uvicorn history_chatbot.chat.api:create_app --factory
 Endpoint:
 
 - `POST /api/chat`: JSON 질문을 처리하고 최종 답변과 출처를 반환
-- `POST /api/chat/stream`: SSE `token` 이벤트 뒤 `complete` 이벤트 반환
+- `POST /api/chat/stream`: SSE `start`, `token`/`delta` 이벤트 뒤 `completed` 이벤트 반환
 - `DELETE /api/sessions/{session_id}`: 세션 초기화
 - `GET /api/health`: 프로세스 생존 상태
 - `GET /api/readiness`: 실행 모드와 인덱스·자료·LLM 준비 상태

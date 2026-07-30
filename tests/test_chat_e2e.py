@@ -85,7 +85,7 @@ def test_session_create_lookup_limit_reset_and_unknown_reset(tmp_path) -> None:
 def test_stream_has_complete_event_with_sources(tmp_path) -> None:
     events = list(orchestrator(tmp_path).stream("붉은 등대 전시관"))
     assert any(event.event == "token" for event in events)
-    assert events[-1].event == "complete"
+    assert events[-1].event == "completed"
     assert events[-1].data["status"] == "ok"
     assert events[-1].data["sources"]
 

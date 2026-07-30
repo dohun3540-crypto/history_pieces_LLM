@@ -72,15 +72,32 @@ class ChatApplicationService:
     def readiness(self) -> dict[str, object]:
         mode = self.orchestrator.mode
         errors = self.orchestrator.retrieval.validate_index()
-        if mode == RuntimeMode.DEVELOPMENT and not errors:
-            status = "development_ready"
-        elif mode == RuntimeMode.PRODUCTION:
-            status = "production_not_ready"
+        llm = self.orchestrator.llm.readiness()
+        chunks = self.orchestrator.retrieval.store.chunks()
+        real_documents = any(
+            chunk.payload.get("data_classification") != "fictional_fixture"
+            for chunk in chunks
+        )
+        if mode == RuntimeMode.DEVELOPMENT:
+            status = "development_ready" if not errors else "missing_index"
+        elif not llm.get("configured"):
+            status = "remote_llm_unconfigured"
+        elif not llm.get("reachable"):
+            status = "remote_llm_unreachable"
+        elif not llm.get("model_ready"):
+            status = "model_not_ready"
+        elif not real_documents:
+            status = "missing_real_documents"
+        elif errors:
+            status = "missing_production_index"
         else:
-            status = "missing_index"
+            status = "production_ready"
         return {
             "status": status,
-            "missing_real_documents": mode == RuntimeMode.PRODUCTION,
-            "missing_llm_backend": mode == RuntimeMode.PRODUCTION,
+            "llm_configured": bool(llm.get("configured")),
+            "remote_server_reachable": bool(llm.get("reachable")),
+            "model_ready": bool(llm.get("model_ready")),
+            "missing_real_documents": mode == RuntimeMode.PRODUCTION and not real_documents,
+            "missing_llm_backend": mode == RuntimeMode.PRODUCTION and not llm.get("configured"),
             "missing_index": bool(errors),
         }

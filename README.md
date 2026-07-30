@@ -38,6 +38,26 @@ uvicorn history_chatbot.chat.api:create_app --factory
 [Chat API](docs/CHAT_API.md), [세션 관리](docs/SESSION_MANAGEMENT.md)를
 참고하세요.
 
+### Remote LLM 준비 상태
+
+현재 실제 Llama 모델이나 외부 추론 서버는 연결하지 않았습니다. MockLLM과
+가짜 transport 테스트 통과는 실제 모델 품질 검증이 아닙니다. 향후 GPU 서버의
+허용된 URL과 모델명을 환경변수에 설정하면 OpenAI-compatible 또는 프로젝트 전용
+FastAPI 계약으로 교체할 수 있습니다.
+
+```powershell
+$env:LLM_BACKEND="remote"
+$env:LLM_BASE_URL="<허용된 GPU 서버 URL>"
+$env:LLM_ALLOWED_HOSTS="<GPU 서버 호스트명>"
+$env:LLM_MODEL="<정확한 모델 ID>"
+$env:LLM_MODEL_REVISION="<고정 revision>"
+```
+
+실제 배포 전 모델 라이선스와 context window를 확인해야 합니다. 자세한 계약은
+[Remote backend](docs/REMOTE_LLM_BACKEND.md),
+[서버 계약](docs/LLM_SERVER_CONTRACT.md),
+[운영 readiness](docs/PRODUCTION_READINESS.md)를 참고하세요.
+
 목포 근대역사 자료를 검색(Retrieval)하고, 검색된 근거만으로 답변을 생성하는
 다국어 확장형 챗봇의 1차 프로토타입입니다. 현재는 한국어 입력을 중심으로 하며,
 실제 Llama 모델 대신 `MockLLM`을 사용합니다.

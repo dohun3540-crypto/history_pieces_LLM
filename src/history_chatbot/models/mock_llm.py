@@ -4,9 +4,16 @@ from collections.abc import Iterator
 
 from history_chatbot.fallback import fallback_response
 from history_chatbot.models.base import BaseLLM, GenerationRequest
+from history_chatbot.models.contract import (
+    LLMRequest,
+    LLMResponse,
+    LLMStreamEvent,
+    TokenUsage,
+)
 
 
 class MockLLM(BaseLLM):
+    backend_name = "mock"
     def __init__(self, fallback_message: str) -> None:
         self.fallback_message = fallback_message
 
@@ -51,3 +58,40 @@ class MockLLM(BaseLLM):
         )
         for token in answer.split(" "):
             yield token + " "
+
+    def complete(self, request: LLMRequest) -> LLMResponse:
+        evidence = tuple(str(item) for item in request.metadata.get("evidence", ()))
+        is_fixture = bool(request.metadata.get("is_fixture", False))
+        text = self.generate_grounded(
+            prompt=f"{request.system_prompt}\n{request.user_prompt}",
+            evidence=evidence,
+            is_fixture=is_fixture,
+        )
+        prompt_tokens = max(1, (len(request.system_prompt) + len(request.user_prompt)) // 2)
+        completion_tokens = max(1, len(text) // 2)
+        return LLMResponse(
+            text,
+            "stop",
+            TokenUsage(prompt_tokens, completion_tokens, prompt_tokens + completion_tokens),
+            "mock-llm",
+            "builtin",
+            request.request_id,
+            0,
+        )
+
+    def stream_complete(self, request: LLMRequest) -> Iterator[LLMStreamEvent]:
+        response = self.complete(request)
+        yield LLMStreamEvent(
+            "start", {"request_id": request.request_id, "model": response.model}
+        )
+        for token in response.generated_text.split(" "):
+            yield LLMStreamEvent("token", {"text": token + " "})
+        yield LLMStreamEvent("completed", response.to_dict())
+
+    def readiness(self) -> dict[str, object]:
+        return {
+            "configured": True,
+            "reachable": True,
+            "model_ready": True,
+            "status": "ready",
+        }
