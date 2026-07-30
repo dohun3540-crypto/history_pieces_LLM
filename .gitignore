@@ -61,6 +61,16 @@ data/schemas/*
 data/source_catalog/*
 !data/source_catalog/seed_sources.json
 !data/source_catalog/collected_sources.jsonl
+!data/provisional_hackathon/
+data/provisional_hackathon/*
+!data/provisional_hackathon/manifests/
+data/provisional_hackathon/manifests/*
+!data/provisional_hackathon/manifests/sources.jsonl
+!data/provisional_hackathon/manifests/removals.jsonl
+# 권리 미확정 원문·정제문은 공개 저장소에 절대 포함하지 않는다.
+data/provisional_hackathon/raw/
+data/provisional_hackathon/processed/
+.runtime/indexes/hackathon/
 
 # Model artifacts and checkpoints
 /models/

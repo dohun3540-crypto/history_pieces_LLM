@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import asdict
 
 from history_chatbot.chat.service import (
     ChatApplicationService,
     create_development_orchestrator,
+    create_hackathon_orchestrator,
 )
+from history_chatbot.runtime import RuntimeMode
 
 
 def create_app(service: ChatApplicationService | None = None):
@@ -20,7 +23,18 @@ def create_app(service: ChatApplicationService | None = None):
             "HTTP API 실행에는 선택 의존성 fastapi와 ASGI 서버가 필요합니다."
         ) from error
 
-    resolved = service or ChatApplicationService(create_development_orchestrator())
+    if service is not None:
+        resolved = service
+    else:
+        mode = RuntimeMode.parse(os.getenv("APP_MODE", "development"))
+        if mode == RuntimeMode.HACKATHON:
+            resolved = ChatApplicationService(create_hackathon_orchestrator())
+        elif mode in {RuntimeMode.DEVELOPMENT, RuntimeMode.TEST}:
+            resolved = ChatApplicationService(create_development_orchestrator())
+        else:
+            raise RuntimeError(
+                "production API는 실제 원격 LLM과 approved_for_rag 인덱스를 명시적으로 주입해야 합니다."
+            )
     app = FastAPI(title="Mokpo History Development RAG")
 
     @app.post("/api/chat")

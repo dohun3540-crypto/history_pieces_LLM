@@ -6,6 +6,7 @@ import json
 import math
 import os
 import shutil
+from datetime import UTC, datetime
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
@@ -47,6 +48,7 @@ class LocalJsonVectorStore(VectorStore):
         model_id: str,
         revision: str,
         source_snapshot: str,
+        extra_metadata: dict[str, Any] | None = None,
     ) -> None:
         next_index_version = int(self._metadata.get("index_version", 0)) + 1
         if self.path.is_file() and self._metadata.get("source_snapshot"):
@@ -63,6 +65,8 @@ class LocalJsonVectorStore(VectorStore):
             "source_snapshot": source_snapshot,
             "chunk_count": len(self._entries),
             "index_version": next_index_version,
+            "created_at": datetime.now(UTC).isoformat(),
+            **(extra_metadata or {}),
         }
         payload = {
             "metadata": self._metadata,

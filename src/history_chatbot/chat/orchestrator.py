@@ -35,6 +35,10 @@ class ChatResponse:
     prompt_version: str
     error: dict[str, object] | None = None
     context_metadata: dict[str, object] | None = None
+    provisional_sources_used: int = 0
+    rights_notice: str = ""
+    usage_scope: str = ""
+    source_ids: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         value = asdict(self)
@@ -86,6 +90,7 @@ class ConversationalRagOrchestrator:
         previous = session.turns[-1].user if session.turns else ""
         search_query = self._rewrite_followup(query, previous)
         chunks = self._select(self.retrieval.search(search_query), top_k)
+        self._assert_mode_boundary(chunks)
         conversation = self._conversation_lines(session)
         budget = self.budget.fit(
             system_prompt=SYSTEM_INSTRUCTIONS,
@@ -125,15 +130,20 @@ class ConversationalRagOrchestrator:
             )
             try:
                 completion = self.llm.complete(request)
+                citations = build_citations(chunks)
+                answer = self._apply_hackathon_policy(
+                    completion.generated_text, chunks
+                )
                 response = ChatResponse(
-                    completion.generated_text,
+                    answer,
                     "ok",
-                    build_citations(chunks),
+                    citations,
                     len(chunks),
                     session.session_id,
                     locale,
                     PROMPT_VERSION,
                     context_metadata=request.metadata.get("context_budget"),  # type: ignore[arg-type]
+                    **self._provisional_metadata(chunks),
                 )
             except RemoteLLMError as error:
                 response = ChatResponse(
@@ -163,6 +173,7 @@ class ConversationalRagOrchestrator:
         chunks = self._select(
             self.retrieval.search(self._rewrite_followup(query, previous)), top_k
         )
+        self._assert_mode_boundary(chunks)
         budget = self.budget.fit(
             system_prompt=SYSTEM_INSTRUCTIONS,
             user_prompt=query,
@@ -218,7 +229,9 @@ class ConversationalRagOrchestrator:
                 yield StreamEvent("error", response.to_dict())
                 return
             elif event.event == "completed":
-                answer = str(event.data.get("generated_text", ""))
+                answer = self._apply_hackathon_policy(
+                    str(event.data.get("generated_text", "")), chunks
+                )
                 response = ChatResponse(
                     answer,
                     "ok",
@@ -228,6 +241,7 @@ class ConversationalRagOrchestrator:
                     locale,
                     PROMPT_VERSION,
                     context_metadata=request.metadata.get("context_budget"),  # type: ignore[arg-type]
+                    **self._provisional_metadata(chunks),
                 )
                 self.sessions.add_turn(session.session_id, query, answer)
                 yield StreamEvent(
@@ -321,3 +335,54 @@ class ConversationalRagOrchestrator:
                 "user_query": query,
             },
         )
+
+    def _assert_mode_boundary(self, chunks: list[RankedChunk]) -> None:
+        provisional = any(
+            item.chunk.payload.get("usage_status") == "provisional_hackathon"
+            for item in chunks
+        )
+        if provisional and self.mode != RuntimeMode.HACKATHON:
+            raise ValueError(
+                "provisional_hackathon 자료는 hackathon 모드 외 검색·프롬프트에 사용할 수 없습니다."
+            )
+
+    @staticmethod
+    def _provisional_metadata(chunks: list[RankedChunk]) -> dict[str, object]:
+        source_ids = tuple(
+            dict.fromkeys(
+                str(item.chunk.payload.get("source_id", item.chunk.document_id))
+                for item in chunks
+                if item.chunk.payload.get("usage_status") == "provisional_hackathon"
+            )
+        )
+        if not source_ids:
+            return {
+                "provisional_sources_used": 0,
+                "rights_notice": "",
+                "usage_scope": "",
+                "source_ids": (),
+            }
+        return {
+            "provisional_sources_used": len(source_ids),
+            "rights_notice": (
+                "이 답변은 비상업적 해커톤 시연을 위해 수집한 공식 기관 참고자료를 "
+                "기반으로 생성되었습니다. 일부 자료의 재사용 범위는 검토 중이며, "
+                "원문은 표시된 공식 출처에서 확인할 수 있습니다."
+            ),
+            "usage_scope": "noncommercial_hackathon_demo",
+            "source_ids": source_ids,
+        }
+
+    def _apply_hackathon_policy(
+        self, answer: str, chunks: list[RankedChunk]
+    ) -> str:
+        if not any(
+            item.chunk.payload.get("usage_status") == "provisional_hackathon"
+            for item in chunks
+        ):
+            return answer
+        # 원격 모델이 근거를 장문 복원하는 경우에도 시연 응답 크기를 제한한다.
+        normalized = answer.strip()
+        if len(normalized) > 1200:
+            normalized = normalized[:1200].rstrip() + "…"
+        return normalized

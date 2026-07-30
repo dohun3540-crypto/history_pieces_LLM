@@ -4,12 +4,20 @@
 요청을 실행하지 않고 원격 `/health`와 `/ready`만 조회하며 다음을 구분한다.
 
 - `development_ready`
+- `hackathon_data_missing`
+- `hackathon_data_partial`
+- `hackathon_index_missing`
+- `hackathon_index_ready`
+- `hackathon_expired`
+- `hackathon_rights_unconfirmed`(경고)
 - `remote_llm_unconfigured`
 - `remote_llm_unreachable`
 - `model_not_ready`
 - `missing_real_documents`
 - `missing_production_index`
 - `production_ready`
+- `provisional_data_detected`(차단)
+- `provisional_index_detected`(차단)
 
 production 준비 조건:
 
@@ -27,3 +35,8 @@ production 준비 조건:
 실제 배포 전에는 선택한 Meta Llama 모델의 라이선스, gated 조건, 정확한 context
 window와 tokenizer, RAM/VRAM 및 서버 동시성 제한을 다시 확인해야 한다.
 MockLLM 테스트 통과는 실제 모델 품질 검증이 아니다.
+
+해커톤 임시 자료 48건은 정식 승인 자료가 아니다. production에서는
+`provisional_hackathon` 청크 경로 설정 자체를 거부하며, `.runtime/indexes/hackathon`
+인덱스를 운영 인덱스로 재사용할 수 없다. 운영 준비 판정에는 계속
+`reviewed + allowed_for_rag=true` 실제 자료만 반영한다.

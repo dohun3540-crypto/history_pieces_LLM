@@ -21,6 +21,10 @@ class Citation:
     retrieval_score: float
     license_status: str
     is_fixture: bool
+    usage_status: str = ""
+    rights_status: str = ""
+    usage_scope: str = ""
+    provisional_notice: str = ""
 
 
 class ConversationSession(Protocol):

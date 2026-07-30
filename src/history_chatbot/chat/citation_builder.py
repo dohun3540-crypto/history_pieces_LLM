@@ -24,10 +24,18 @@ def build_citations(chunks: Sequence[RankedChunk]) -> tuple[Citation, ...]:
                 institution=item.chunk.publisher,
                 source_url=item.chunk.source_url,
                 chunk_id=item.chunk.chunk_id,
-                excerpt=item.chunk.text[:300],
+                excerpt=item.chunk.text[:160],
                 retrieval_score=round(item.score, 6),
                 license_status=str(payload.get("copyright_status", "unknown")),
                 is_fixture=payload.get("data_classification") == "fictional_fixture",
+                usage_status=str(payload.get("usage_status", "")),
+                rights_status=str(payload.get("rights_status", "")),
+                usage_scope=str(payload.get("usage_scope", "")),
+                provisional_notice=(
+                    "해커톤 시연용 공식 참고자료"
+                    if payload.get("usage_status") == "provisional_hackathon"
+                    else ""
+                ),
             )
         )
     return tuple(citations)

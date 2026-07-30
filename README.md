@@ -213,3 +213,29 @@ python -m history_chatbot.retrieval.cli benchmark
 검수 완료 eligible 문서가 0건이면 빈 인덱스를 정상 생성하고, 모든 검색은
 근거 없는 문서를 반환하는 대신 빈 결과를 낸다. `draft`·`rejected` 문서는
 색인하지 않는다.
+
+## 비상업적 해커톤 임시 모드
+
+현재 공식 후보 51건 중 권리 확인 대기 48건은 정식 승인 자료가 아니다.
+공공누리 제4유형 3건은 제외하며, 나머지도 `allowed_for_rag=false`,
+`allowed_for_training=false`를 유지한 채 비상업적 대학 산학 해커톤에서만
+`provisional_hackathon`으로 격리 사용할 수 있다.
+
+```powershell
+$env:APP_MODE = "hackathon"
+python -m history_chatbot.provisional.cli dry-run
+python -m history_chatbot.provisional.cli prepare
+python -m history_chatbot.provisional.cli list
+python -m history_chatbot.provisional.cli rebuild
+```
+
+원문·정제문·해커톤 인덱스는 공개 Git에 올리지 않는다. production은 임시
+자료를 자동 제외하며 탐지 시 로드 자체를 거부한다. 기관 요청, 권리 문제 또는
+2026-08-31 재검토 시 source_id·기관·전체 단위로 제거할 수 있다. 자세한 내용은
+[해커톤 자료 정책](docs/HACKATHON_DATA_POLICY.md),
+[수명주기](docs/PROVISIONAL_DATA_LIFECYCLE.md),
+[제거 안내](docs/PROVISIONAL_DATA_REMOVAL.md)를 참고한다.
+
+현재 제한 GET 결과는 48건 중 7건 성공, 41건 실패이며, 중복 제거 후
+26청크의 hackathon 격리 인덱스가 생성되었다. 따라서 readiness는
+`hackathon_data_partial`이고 정식 서비스 준비 완료를 의미하지 않는다.

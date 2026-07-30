@@ -70,6 +70,7 @@ class VectorStore(ABC):
         model_id: str,
         revision: str,
         source_snapshot: str,
+        extra_metadata: dict[str, Any] | None = None,
     ) -> None:
         """현재 활성 청크 전체를 원자적으로 교체한다."""
 

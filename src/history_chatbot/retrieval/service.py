@@ -16,7 +16,13 @@ from history_chatbot.retrieval.query_normalizer import normalize_query
 from history_chatbot.retrieval.reranker import NoOpReranker
 from history_chatbot.retrieval.sparse import BM25Searcher
 from history_chatbot.retrieval.thresholds import apply_thresholds
-from history_chatbot.runtime import FIXTURE_NOTICE, ProductionNotReadyError, RuntimeMode
+from history_chatbot.runtime import (
+    FIXTURE_NOTICE,
+    ProductionNotReadyError,
+    ProvisionalDataDetectedError,
+    ProvisionalIndexDetectedError,
+    RuntimeMode,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,11 +42,20 @@ class RetrievalConfig:
     index_ready_path: Path = Path("data/index_ready")
     runtime_mode: str = "production"
     fixture_chunks_path: Path | None = None
+    provisional_chunks_path: Path | None = None
 
     def validate(self) -> None:
         mode = RuntimeMode.parse(self.runtime_mode)
         if mode == RuntimeMode.PRODUCTION and self.fixture_chunks_path is not None:
             raise ValueError("production 모드에는 fixture_chunks_path를 설정할 수 없습니다.")
+        if mode == RuntimeMode.PRODUCTION and self.provisional_chunks_path is not None:
+            raise ProvisionalDataDetectedError(
+                "production 모드에는 provisional_hackathon 자료를 설정할 수 없습니다."
+            )
+        if mode != RuntimeMode.HACKATHON and self.provisional_chunks_path is not None:
+            raise ValueError("provisional_chunks_path는 hackathon 모드에서만 사용할 수 있습니다.")
+        if mode == RuntimeMode.HACKATHON and self.fixture_chunks_path is not None:
+            raise ValueError("hackathon 모드에는 개발 fixture를 사용할 수 없습니다.")
         if self.backend != "local_json":
             raise ValueError("현재 다운로드 없는 기본 백엔드는 local_json만 지원합니다.")
         if self.embedding_model != "hashing-v1":
@@ -77,7 +92,7 @@ class RetrievalConfig:
                 values[key] = float(value)
             elif key in {"local_storage_path", "index_ready_path"}:
                 values[key] = Path(value)
-            elif key == "fixture_chunks_path":
+            elif key in {"fixture_chunks_path", "provisional_chunks_path"}:
                 values[key] = Path(value) if value else None
             else:
                 values[key] = value
@@ -186,6 +201,41 @@ class FixtureReader:
         return chunks, stable_json_hash(records)
 
 
+class ProvisionalReader:
+    """권리 미확정 자료를 hackathon 모드에만 노출한다."""
+
+    def __init__(self, path: Path, runtime_mode: RuntimeMode) -> None:
+        self.path = path
+        self.runtime_mode = runtime_mode
+
+    def load(self) -> tuple[list[RetrievalChunk], str]:
+        if self.runtime_mode == RuntimeMode.PRODUCTION:
+            raise ProvisionalDataDetectedError(
+                "production 로더에서 provisional_hackathon 자료가 탐지되었습니다."
+            )
+        if self.runtime_mode != RuntimeMode.HACKATHON:
+            raise ValueError("임시 해커톤 자료는 hackathon 모드에서만 검색할 수 있습니다.")
+        if not self.path.is_file():
+            return [], ""
+        records = [
+            json.loads(line)
+            for line in self.path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        chunks: list[RetrievalChunk] = []
+        for record in records:
+            if record.get("usage_status") != "provisional_hackathon":
+                raise ValueError("해커톤 청크에 허용되지 않은 usage_status가 있습니다.")
+            if record.get("rights_status") != "unconfirmed":
+                raise ValueError("해커톤 청크의 rights_status가 unconfirmed가 아닙니다.")
+            if record.get("allowed_for_rag") is not False:
+                raise ValueError("임시 자료는 allowed_for_rag=false를 유지해야 합니다.")
+            if record.get("allowed_for_training") is not False:
+                raise ValueError("임시 자료는 allowed_for_training=false를 유지해야 합니다.")
+            chunks.append(RetrievalChunk.from_record(record))
+        return chunks, stable_json_hash(records)
+
+
 class HybridRetrievalService:
     def __init__(
         self,
@@ -199,6 +249,13 @@ class HybridRetrievalService:
         self.store = LocalJsonVectorStore(
             config.local_storage_path / self.index_filename
         )
+        if (
+            self.runtime_mode == RuntimeMode.PRODUCTION
+            and self.store.metadata().get("mode") == "hackathon"
+        ):
+            raise ProvisionalIndexDetectedError(
+                "production 경로에서 hackathon 전용 인덱스가 탐지되었습니다."
+            )
         self.reranker = NoOpReranker()
 
     @property
@@ -208,6 +265,10 @@ class HybridRetrievalService:
     def _reader(self):
         if self.config.fixture_chunks_path is not None:
             return FixtureReader(self.config.fixture_chunks_path, self.runtime_mode)
+        if self.config.provisional_chunks_path is not None:
+            return ProvisionalReader(
+                self.config.provisional_chunks_path, self.runtime_mode
+            )
         return IndexReadyReader(
             self.config.index_ready_path, runtime_mode=self.runtime_mode
         )
@@ -259,6 +320,7 @@ class HybridRetrievalService:
             model_id=self.encoder.model_id,
             revision=self.encoder.revision,
             source_snapshot=snapshot,
+            extra_metadata=self._index_metadata(chunks),
         )
         return BuildReport(
             len(chunks),
@@ -323,3 +385,20 @@ class HybridRetrievalService:
 
     def rollback(self, source_snapshot: str) -> None:
         self.store.rollback(source_snapshot)
+
+    def _index_metadata(self, chunks: list[RetrievalChunk]) -> dict[str, Any]:
+        if self.runtime_mode != RuntimeMode.HACKATHON:
+            return {"mode": self.runtime_mode.value}
+        source_ids = sorted(
+            {
+                str(chunk.payload.get("source_id", chunk.document_id))
+                for chunk in chunks
+            }
+        )
+        return {
+            "mode": "hackathon",
+            "provisional_document_count": len(source_ids),
+            "provisional_chunk_count": len(chunks),
+            "rights_scope": "unconfirmed_noncommercial_demo",
+            "removable_source_ids": source_ids,
+        }
