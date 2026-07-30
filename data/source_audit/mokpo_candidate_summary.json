@@ -1,0 +1,58 @@
+{
+  "approval_recommended_count": 0,
+  "audit_date": "2026-07-30",
+  "body_exists_count": 51,
+  "candidate_count": 36,
+  "current_approved_documents": 0,
+  "direct_mokpo_count": 36,
+  "duplicate_count": 0,
+  "estimated_chunks": {
+    "maximum": 180,
+    "minimum": 72
+  },
+  "excluded_count": 0,
+  "expected_cumulative_approved": 0,
+  "immediately_rag_approvable": 0,
+  "institution_counts": {
+    "국가유산청 국가유산포털": 6,
+    "독립기념관": 41,
+    "목포시": 1,
+    "목포시·목포문화관광": 3
+  },
+  "institution_inquiry_needed_count": 51,
+  "investigated_records": 51,
+  "kogl_counts": {
+    "KOGL-4": 3,
+    "unknown": 48
+  },
+  "reference_only_count": 15,
+  "rights_pending_count": 48,
+  "scope_note": "공공데이터포털 제외. 네트워크 원문 다운로드·승인·색인 없음.",
+  "shortfall_to_100_approved": 100,
+  "shortfall_to_50_approved": 50,
+  "termination_reason": "소량 공식 상세 페이지 탐색에서 확인 가능한 고유 상세 레코드를 소진했으며, 추가 확대에는 기관 검색 API/서지 UI의 대량 탐색 또는 권리 확인이 필요함",
+  "topic_counts": {
+    "개항·목포 이사청·목포부 행정": 1,
+    "개항·목포부 행정·근대 도시계획": 1,
+    "근대 건축물": 1,
+    "근대 건축물·종교": 1,
+    "근대 도시계획·근대 건축물": 1,
+    "노동운동·소작쟁의": 2,
+    "노동운동·청년운동": 1,
+    "독립운동": 1,
+    "독립운동·목포 사법/수감 네트워크": 15,
+    "동양척식주식회사 목포지점": 1,
+    "목포 근대역사문화공간·근대 건축물": 1,
+    "목포 만세운동": 5,
+    "목포 학생운동": 1,
+    "목포 해관·세관": 1,
+    "목포공립상업학교·학생운동": 5,
+    "목포부 행정·근대 건축물": 1,
+    "상업·금융": 1,
+    "신간회 목포지회": 1,
+    "영흥학교·학생운동": 3,
+    "정명여학교·학생운동": 6,
+    "학교·교육": 1
+  },
+  "unique_candidates": 51
+}
