@@ -46,6 +46,9 @@ data/processed/*
 !data/reviewed/
 data/reviewed/*
 !data/reviewed/.gitkeep
+!data/index_ready/
+data/index_ready/*
+!data/index_ready/.gitkeep
 !data/manifests/
 data/manifests/*
 !data/manifests/sources.jsonl

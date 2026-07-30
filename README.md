@@ -86,6 +86,25 @@ python -m history_chatbot.ingestion.cli review reject --document-id "mokpo-sourc
 `allowed_for_rag`를 자동 변경하지 않으므로 이 값이 `false`이면 승인 후에도
 서비스 RAG 색인 대상이 아닙니다.
 
+## 검수 완료 RAG 입력 준비
+
+사람 검수가 끝나고 RAG 사용이 허용된 A·B 등급 문서만 검색 입력용 JSONL로
+준비합니다. 아직 임베딩 모델, 벡터 DB와 Llama 모델은 연결하지 않습니다.
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m history_chatbot.indexing.cli status
+python -m history_chatbot.indexing.cli list-eligible
+python -m history_chatbot.indexing.cli list-rejected
+python -m history_chatbot.indexing.cli prepare
+python -m history_chatbot.indexing.cli validate
+```
+
+결과는 `data/index_ready/chunks.jsonl`과
+`data/index_ready/index_manifest.json`에 생성됩니다. 생성 데이터는 Git에서
+제외하며, 문서별 스냅샷 해시·증분 변경 상태·tombstone을 manifest에 기록합니다.
+자세한 정책과 출력 형식은 [인덱싱 가이드](docs/INDEXING_GUIDE.md)를 참고하세요.
+
 ## 공식 자료 후보 수집
 
 공식 출처 seed를 이용한 제한적 후보 수집기는 robots.txt와 허용 도메인을 먼저
