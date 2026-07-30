@@ -70,3 +70,28 @@ python -m history_chatbot.ingestion.cli list --manifest "data/manifests/sources.
 등록 형식과 검수 승격 절차는 [자료 처리 가이드](docs/INGESTION_GUIDE.md),
 이용 정책은 [출처 정책](docs/SOURCE_POLICY.md)을 따릅니다. `reviewed`가 아닌
 자료는 서비스용 RAG 색인 대상이 아닙니다.
+
+## 공식 자료 후보 수집
+
+공식 출처 seed를 이용한 제한적 후보 수집기는 robots.txt와 허용 도메인을 먼저
+확인하고, 요청 지연·타임아웃·재시도를 적용합니다. API URL이 명시된 출처는 API를
+우선합니다. 기본 seed에는 인증 키가 필요한 API를 임의로 등록하지 않았습니다.
+
+```powershell
+$env:PYTHONPATH = "src"
+
+# 한 출처에서 최대 설정 수만큼 후보 수집
+python -m history_chatbot.collectors.cli `
+  --source-id "heritage_portal" `
+  --query "목포 근대역사문화공간"
+
+# seed에 등록된 모든 출처에서 제한적으로 후보 탐색
+python -m history_chatbot.collectors.cli --query "목포 개항"
+```
+
+다운로드된 응답 원본은 `data/raw/collected`, 추출 텍스트는
+`data/extracted/collected`, 후보 목록은 `data/source_catalog/collected_sources.jsonl`
+에 서로 분리됩니다. 이 산출물은 대용량·권리 미확인 자료이므로 Git에서 제외됩니다.
+모든 후보는 `draft`, `copyright_status=unknown`, RAG·학습 사용 금지로 시작합니다.
+운영 원칙은 [수집 정책](docs/COLLECTION_POLICY.md), 출처 목록은
+[신뢰 출처 안내](docs/TRUSTED_SOURCES.md)를 확인하세요.

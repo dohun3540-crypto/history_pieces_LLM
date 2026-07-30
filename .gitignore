@@ -52,6 +52,10 @@ data/manifests/*
 !data/schemas/
 data/schemas/*
 !data/schemas/source_document.schema.json
+!data/source_catalog/
+data/source_catalog/*
+!data/source_catalog/seed_sources.json
+!data/source_catalog/collected_sources.jsonl
 
 # Model artifacts and checkpoints
 models/

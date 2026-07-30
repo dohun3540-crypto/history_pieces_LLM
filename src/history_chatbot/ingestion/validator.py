@@ -61,5 +61,6 @@ def can_index_for_service(document: SourceDocument) -> bool:
     return (
         document.review_status == ReviewStatus.REVIEWED
         and document.allowed_for_rag
+        and document.source_reliability in {"", "A", "B"}
         and not validate_source_document(document)
     )
