@@ -1,0 +1,14 @@
+retrieval:
+  backend: "local_json"
+  embedding_model: "hashing-v1"
+  embedding_revision: "builtin"
+  sparse_model: "bm25"
+  reranker_model: "none"
+  dense_top_k: 12
+  sparse_top_k: 12
+  final_top_k: 5
+  minimum_score: 0.20
+  minimum_dense_score: 0.72
+  max_chunks_per_document: 2
+  local_storage_path: "data/retrieval_index"
+  index_ready_path: "data/index_ready"

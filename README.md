@@ -134,3 +134,24 @@ python -m history_chatbot.collectors.cli --query "목포 개항" --execute
 페이지를 저장하지 않고 건너뜁니다.
 운영 원칙은 [수집 정책](docs/COLLECTION_POLICY.md), 출처 목록은
 [신뢰 출처 안내](docs/TRUSTED_SOURCES.md)를 확인하세요.
+
+## 하이브리드 검색
+
+8단계 `index_ready` 청크만 대상으로 dense 후보와 BM25 결과를 융합합니다.
+현재 dense 기본값 `hashing-v1`은 모델 다운로드 없는 개발·테스트 구현이며,
+실제 의미 임베딩 모델로 가장하지 않습니다. 임베딩 후보와 다운로드 조건은
+[검색 모델 보고서](docs/RETRIEVAL_MODEL_REPORT.md), 실행·안전 정책은
+[검색 가이드](docs/RETRIEVAL_GUIDE.md)를 참고하세요.
+
+```powershell
+python -m pip install -e ".[dev]"
+python -m history_chatbot.retrieval.cli inspect-models
+python -m history_chatbot.retrieval.cli build-index
+python -m history_chatbot.retrieval.cli status
+python -m history_chatbot.retrieval.cli search "목포 개항"
+python -m history_chatbot.retrieval.cli benchmark
+```
+
+검수 완료 eligible 문서가 0건이면 빈 인덱스를 정상 생성하고, 모든 검색은
+근거 없는 문서를 반환하는 대신 빈 결과를 낸다. `draft`·`rejected` 문서는
+색인하지 않는다.
