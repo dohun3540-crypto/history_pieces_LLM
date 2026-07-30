@@ -6,7 +6,8 @@ import argparse
 from pathlib import Path
 
 from history_chatbot.collectors.base import load_collector_configs
-from history_chatbot.collectors.registry import CandidateRegistry, build_collector
+from history_chatbot.collectors.pilot import build_pilot_plan, run_pilot
+from history_chatbot.collectors.registry import CandidateRegistry
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -19,6 +20,17 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--query", default="목포", help="후보 링크 필터 검색어")
     parser.add_argument("--raw-dir", type=Path, default=Path("data/raw/collected"))
     parser.add_argument("--extracted-dir", type=Path, default=Path("data/extracted/collected"))
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="네트워크 요청 없이 예정 URL과 수집·건너뜀 이유만 표시합니다(기본값).",
+    )
+    mode.add_argument(
+        "--execute",
+        action="store_true",
+        help="안전 정책을 통과한 출처만 실제 수집합니다.",
+    )
     return parser
 
 
@@ -30,23 +42,34 @@ def main() -> None:
         if not configs:
             raise SystemExit(f"seed에 없는 source-id입니다: {args.source_id}")
 
+    plan = build_pilot_plan(configs)
+    print("파일럿 수집 사전 점검:")
+    for item in plan:
+        disposition = "수집 예정" if item.eligible else "건너뜀"
+        urls = ", ".join(item.urls) if item.urls else "(URL 없음)"
+        print(f"- [{disposition}] {item.source_id}: {urls}")
+        print(f"  이유: {item.reason}")
+
+    if not args.execute:
+        print("dry-run 완료: 네트워크 요청과 파일 저장을 수행하지 않았습니다.")
+        return
+
     registry = CandidateRegistry(args.output)
-    total_found = total_added = 0
-    for config in configs:
-        collector = build_collector(config)
-        report = collector.collect(
-            args.query, raw_dir=args.raw_dir, extracted_dir=args.extracted_dir
-        )
-        added = registry.add_new(report.candidates)
-        total_found += len(report.candidates)
-        total_added += len(added)
-        print(
-            f"{config.source_id}: 발견 {len(report.candidates)}, "
-            f"신규 {len(added)}, 오류 {len(report.errors)}"
-        )
-        for error in report.errors:
-            print(f"  경고: {error}")
-    print(f"완료: 발견 {total_found}, 중복 제거 후 신규 {total_added}")
+    result = run_pilot(
+        configs,
+        query=args.query,
+        raw_dir=args.raw_dir,
+        extracted_dir=args.extracted_dir,
+        registry=registry,
+    )
+    for source_id, count in result.per_source.items():
+        print(f"{source_id}: 수집 {count}건")
+    for error in result.errors:
+        print(f"경고: {error}")
+    print(
+        f"완료: 총 수집 {len(result.candidates)}건, "
+        f"중복 제거 후 신규 {len(result.added)}건"
+    )
 
 
 if __name__ == "__main__":

@@ -23,6 +23,11 @@ from history_chatbot.ingestion.models import CopyrightStatus, ReviewStatus, Sour
 
 DEFAULT_USER_AGENT = "MokpoHistoryRAGCollector/0.1 (+non-commercial research prototype)"
 TRACKING_PARAMETERS = {"fbclid", "gclid", "ref", "source", "utm_campaign", "utm_medium", "utm_source"}
+ACCESS_BARRIER_PATTERNS = (
+    re.compile(r"<input[^>]+type=[\"']password[\"']", re.IGNORECASE),
+    re.compile(r"\b(?:captcha|recaptcha|hcaptcha|paywall)\b", re.IGNORECASE),
+    re.compile(r"자동\s*입력\s*방지|유료\s*회원|구독\s*후\s*(?:이용|열람)"),
+)
 
 
 class CollectionError(RuntimeError):
@@ -95,9 +100,9 @@ class CollectorConfig:
             raise ValueError("trust_grade는 A, B, C, D 중 하나여야 합니다.")
         if self.api_available not in {"yes", "no", "unknown"}:
             raise ValueError("api_available은 yes, no, unknown 중 하나여야 합니다.")
-        if self.collection_status not in {"allowed", "manual_review", "blocked"}:
+        if self.collection_status not in {"allowed", "manual_review", "blocked", "unknown"}:
             raise ValueError(
-                "collection_status는 allowed, manual_review, blocked 중 하나여야 합니다."
+                "collection_status는 allowed, manual_review, blocked, unknown 중 하나여야 합니다."
             )
         if not self.allowed_domains or not self.discovery_urls:
             raise ValueError("allowed_domains와 discovery_urls는 비어 있을 수 없습니다.")
@@ -281,9 +286,13 @@ class BaseCollector(ABC):
     def collect(
         self, query: str, *, raw_dir: Path, extracted_dir: Path
     ) -> CollectionReport:
+        skip_reason = collection_skip_reason(self.config)
+        if skip_reason:
+            return CollectionReport((), (skip_reason,))
         candidates: list[CollectedCandidate] = []
         errors: list[str] = []
         seen_urls: set[str] = set()
+        result_limit = min(self.config.max_results, 2)
         discovery_urls = self.discovery_urls(query)[: self.config.max_pages]
         for discovery_url in discovery_urls:
             try:
@@ -301,7 +310,7 @@ class BaseCollector(ABC):
                         errors.append(str(error))
                         continue
                     candidates.append(candidate)
-                    if len(candidates) >= self.config.max_results:
+                    if len(candidates) >= result_limit:
                         return CollectionReport(tuple(candidates), tuple(errors))
             except CollectionError as error:
                 errors.append(str(error))
@@ -344,6 +353,9 @@ class BaseCollector(ABC):
                     raise CollectionError(f"허용되지 않은 도메인으로 리디렉션되었습니다: {response.url}")
                 if response.status >= 400:
                     raise CollectionError(f"HTTP {response.status}: {url}")
+                barrier = detect_access_barrier(response)
+                if barrier:
+                    raise CollectionError(f"접근 장벽 감지({barrier}): {response.url}")
                 return response
             except CollectionError as error:
                 last_error = error
@@ -369,6 +381,8 @@ class BaseCollector(ABC):
             except CollectionError:
                 return False
             if response.status >= 400:
+                return False
+            if detect_access_barrier(response):
                 return False
             parser.parse(response.body.decode("utf-8", errors="replace").splitlines())
             self._robots[host] = parser
@@ -476,3 +490,27 @@ class BaseCollector(ABC):
 def load_collector_configs(path: Path) -> list[CollectorConfig]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     return [CollectorConfig.from_dict(item) for item in payload["sources"]]
+
+
+def collection_skip_reason(config: CollectorConfig) -> str | None:
+    if config.collection_status != "allowed":
+        return f"수집 건너뜀: collection_status={config.collection_status}"
+    if config.robots_verification != "verified":
+        return f"수집 건너뜀: robots_verification={config.robots_verification}"
+    return None
+
+
+def detect_access_barrier(response: FetchResponse) -> str | None:
+    path = urlsplit(response.url).path.lower()
+    if any(token in path for token in ("/login", "/signin", "/captcha", "/paywall")):
+        return "로그인·캡차·유료벽 URL"
+    if "html" not in response.content_type:
+        return None
+    text = response.body[:1_000_000].decode("utf-8", errors="replace")
+    if ACCESS_BARRIER_PATTERNS[0].search(text):
+        return "로그인 비밀번호 입력"
+    if ACCESS_BARRIER_PATTERNS[1].search(text):
+        return "캡차 또는 유료벽"
+    if ACCESS_BARRIER_PATTERNS[2].search(text):
+        return "자동입력 방지 또는 유료 열람"
+    return None

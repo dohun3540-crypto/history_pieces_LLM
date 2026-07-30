@@ -47,12 +47,34 @@ PowerShell에서 저장소 루트를 현재 디렉터리로 둡니다.
 
 ```powershell
 $env:PYTHONPATH = "src"
+
+# 기본값: 예정 URL과 이유만 출력하며 네트워크 요청 없음
 python -m history_chatbot.collectors.cli `
   --seed "data/source_catalog/seed_sources.json" `
   --output "data/source_catalog/collected_sources.jsonl" `
   --source-id "national_archives" `
-  --query "목포 해관"
+  --query "목포 해관" `
+  --dry-run
+
+# 실제 파일럿 실행은 명시적으로 요청
+python -m history_chatbot.collectors.cli `
+  --source-id "national_archives" `
+  --query "목포 해관" `
+  --execute
 ```
 
 실행 전에 해당 사이트의 robots.txt와 정책을 사람이 확인합니다. 수집 원본과 추출
 텍스트는 Git에 커밋하지 않으며, 후보 catalog도 로컬 운영 데이터로 취급합니다.
+
+## 파일럿 실행 안전장치
+
+- `collection_status=allowed`가 아닌 `manual_review`, `blocked`, `unknown` 출처는
+  네트워크 요청 전에 건너뜁니다.
+- `robots_verification=verified`가 아닌 출처도 네트워크 요청 전에 건너뜁니다.
+- 전체 실행은 최대 10건, 출처별 최대 2건이며 CLI 인자로 늘릴 수 없습니다.
+- 기본 CLI 동작은 dry-run입니다. `--execute`가 있어야만 네트워크 요청을 합니다.
+- 로그인 URL·비밀번호 입력 폼, 캡차, 자동입력 방지, 유료회원·구독 장벽을 감지하면
+  해당 출처 또는 상세 페이지를 중단하거나 건너뜁니다.
+- 수집 결과는 강제로 `review_status=draft`가 됩니다.
+- 라이선스가 `unknown`이면 RAG·학습 사용 플래그를 모두 `false`로 덮어씁니다.
+- 파일럿 실행기는 ingestion 처리나 RAG 색인 함수를 호출하지 않습니다.

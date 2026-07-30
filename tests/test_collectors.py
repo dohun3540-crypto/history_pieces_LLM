@@ -1,13 +1,24 @@
-from dataclasses import replace
+import json
+import sys
+from dataclasses import asdict, replace
 from pathlib import Path
 
 from history_chatbot.collectors.base import (
     BaseCollector,
     CollectedCandidate,
     CollectionError,
+    CollectionReport,
     CollectorConfig,
     FetchResponse,
     load_collector_configs,
+)
+from history_chatbot.collectors.cli import main as collector_cli_main
+from history_chatbot.collectors.pilot import (
+    MAX_RESULTS_PER_SOURCE,
+    MAX_TOTAL_RESULTS,
+    build_pilot_plan,
+    enforce_candidate_safety,
+    run_pilot,
 )
 from history_chatbot.collectors.registry import CandidateRegistry
 from history_chatbot.ingestion.license_policy import can_use_for_rag
@@ -45,6 +56,8 @@ def collector_config(**overrides) -> CollectorConfig:
         "max_retries": 0,
         "max_pages": 1,
         "max_results": 5,
+        "collection_status": "allowed",
+        "robots_verification": "verified",
     }
     values.update(overrides)
     return CollectorConfig(**values)
@@ -174,3 +187,186 @@ def test_seed_sources_include_conservative_audit_fields() -> None:
     assert all(config.robots_verification == "unknown" for config in configs)
     assert all(config.api_available in {"yes", "no", "unknown"} for config in configs)
     assert all(config.audit_date == "2026-07-30" for config in configs)
+
+
+def test_unapproved_or_unverified_source_never_calls_network(tmp_path) -> None:
+    for status, robots in (
+        ("manual_review", "verified"),
+        ("blocked", "verified"),
+        ("unknown", "verified"),
+        ("allowed", "unknown"),
+    ):
+        collector = TestCollector(
+            collector_config(collection_status=status, robots_verification=robots),
+            transport=FakeTransport({}),
+            sleep=lambda _: None,
+        )
+        report = collector.collect(
+            "목포", raw_dir=tmp_path / "raw", extracted_dir=tmp_path / "extracted"
+        )
+        assert report.candidates == ()
+        assert report.errors and "건너뜀" in report.errors[0]
+
+
+def test_access_barrier_is_skipped(tmp_path) -> None:
+    robots = FetchResponse(
+        "https://official.example/robots.txt",
+        200,
+        {"content-type": "text/plain"},
+        b"User-agent: *\nAllow: /\n",
+    )
+    blocked = FetchResponse(
+        "https://official.example/search",
+        200,
+        {"content-type": "text/html"},
+        b'<html><form><input type="password"></form></html>',
+    )
+    collector = TestCollector(
+        collector_config(),
+        transport=FakeTransport(
+            {
+                "https://official.example/robots.txt": robots,
+                "https://official.example/search": blocked,
+            }
+        ),
+        sleep=lambda _: None,
+    )
+    report = collector.collect(
+        "목포", raw_dir=tmp_path / "raw", extracted_dir=tmp_path / "extracted"
+    )
+    assert report.candidates == ()
+    assert any("접근 장벽" in error for error in report.errors)
+
+
+def test_direct_collector_call_cannot_exceed_two_results(tmp_path) -> None:
+    robots = FetchResponse(
+        "https://official.example/robots.txt",
+        200,
+        {"content-type": "text/plain"},
+        b"User-agent: *\nAllow: /\n",
+    )
+    links = "".join(
+        f'<a href="/item/{index}">목포 개항 테스트 후보 {index}</a>'
+        for index in range(4)
+    )
+    responses = {
+        "https://official.example/robots.txt": robots,
+        "https://official.example/search": FetchResponse(
+            "https://official.example/search",
+            200,
+            {"content-type": "text/html"},
+            links.encode("utf-8"),
+        ),
+    }
+    for index in range(4):
+        url = f"https://official.example/item/{index}"
+        responses[url] = FetchResponse(
+            url,
+            200,
+            {"content-type": "text/html"},
+            f"<title>테스트용 가상 자료 {index}</title>".encode("utf-8"),
+        )
+    collector = TestCollector(
+        collector_config(max_results=100),
+        transport=FakeTransport(responses),
+        sleep=lambda _: None,
+    )
+    report = collector.collect(
+        "목포", raw_dir=tmp_path / "raw", extracted_dir=tmp_path / "extracted"
+    )
+    assert len(report.candidates) == MAX_RESULTS_PER_SOURCE == 2
+
+
+class StubCollector:
+    def __init__(self, config: CollectorConfig) -> None:
+        self.config = config
+
+    def collect(self, query: str, *, raw_dir: Path, extracted_dir: Path) -> CollectionReport:
+        items = tuple(
+            replace(
+                candidate(
+                    f"https://official.example/{self.config.source_id}/item/{index}",
+                    content_hash=f"{self.config.source_id}-{index}",
+                    title=f"{self.config.source_id} 테스트 자료 {index}",
+                ),
+                document_id=f"{self.config.source_id}-{index}",
+                source_id=self.config.source_id,
+                allowed_for_rag=True,
+                allowed_for_training=True,
+                review_status="reviewed",
+            )
+            for index in range(5)
+        )
+        return CollectionReport(items)
+
+
+def test_pilot_enforces_total_ten_and_two_per_source(tmp_path) -> None:
+    configs = [
+        collector_config(
+            source_id=f"source-{index}",
+            name=f"공식 출처 {index}",
+            discovery_urls=(f"https://official.example/source/{index}",),
+        )
+        for index in range(6)
+    ]
+    registry = CandidateRegistry(tmp_path / "collected.jsonl")
+    result = run_pilot(
+        configs,
+        query="목포",
+        raw_dir=tmp_path / "raw",
+        extracted_dir=tmp_path / "extracted",
+        registry=registry,
+        collector_factory=StubCollector,
+    )
+    assert len(result.candidates) == MAX_TOTAL_RESULTS == 10
+    assert all(count <= MAX_RESULTS_PER_SOURCE == 2 for count in result.per_source.values())
+    assert len({item.source_id for item in result.candidates}) == 5
+    assert all(item.review_status == "draft" for item in result.candidates)
+    assert all(not item.allowed_for_rag for item in result.candidates)
+    assert all(not item.allowed_for_training for item in result.candidates)
+
+
+def test_pilot_plan_explains_scheduled_and_skipped_urls() -> None:
+    allowed = collector_config(source_id="allowed")
+    skipped = collector_config(
+        source_id="skipped",
+        collection_status="manual_review",
+        robots_verification="unknown",
+    )
+    plan = build_pilot_plan([allowed, skipped])
+    assert plan[0].eligible
+    assert "출처별 최대 2건" in plan[0].reason
+    assert not plan[1].eligible
+    assert "manual_review" in plan[1].reason
+
+
+def test_unknown_license_safety_overrides_usage_and_review_state() -> None:
+    unsafe = replace(
+        candidate("https://official.example/item/unsafe"),
+        allowed_for_rag=True,
+        allowed_for_training=True,
+        review_status="reviewed",
+    )
+    safe = enforce_candidate_safety(unsafe)
+    assert safe.review_status == "draft"
+    assert not safe.allowed_for_rag
+    assert not safe.allowed_for_training
+
+
+def test_cli_defaults_to_dry_run_without_network(tmp_path, monkeypatch, capsys) -> None:
+    seed = tmp_path / "seed.json"
+    config = collector_config()
+    seed.write_text(
+        json.dumps({"sources": [asdict(config)]}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["collector", "--seed", str(seed), "--output", str(tmp_path / "output.jsonl")],
+    )
+    collector_cli_main()
+    output = capsys.readouterr().out
+    assert "수집 예정" in output
+    assert "dry-run 완료" in output
+    assert not (tmp_path / "output.jsonl").exists()

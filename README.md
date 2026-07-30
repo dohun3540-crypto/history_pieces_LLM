@@ -80,18 +80,23 @@ python -m history_chatbot.ingestion.cli list --manifest "data/manifests/sources.
 ```powershell
 $env:PYTHONPATH = "src"
 
-# 한 출처에서 최대 설정 수만큼 후보 수집
+# 기본 동작은 네트워크 요청 없는 dry-run
 python -m history_chatbot.collectors.cli `
   --source-id "heritage_portal" `
-  --query "목포 근대역사문화공간"
+  --query "목포 근대역사문화공간" `
+  --dry-run
 
-# seed에 등록된 모든 출처에서 제한적으로 후보 탐색
-python -m history_chatbot.collectors.cli --query "목포 개항"
+# 실제 실행은 --execute를 명시해야 함
+python -m history_chatbot.collectors.cli --query "목포 개항" --execute
 ```
 
 다운로드된 응답 원본은 `data/raw/collected`, 추출 텍스트는
 `data/extracted/collected`, 후보 목록은 `data/source_catalog/collected_sources.jsonl`
 에 서로 분리됩니다. 이 산출물은 대용량·권리 미확인 자료이므로 Git에서 제외됩니다.
 모든 후보는 `draft`, `copyright_status=unknown`, RAG·학습 사용 금지로 시작합니다.
+`collection_status=allowed`이면서 `robots_verification=verified`인 출처만 실행되며,
+출처별 최대 2건·전체 최대 10건을 코드에서 고정합니다. 일반 CLI와 개별 수집기
+호출도 이 제한을 우회할 수 없습니다. 로그인·캡차·유료벽 징후가 발견되면 해당
+페이지를 저장하지 않고 건너뜁니다.
 운영 원칙은 [수집 정책](docs/COLLECTION_POLICY.md), 출처 목록은
 [신뢰 출처 안내](docs/TRUSTED_SOURCES.md)를 확인하세요.
