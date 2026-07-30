@@ -1,0 +1,46 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python caches and build output
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Large datasets (keep the small documented sample)
+data/*
+!data/sample/
+data/sample/*
+!data/sample/mokpo_history_sample.json
+
+# Model artifacts and checkpoints
+models/
+weights/
+checkpoints/
+*.bin
+*.ckpt
+*.gguf
+*.safetensors
+*.pt
+*.pth

@@ -1,0 +1,6 @@
+model:
+  provider: "mock"
+  interface: "BaseLLM"
+  future_family: "Llama Instruct"
+  download_enabled: false
+  training_enabled: false

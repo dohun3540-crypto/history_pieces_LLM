@@ -1,0 +1,6 @@
+retrieval:
+  backend: "in_memory_keyword"
+  top_k: 3
+  chunk_size: 500
+  chunk_overlap: 50
+  data_path: "data/sample/mokpo_history_sample.json"

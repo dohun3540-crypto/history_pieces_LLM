@@ -1,0 +1,16 @@
+{
+  "notice": "RAG 파이프라인 동작 확인용 샘플이며 역사적 사실을 담은 자료가 아닙니다.",
+  "documents": [
+    {
+      "id": "prototype-sample-001",
+      "title": "목포 근대역사 챗봇 동작 확인용 샘플",
+      "source": "프로젝트 내부 테스트 데이터(역사 자료 아님)",
+      "language": "ko",
+      "content": "이 문서는 목포 관련 키워드 검색과 출처 표시 기능을 확인하기 위한 샘플입니다. 역사적 사실이나 사건 정보를 제공하지 않습니다.",
+      "metadata": {
+        "sample_only": true,
+        "verified": false
+      }
+    }
+  ]
+}
