@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from html import unescape
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urlparse
 
@@ -18,6 +19,19 @@ ERROR_MARKERS = ("페이지를 찾을 수 없습니다", "주소가 변경 혹�
 class SearchCandidate:
     record_id: str
     title: str
+
+
+@dataclass(frozen=True, slots=True)
+class DetailFields:
+    name: str
+    name_hanja: str
+    born_died: str
+    address_birth: str
+    movement_family: str
+    organizations: str
+    events: str
+    activities: str
+    text: str
 
 
 class _I815Parser(HTMLParser):
@@ -160,3 +174,128 @@ def ensure_unique_exact_urls(records: list[dict]) -> None:
         if url in seen and seen[url] != source_id:
             raise ValueError(f"서로 다른 source_id의 current URL이 중복됩니다: {url}")
         seen[url] = source_id
+
+
+def _clean_html(value: str) -> str:
+    return " ".join(unescape(re.sub(r"<[^>]+>", " ", value)).split())
+
+
+def _table_field(html: str, label: str) -> str:
+    match = re.search(
+        rf"<th[^>]*>\s*{re.escape(label)}\s*</th>\s*<td[^>]*>(.*?)</td>",
+        html,
+        re.IGNORECASE | re.DOTALL,
+    )
+    return _clean_html(match.group(1)) if match else ""
+
+
+def parse_detail_fields(html: str) -> DetailFields:
+    parser = _I815Parser()
+    parser.feed(html)
+    hanja = re.search(
+        r'class=["\'][^"\']*\bentry-name-hanja\b[^"\']*["\'][^>]*>(.*?)</',
+        html,
+        re.IGNORECASE | re.DOTALL,
+    )
+    return DetailFields(
+        name=parser.page_title,
+        name_hanja=_clean_html(hanja.group(1)) if hanja else _table_field(html, "한자명"),
+        born_died=_table_field(html, "생몰년월일"),
+        address_birth=_table_field(html, "출신지"),
+        movement_family=_table_field(html, "운동계열"),
+        organizations=_table_field(html, "관련 단체"),
+        events=_table_field(html, "관련 사건"),
+        activities=_table_field(html, "주요 활동"),
+        text=parser.text,
+    )
+
+
+def mokpo_evidence(text: str) -> list[str]:
+    evidence: list[str] = []
+    for item in re.split(r"(?<=[.!?。])\s+|[\r\n]+", text):
+        sentence = " ".join(item.split())
+        if "목포" not in sentence:
+            continue
+        position = sentence.index("목포")
+        start = max(0, position - 100)
+        excerpt = sentence[start : start + 260]
+        if start:
+            excerpt = "…" + excerpt
+        if start + 260 < len(sentence):
+            excerpt += "…"
+        if excerpt not in evidence:
+            evidence.append(excerpt)
+        if len(evidence) == 3:
+            break
+    return evidence
+
+
+def review_manual_record(
+    record: dict,
+    *,
+    current_url: str,
+    status: int,
+    content_type: str,
+    html: str,
+    existing_results: list[dict] | None = None,
+) -> dict:
+    source_id = str(record.get("source_id", ""))
+    record_id = old_record_id(str(record.get("source_url", "")))
+    fields = parse_detail_fields(html)
+    evidence = mokpo_evidence(fields.text)
+    duplicates = [
+        item
+        for item in (existing_results or [])
+        if str(item.get("source_id", "")) != source_id
+        and (
+            str(item.get("current_url", item.get("current_detail_url", "")))
+            == current_url
+            or str(item.get("record_id", item.get("current_record_id", "")))
+            == record_id
+        )
+    ]
+    reasons = ["기존 record_id와 현재 공식 print ID 일치"]
+    if duplicates:
+        review_status = "rejected"
+        relevance = "duplicate"
+        reasons.append("다른 source_id와 URL 또는 record_id 중복")
+    elif (
+        status == 200
+        and "html" in content_type.lower()
+        and fields.name
+        and len(fields.text) >= 120
+        and evidence
+    ):
+        review_status = "promoted_to_exact"
+        relevance = "direct"
+        reasons.extend(["공식 인명사전 본문 확인", "목포 직접 근거 확인"])
+    elif status == 200 and fields.name and len(fields.text) >= 120:
+        review_status = "reference_only"
+        relevance = "none"
+        reasons.append("본문에서 목포 직접 관련성을 확인하지 못함")
+    else:
+        review_status = "manual_review_required"
+        relevance = "unclear"
+        reasons.append("핵심 인물명 또는 본문 구조 확인 필요")
+    return {
+        "source_id": source_id,
+        "record_id": record_id,
+        "current_name": fields.name,
+        "name_hanja": fields.name_hanja,
+        "born_died": fields.born_died,
+        "address_birth": fields.address_birth,
+        "movement_family": fields.movement_family,
+        "organizations": fields.organizations,
+        "events": fields.events,
+        "activities": fields.activities,
+        "current_url": current_url,
+        "old_title": str(record.get("source_title", "")),
+        "review_status": review_status,
+        "mokpo_relevance": relevance,
+        "relevance_evidence": evidence,
+        "duplicate_check": "duplicate" if duplicates else "unique",
+        "review_reasons": reasons,
+        "HTTP_status": status,
+        "content_type": content_type,
+        "body_exists": len(fields.text) >= 120,
+    }

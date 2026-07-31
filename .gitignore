@@ -65,6 +65,8 @@ data/source_catalog/*
 data/source_audit/*
 !data/source_audit/i815_url_remap_candidates.jsonl
 !data/source_audit/i815_url_remap_summary.json
+!data/source_audit/i815_manual_review_results.jsonl
+!data/source_audit/i815_manual_review_summary.json
 !data/provisional_hackathon/
 data/provisional_hackathon/*
 !data/provisional_hackathon/manifests/

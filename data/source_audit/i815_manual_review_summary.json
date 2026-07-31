@@ -1,0 +1,12 @@
+{
+  "duplicates": 0,
+  "network_requests": 19,
+  "next_action": "Review results and approve manifest URL application before collection.",
+  "promoted_to_exact": 19,
+  "reference_only": 0,
+  "rejected": 0,
+  "remains_manual": 0,
+  "total_collectable_after_review": 41,
+  "total_exact_after_review": 41,
+  "total_reviewed": 19
+}

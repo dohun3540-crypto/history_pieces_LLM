@@ -6,7 +6,9 @@ from history_chatbot.provisional.remap import (
     classify_old_response,
     ensure_unique_exact_urls,
     old_record_id,
+    parse_detail_fields,
     parse_search_candidates,
+    review_manual_record,
     search_key,
 )
 
@@ -22,10 +24,23 @@ def record(title: str = "김옥실 - 독립운동인명사전") -> dict:
     }
 
 
-def detail_html(name: str = "김옥실", body: str = "목포 정명여학교 만세운동") -> str:
+def detail_html(
+    name: str = "김옥실",
+    body: str = "목포 정명여학교 만세운동",
+    *,
+    mokpo_metadata: bool = True,
+) -> str:
+    place = "목포" if mokpo_metadata else "광주"
     return (
         "<html><body><span class='entry-name'>"
-        f"{name}</span><section>{body * 20}</section></body></html>"
+        f"{name}</span><span class='entry-name-hanja'>金玉實</span>"
+        f"<table><tr><th>출신지</th><td>전남 {place}</td></tr>"
+        "<tr><th>생몰년월일</th><td>1900 ~ 1980</td></tr>"
+        "<tr><th>운동계열</th><td>학생운동</td></tr>"
+        "<tr><th>관련 단체</th><td>정명여학교</td></tr>"
+        f"<tr><th>관련 사건</th><td>{place} 만세시위</td></tr>"
+        f"<tr><th>주요 활동</th><td>{place} 만세운동 참여</td></tr></table>"
+        f"<section>{body * 20}.</section></body></html>"
     )
 
 
@@ -74,7 +89,7 @@ def test_only_exact_name_and_mokpo_is_auto_approved() -> None:
         record(),
         status=200,
         content_type="text/html",
-        html=detail_html(body="광주 만세운동"),
+        html=detail_html(body="광주 만세운동", mokpo_metadata=False),
     )
     assert exact == "remapped_exact"
     assert current_title == "김옥실"
@@ -126,3 +141,54 @@ def test_mapping_dry_run_does_not_mutate_manifest_record() -> None:
         html=detail_html(),
     )
     assert item == before
+
+
+def test_manual_generic_title_is_promoted_with_direct_mokpo_evidence() -> None:
+    item = record("독립운동인명사전 참고 레코드(ID 4106)")
+    before = dict(item)
+    result = review_manual_record(
+        item,
+        current_url="https://search.i815.or.kr/dictionary/detail/print.do?id=4106",
+        status=200,
+        content_type="text/html; charset=UTF-8",
+        html=detail_html(),
+    )
+    assert result["review_status"] == "promoted_to_exact"
+    assert result["mokpo_relevance"] == "direct"
+    assert result["current_name"] == "김옥실"
+    assert parse_detail_fields(detail_html()).movement_family == "학생운동"
+    assert item == before
+    assert item["source_id"] == result["source_id"]
+    assert item["allowed_for_rag"] is False
+    assert item["allowed_for_training"] is False
+
+
+def test_manual_record_without_mokpo_evidence_is_not_promoted() -> None:
+    result = review_manual_record(
+        record("독립운동인명사전 참고 레코드(ID 4106)"),
+        current_url="https://search.i815.or.kr/dictionary/detail/print.do?id=4106",
+        status=200,
+        content_type="text/html",
+        html=detail_html(body="광주 지역 독립운동", mokpo_metadata=False),
+    )
+    assert result["review_status"] == "reference_only"
+
+
+def test_manual_duplicate_url_or_record_id_is_rejected() -> None:
+    item = record("독립운동인명사전 참고 레코드(ID 4106)")
+    result = review_manual_record(
+        item,
+        current_url="https://search.i815.or.kr/dictionary/detail/print.do?id=4106",
+        status=200,
+        content_type="text/html",
+        html=detail_html(),
+        existing_results=[
+            {
+                "source_id": "another",
+                "current_url": "https://search.i815.or.kr/dictionary/detail/print.do?id=4106",
+                "record_id": "4106",
+            }
+        ],
+    )
+    assert result["review_status"] == "rejected"
+    assert result["duplicate_check"] == "duplicate"
