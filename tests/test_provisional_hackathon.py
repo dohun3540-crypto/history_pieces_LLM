@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -13,6 +14,8 @@ from history_chatbot.chat.session import SessionStore
 from history_chatbot.models.mock_llm import MockLLM
 from history_chatbot.provisional.service import ProvisionalDataService
 from history_chatbot.retrieval.base import RankedChunk, RetrievalChunk
+from history_chatbot.retrieval.dense import HashingDenseEncoder
+from history_chatbot.retrieval.qdrant_store import LocalJsonVectorStore
 from history_chatbot.retrieval.service import HybridRetrievalService, RetrievalConfig
 from history_chatbot.runtime import (
     ProvisionalDataDetectedError,
@@ -57,6 +60,20 @@ def prepare_and_collect(tmp_path: Path) -> ProvisionalDataService:
     return provisional
 
 
+def prepare_seven_existing(tmp_path: Path) -> ProvisionalDataService:
+    provisional = service(tmp_path)
+    records = provisional.prepare_manifest()
+    provisional.raw_dir.mkdir(parents=True)
+    for record in records[:7]:
+        payload = fake_html(record["source_url"])
+        text = provisional._extract_text(payload)
+        (provisional.raw_dir / f"{record['source_id']}.html").write_bytes(payload)
+        record["collection_status"] = "collected"
+        record["content_hash"] = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    provisional._atomic_jsonl(provisional.manifest_path, records)
+    return provisional
+
+
 def test_exactly_48_are_selected_and_three_kogl4_are_excluded(tmp_path) -> None:
     report = service(tmp_path).dry_run()
     assert report.selected == 48
@@ -89,6 +106,76 @@ def test_fake_collection_excludes_common_page_chrome_and_images(tmp_path) -> Non
     assert all("공통 푸터" not in item["text"] for item in chunks)
     assert all(item["allowed_for_rag"] is False for item in chunks)
     assert all(item["allowed_for_training"] is False for item in chunks)
+
+
+def test_existing_successes_are_reused_without_network(tmp_path) -> None:
+    provisional = prepare_and_collect(tmp_path)
+    calls: list[str] = []
+    result = provisional.collect(
+        lambda url: calls.append(url) or fake_html(url), delay_seconds=0
+    )
+    assert calls == []
+    assert result["reused"] == 48
+    assert result["network_requests"] == 0
+    records = provisional.load_manifest()
+    assert all(item["collection_status"] == "reused" for item in records)
+    assert all(item["network_requested"] is False for item in records)
+    assert all(item["reused"] is True for item in records)
+
+
+def test_collection_plan_matches_current_seven_and_forty_one(tmp_path) -> None:
+    provisional = prepare_seven_existing(tmp_path)
+    before = provisional.manifest_path.read_bytes()
+    report = provisional.collect(dry_run=True)
+    assert report["total_selected"] == 48
+    assert report["reused_existing"] == 7
+    assert report["pending_network"] == 41
+    assert report["estimated_max_gets"] == 41
+    assert report["missing_raw"] == 41
+    assert len(report["request_urls"]) == 41
+    assert provisional.manifest_path.read_bytes() == before
+    assert not provisional.chunks_path.exists()
+    assert not provisional.index_root.exists()
+
+
+def test_hash_mismatch_force_and_source_id_are_scoped(tmp_path) -> None:
+    provisional = prepare_seven_existing(tmp_path)
+    records = provisional.load_manifest()
+    damaged = records[0]
+    (provisional.raw_dir / f"{damaged['source_id']}.html").write_bytes(b"damaged")
+    mismatch = provisional.collect(dry_run=True)
+    assert mismatch["reused_existing"] == 6
+    assert mismatch["hash_mismatch"] == 1
+    assert mismatch["pending_network"] == 42
+
+    forced = provisional.collect(force=True, dry_run=True)
+    assert forced["forced"] == 48
+    assert forced["estimated_max_gets"] == 48
+
+    scoped = provisional.collect(source_id=records[1]["source_id"], dry_run=True)
+    assert scoped["total_selected"] == 1
+    assert scoped["reused_existing"] == 1
+    assert scoped["estimated_max_gets"] == 0
+
+
+def test_chunk_failure_does_not_replace_existing_raw(tmp_path, monkeypatch) -> None:
+    provisional = prepare_seven_existing(tmp_path)
+    source_id = provisional.load_manifest()[0]["source_id"]
+    raw_path = provisional.raw_dir / f"{source_id}.html"
+    before = raw_path.read_bytes()
+    monkeypatch.setattr(
+        provisional,
+        "_chunks",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("chunk failure")),
+    )
+    result = provisional.collect(
+        lambda _: fake_html("changed=1"),
+        force=True,
+        source_id=source_id,
+        delay_seconds=0,
+    )
+    assert result["failed"] == 1
+    assert raw_path.read_bytes() == before
 
 
 def test_production_blocks_provisional_and_hackathon_allows_it(tmp_path) -> None:
@@ -147,8 +234,12 @@ def test_expiry_disables_every_active_source(tmp_path) -> None:
 
 def test_failed_removal_restores_manifest_and_chunks(tmp_path, monkeypatch) -> None:
     provisional = prepare_and_collect(tmp_path)
+    provisional.rebuild_index()
     manifest_before = provisional.manifest_path.read_bytes()
     chunks_before = provisional.chunks_path.read_bytes()
+    index_path = provisional.index_root / "hashing-v1--builtin.json"
+    index_before = index_path.read_bytes()
+    metadata_before = json.loads(index_before)["metadata"]
     monkeypatch.setattr(
         provisional,
         "rebuild_index",
@@ -158,6 +249,97 @@ def test_failed_removal_restores_manifest_and_chunks(tmp_path, monkeypatch) -> N
         provisional.remove(source_id=provisional.load_manifest()[0]["source_id"])
     assert provisional.manifest_path.read_bytes() == manifest_before
     assert provisional.chunks_path.read_bytes() == chunks_before
+    assert index_path.read_bytes() == index_before
+    metadata_after = json.loads(index_path.read_bytes())["metadata"]
+    assert metadata_after["index_version"] == metadata_before["index_version"]
+    assert metadata_after["source_snapshot"] == metadata_before["source_snapshot"]
+
+
+def test_post_rebuild_removal_failure_restores_entire_generation(
+    tmp_path, monkeypatch
+) -> None:
+    provisional = prepare_and_collect(tmp_path)
+    provisional.rebuild_index()
+    index_path = provisional.index_root / "hashing-v1--builtin.json"
+    manifest_before = provisional.manifest_path.read_bytes()
+    chunks_before = provisional.chunks_path.read_bytes()
+    index_before = index_path.read_bytes()
+    monkeypatch.setattr(
+        provisional,
+        "_append_removal_log",
+        lambda *args: (_ for _ in ()).throw(RuntimeError("log failure")),
+    )
+    with pytest.raises(RuntimeError, match="log failure"):
+        provisional.remove(source_id=provisional.load_manifest()[0]["source_id"])
+    assert provisional.manifest_path.read_bytes() == manifest_before
+    assert provisional.chunks_path.read_bytes() == chunks_before
+    assert index_path.read_bytes() == index_before
+    assert not provisional.removal_log.exists()
+
+
+@pytest.mark.parametrize("failure_point", ["dense", "metadata", "bm25", "swap"])
+def test_failed_rebuild_keeps_previous_searchable_snapshot(
+    tmp_path, monkeypatch, failure_point
+) -> None:
+    provisional = prepare_and_collect(tmp_path)
+    provisional.rebuild_index()
+    index_path = provisional.index_root / "hashing-v1--builtin.json"
+    before = index_path.read_bytes()
+    metadata = json.loads(before)["metadata"]
+    old_service = HybridRetrievalService(
+        RetrievalConfig(
+            runtime_mode="hackathon",
+            provisional_chunks_path=provisional.chunks_path,
+            local_storage_path=provisional.index_root,
+            minimum_score=0,
+            minimum_dense_score=-1,
+        )
+    )
+    query = old_service.store.chunks()[0].text
+    old_ids = [item.chunk.chunk_id for item in old_service.search(query)]
+
+    if failure_point == "dense":
+        monkeypatch.setattr(
+            HashingDenseEncoder,
+            "encode",
+            lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("dense failure")),
+        )
+    elif failure_point == "metadata":
+        monkeypatch.setattr(
+            LocalJsonVectorStore,
+            "replace",
+            lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("metadata failure")),
+        )
+    elif failure_point == "bm25":
+        monkeypatch.setattr(
+            "history_chatbot.provisional.service.BM25Searcher",
+            lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("bm25 failure")),
+        )
+    else:
+        monkeypatch.setattr(
+            provisional,
+            "_before_index_swap",
+            lambda *args: (_ for _ in ()).throw(RuntimeError("swap failure")),
+        )
+
+    with pytest.raises(RuntimeError, match="failure"):
+        provisional.rebuild_index()
+    assert index_path.read_bytes() == before
+    monkeypatch.undo()
+    current = HybridRetrievalService(
+        RetrievalConfig(
+            runtime_mode="hackathon",
+            provisional_chunks_path=provisional.chunks_path,
+            local_storage_path=provisional.index_root,
+            minimum_score=0,
+            minimum_dense_score=-1,
+        )
+    )
+    assert current.store.metadata()["index_version"] == metadata["index_version"]
+    assert current.store.metadata()["source_snapshot"] == metadata["source_snapshot"]
+    assert [item.chunk.chunk_id for item in current.search(query)] == old_ids
+    assert not list(provisional.index_root.parent.glob(".hackathon-build-*"))
+    assert not (tmp_path / "indexes" / "production").exists()
 
 
 def test_provisional_citation_and_response_notice_are_present(tmp_path) -> None:

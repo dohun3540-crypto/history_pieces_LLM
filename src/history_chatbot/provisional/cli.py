@@ -14,7 +14,10 @@ def parser() -> argparse.ArgumentParser:
     commands = root.add_subparsers(dest="command", required=True)
     commands.add_parser("dry-run")
     commands.add_parser("prepare")
-    commands.add_parser("collect")
+    collect = commands.add_parser("collect")
+    collect.add_argument("--force", action="store_true")
+    collect.add_argument("--source-id")
+    collect.add_argument("--dry-run", action="store_true")
     commands.add_parser("list")
     remove = commands.add_parser("remove")
     group = remove.add_mutually_exclusive_group(required=True)
@@ -34,7 +37,17 @@ def main() -> None:
     elif args.command == "prepare":
         print(json.dumps({"prepared": len(service.prepare_manifest())}, ensure_ascii=False))
     elif args.command == "collect":
-        print(json.dumps(service.collect(), ensure_ascii=False))
+        print(
+            json.dumps(
+                service.collect(
+                    force=args.force,
+                    source_id=args.source_id,
+                    dry_run=args.dry_run,
+                ),
+                ensure_ascii=False,
+                indent=2 if args.dry_run else None,
+            )
+        )
     elif args.command == "list":
         print(json.dumps(service.load_manifest(), ensure_ascii=False, indent=2))
     elif args.command == "remove":
