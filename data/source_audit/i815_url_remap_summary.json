@@ -1,0 +1,17 @@
+{
+  "API_available": true,
+  "API_endpoint": "https://search.i815.or.kr/openApiData.do?type=4",
+  "API_format": "application/xml; UTF-8",
+  "ambiguous": 0,
+  "current_detail_pattern": "https://search.i815.or.kr/dictionary/detail/print.do?id={record_id}",
+  "exact_matches": 22,
+  "manual_review_required": 19,
+  "network_requests": 41,
+  "next_action": "Review manual_review_required records, then approve remapped_exact URL application before collection.",
+  "not_found": 0,
+  "probable_matches": 0,
+  "removed": 0,
+  "representative_checked": 3,
+  "representative_exact_matches": 3,
+  "total_old_urls": 41
+}
