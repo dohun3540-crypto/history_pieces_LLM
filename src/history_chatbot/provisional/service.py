@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import time
+import urllib.error
 import urllib.request
 import uuid
 from collections import Counter
@@ -19,6 +20,7 @@ from typing import Callable
 from urllib.parse import urlparse
 
 from history_chatbot.indexing.snapshot import stable_json_hash
+from history_chatbot.provisional.remap import CURRENT_DETAIL_TEMPLATE
 from history_chatbot.retrieval.sparse import BM25Searcher
 
 
@@ -277,6 +279,8 @@ class ProvisionalDataService:
             except Exception as error:  # 오류는 manifest에만 안전하게 기록
                 record["collection_status"] = "failed"
                 record["collection_error"] = type(error).__name__
+                record["failure_reason"] = str(error)
+                record["attempted_at"] = self.now().isoformat()
                 record["network_requested"] = True
                 record["reused"] = False
                 failed += 1
@@ -364,12 +368,25 @@ class ProvisionalDataService:
                 if record.get("collection_status") == "failed"
                 else "missing_raw"
             )
+        expected_source_url = str(audit_item.get("source_url"))
+        expected_canonical_url = str(audit_item.get("canonical_url"))
+        record_id = str(record.get("official_record_id", ""))
+        if record_id.startswith("i815-person-"):
+            current_url = CURRENT_DETAIL_TEMPLATE.format(
+                record_id=record_id.removeprefix("i815-person-")
+            )
+            if (
+                str(record.get("source_url")) == current_url
+                and str(record.get("canonical_url")) == current_url
+            ):
+                expected_source_url = current_url
+                expected_canonical_url = current_url
         if (
             not record.get("source_id")
             or not record.get("canonical_url")
             or not record.get("content_hash")
-            or str(record.get("canonical_url")) != str(audit_item.get("canonical_url"))
-            or str(record.get("source_url")) != str(audit_item.get("source_url"))
+            or str(record.get("canonical_url")) != expected_canonical_url
+            or str(record.get("source_url")) != expected_source_url
         ):
             return "hash_mismatch"
         if str(record.get("expires_or_review_after", "")) < self.now().date().isoformat():
@@ -413,8 +430,31 @@ class ProvisionalDataService:
             url,
             headers={"User-Agent": "MokpoHistoryHackathonPilot/0.1 (+noncommercial research)"},
         )
-        with urllib.request.urlopen(request, timeout=15) as response:
-            return response.read(2_000_001)
+        retries = 0
+        while True:
+            try:
+                with urllib.request.urlopen(request, timeout=15) as response:
+                    final_host = (
+                        urlparse(str(response.geturl())).hostname or ""
+                    ).lower()
+                    if final_host not in OFFICIAL_HOSTS:
+                        raise ValueError("redirected outside the approved official domains")
+                    content_type = response.headers.get_content_type().lower()
+                    if content_type not in {"text/html", "application/xhtml+xml"}:
+                        raise ValueError(f"unsupported content type: {content_type}")
+                    return response.read(2_000_001)
+            except urllib.error.HTTPError as error:
+                retry_limit = 1 if error.code == 429 else 2 if 500 <= error.code <= 599 else 0
+                if retries >= retry_limit:
+                    raise
+                retries += 1
+                retry_after = error.headers.get("Retry-After") if error.headers else None
+                time.sleep(float(retry_after) if retry_after and retry_after.isdigit() else 1.0)
+            except (urllib.error.URLError, TimeoutError):
+                if retries >= 2:
+                    raise
+                retries += 1
+                time.sleep(1.0)
 
     def _chunks(self, record: dict, text: str, maximum: int = 900, minimum: int = 120) -> list[dict]:
         paragraphs = [item.strip() for item in re.split(r"\n{1,}", text) if item.strip()]

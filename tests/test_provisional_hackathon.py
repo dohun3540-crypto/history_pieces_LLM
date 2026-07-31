@@ -123,6 +123,29 @@ def test_existing_successes_are_reused_without_network(tmp_path) -> None:
     assert all(item["reused"] is True for item in records)
 
 
+def test_remapped_i815_success_is_reused_without_network(tmp_path) -> None:
+    provisional = prepare_and_collect(tmp_path)
+    records = provisional.load_manifest()
+    record = next(
+        item
+        for item in records
+        if str(item["official_record_id"]).startswith("i815-person-")
+    )
+    record_id = str(record["official_record_id"]).removeprefix("i815-person-")
+    current_url = (
+        f"https://search.i815.or.kr/dictionary/detail/print.do?id={record_id}"
+    )
+    record["source_url"] = current_url
+    record["canonical_url"] = current_url
+    provisional._atomic_jsonl(provisional.manifest_path, records)
+
+    report = provisional.collect(source_id=record["source_id"], dry_run=True)
+
+    assert report["total_selected"] == 1
+    assert report["reused_existing"] == 1
+    assert report["pending_network"] == 0
+
+
 def test_collection_plan_matches_current_seven_and_forty_one(tmp_path) -> None:
     provisional = prepare_seven_existing(tmp_path)
     before = provisional.manifest_path.read_bytes()
