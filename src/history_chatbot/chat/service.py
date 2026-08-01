@@ -65,6 +65,35 @@ def create_development_integration_service(
     )
 
 
+def create_development_real_service(
+    *,
+    retrieval_config_path: Path = Path("configs/retrieval.development-real.yaml"),
+    llm: ChatCompletionBackend | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> ChatApplicationService:
+    """Build the isolated real-source development service with memory sessions."""
+
+    mode = RuntimeMode.DEVELOPMENT
+    config = RetrievalConfig.load(retrieval_config_path)
+    if RuntimeMode.parse(config.runtime_mode) != mode:
+        raise ValueError("development_real service에는 development 설정이 필요합니다.")
+    if config.development_chunks_path is None:
+        raise ValueError("development_chunks_path가 필요합니다.")
+    retrieval = HybridRetrievalService(config)
+    if retrieval.validate_index():
+        retrieval.build_index()
+    sessions = SessionStore(mode, path=None)
+    return ChatApplicationService(
+        ConversationalRagOrchestrator(
+            retrieval,
+            llm or build_llm_from_environment(mode, environ=environ),
+            sessions,
+            mode=mode,
+            max_chunks_per_document=config.max_chunks_per_document,
+        )
+    )
+
+
 def create_hackathon_orchestrator(
     *,
     runtime_dir: Path = Path(".runtime/hackathon"),

@@ -68,6 +68,20 @@ data/source_audit/*
 !data/source_audit/i815_url_remap_summary.json
 !data/source_audit/i815_manual_review_results.jsonl
 !data/source_audit/i815_manual_review_summary.json
+!data/development_real/
+data/development_real/*
+!data/development_real/manifests/
+data/development_real/manifests/*
+!data/development_real/manifests/sources.jsonl
+!data/development_real/processed/
+data/development_real/processed/*
+!data/development_real/processed/*.jsonl
+!data/development_real/index_ready/
+data/development_real/index_ready/*
+!data/development_real/index_ready/chunks.jsonl
+!data/development_real/index_ready/index_manifest.json
+# Reproducible local hashing index; rebuild from tracked index-ready chunks.
+data/development_real/retrieval_index/
 !data/provisional_hackathon/
 data/provisional_hackathon/*
 !data/provisional_hackathon/manifests/

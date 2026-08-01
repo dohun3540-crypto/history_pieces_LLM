@@ -46,6 +46,7 @@ def development_record(**updates: object) -> dict[str, object]:
         "review_status": "verified_pending_production_review",
         "source_status": "development_only",
         "source_reliability": "A",
+        "retrieval_subjects": ["공식 역사 자료"],
         "development_approved_by": "human-reviewer",
         "development_approved_at": "2026-08-02",
         "development_approval_notes": "격리된 development 통합 검증만 승인",

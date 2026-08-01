@@ -324,7 +324,13 @@ class DevelopmentRealReader:
             document = DevelopmentSourceDocument.from_dict(record)
         except (TypeError, ValueError) as error:
             return [f"invalid_schema:{error}"]
-        return list(document.validation_errors())
+        errors = list(document.validation_errors())
+        subjects = record.get("retrieval_subjects")
+        if not isinstance(subjects, list) or not any(
+            str(subject).strip() for subject in subjects
+        ):
+            errors.append("missing:retrieval_subjects")
+        return errors
 
 
 class HybridRetrievalService:
@@ -478,6 +484,14 @@ class HybridRetrievalService:
         )
         fused = reciprocal_rank_fusion(dense, sparse, rank_constant=self.config.rrf_k)
         reranked = self.reranker.rerank(query.normalized, fused)
+        if self.config.development_chunks_path is not None:
+            matched_documents = self._development_subject_documents(query.normalized)
+            if not matched_documents:
+                return []
+            reranked = [
+                item for item in reranked
+                if item.chunk.document_id in matched_documents
+            ]
         return apply_thresholds(
             query,
             reranked,
@@ -486,6 +500,21 @@ class HybridRetrievalService:
             max_chunks_per_document=self.config.max_chunks_per_document,
             final_top_k=self.config.final_top_k,
         )
+
+    def _development_subject_documents(self, normalized_query: str) -> set[str]:
+        matched: set[str] = set()
+        folded_query = normalized_query.casefold()
+        for chunk in self.store.chunks():
+            subjects = chunk.payload.get("retrieval_subjects", ())
+            if not isinstance(subjects, list):
+                continue
+            if any(
+                str(subject).strip().casefold() in folded_query
+                for subject in subjects
+                if str(subject).strip()
+            ):
+                matched.add(chunk.document_id)
+        return matched
 
     def status(self) -> dict[str, Any]:
         metadata = self.store.metadata()

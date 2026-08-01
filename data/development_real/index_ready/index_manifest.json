@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "data_lane": "development_real",
+  "runtime_mode": "development",
+  "approval_tier": "development_approved",
+  "production_approved": false,
+  "public_release_allowed": false,
+  "fixture_included": false,
+  "provisional_included": false,
+  "document_count": 3,
+  "chunk_count": 6,
+  "documents": {
+    "mokpo_hist_0004": {
+      "chunk_count": 2,
+      "source_record_id": "mokpo_hist_0004"
+    },
+    "mokpo_hist_0005": {
+      "chunk_count": 2,
+      "source_record_id": "mokpo_hist_0005"
+    },
+    "mokpo_hist_0006": {
+      "chunk_count": 2,
+      "source_record_id": "mokpo_hist_0006"
+    }
+  },
+  "snapshot_sha256": "0c9a6c8ec265ae8b613fb0587fbd262ee7f6ec0620b7d1a041de73d8392d8f7d",
+  "chunks_file_sha256": "d98023cd770cf8f771aef13ab39607b2eb356632e214745b79148cbf1f475d4c",
+  "generated_for": "isolated local development and integration testing",
+  "license_review_status": "pending_review"
+}
