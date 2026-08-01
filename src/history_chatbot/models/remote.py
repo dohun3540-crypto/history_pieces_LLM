@@ -20,6 +20,7 @@ from history_chatbot.models.contract import (
     LLMStreamEvent,
     TokenUsage,
 )
+from history_chatbot.chat.remote_safe import RemotePromptPolicy
 from history_chatbot.runtime import RuntimeMode
 
 
@@ -119,6 +120,12 @@ class RemoteLLMConfig:
     max_new_tokens: int = 512
     temperature: float = 0.2
     top_p: float = 0.9
+    remote_history_enabled: bool = False
+    remote_history_max_turns: int = 1
+    remote_context_max_chars: int = 12_000
+    remote_chunk_max_chars: int = 1_600
+    remote_max_evidence_items: int = 4
+    remote_sanitize_enabled: bool = True
 
     def validate(self, mode: RuntimeMode) -> None:
         if self.api_format not in {"openai", "project"}:
@@ -154,6 +161,17 @@ class RemoteLLMConfig:
             max_new_tokens=self.max_new_tokens,
             timeout=self.timeout_seconds,
         )
+        self.remote_prompt_policy().validate()
+
+    def remote_prompt_policy(self) -> RemotePromptPolicy:
+        return RemotePromptPolicy(
+            history_enabled=self.remote_history_enabled,
+            history_max_turns=self.remote_history_max_turns,
+            context_max_chars=self.remote_context_max_chars,
+            chunk_max_chars=self.remote_chunk_max_chars,
+            max_evidence_items=self.remote_max_evidence_items,
+            sanitize_enabled=self.remote_sanitize_enabled,
+        )
 
     @classmethod
     def from_environment(
@@ -181,6 +199,24 @@ class RemoteLLMConfig:
                 host.strip().lower()
                 for host in values.get("LLM_ALLOWED_HOSTS", "").split(",")
                 if host.strip()
+            ),
+            remote_history_enabled=_environment_flag(
+                values, "LLM_REMOTE_HISTORY_ENABLED", False
+            ),
+            remote_history_max_turns=int(
+                values.get("LLM_REMOTE_HISTORY_MAX_TURNS") or 1
+            ),
+            remote_context_max_chars=int(
+                values.get("LLM_REMOTE_CONTEXT_MAX_CHARS") or 12_000
+            ),
+            remote_chunk_max_chars=int(
+                values.get("LLM_REMOTE_CHUNK_MAX_CHARS") or 1_600
+            ),
+            remote_max_evidence_items=int(
+                values.get("LLM_REMOTE_MAX_EVIDENCE_ITEMS") or 4
+            ),
+            remote_sanitize_enabled=_environment_flag(
+                values, "LLM_REMOTE_SANITIZE_ENABLED", True
             ),
         )
         config.validate(mode)

@@ -16,11 +16,13 @@ from history_chatbot.chat.prompt_builder import (
     SYSTEM_INSTRUCTIONS,
     build_prompt,
 )
+from history_chatbot.chat.remote_safe import serialize_remote_prompt
 from history_chatbot.chat.session import ChatSession, SessionStore
 from history_chatbot.dialogue.response_policy import GiroksaeDialogueEngine
 from history_chatbot.dialogue.modes import ConversationMode
 from history_chatbot.dialogue.persona import (
     OutputDomain, PERSONA_ID, SourceSufficiency,
+    build_persona_prompt,
     conversation_stage_for, locale_policy, output_domain_for,
     render_mock_grounded, speech_level_for,
 )
@@ -349,7 +351,11 @@ class ConversationalRagOrchestrator:
                 for item in chunks
             )
             request = self._llm_request(
-                query, prompt, session, chunks, is_fixture, budget
+                query, prompt, session, chunks, is_fixture, budget,
+                locale=locale, conversation_mode=chat_mode,
+                output_domain=output_domain,
+                situation=classification.primary_situation_id,
+                stage=stage,
             )
             try:
                 completion = self.llm.complete(request)
@@ -460,7 +466,13 @@ class ConversationalRagOrchestrator:
             item.chunk.payload.get("data_classification") == "fictional_fixture"
             for item in chunks
         )
-        request = self._llm_request(query, prompt, session, chunks, is_fixture, budget)
+        request = self._llm_request(
+            query, prompt, session, chunks, is_fixture, budget,
+            locale=locale, conversation_mode=ConversationMode.FREE_CHAT,
+            output_domain=OutputDomain.CHARACTER_DIALOGUE,
+            situation=SituationId.HISTORY_FACT_QUESTION,
+            stage=None,
+        )
         for event in self.llm.stream_complete(request):
             if event.event in {"start", "token", "delta"}:
                 yield StreamEvent(event.event, event.data)
@@ -566,19 +578,43 @@ class ConversationalRagOrchestrator:
         )
         return lines
 
-    def _llm_request(self, query, prompt, session, chunks, is_fixture, budget):
+    def _llm_request(
+        self, query, prompt, session, chunks, is_fixture, budget, *,
+        locale, conversation_mode, output_domain, situation, stage,
+    ):
         remote_config = getattr(self.llm, "config", None)
+        messages = tuple(
+            message
+            for turn in session.turns[-3:]
+            for message in (
+                LLMMessage("user", turn.user),
+                LLMMessage("assistant", turn.assistant),
+            )
+        )
+        system_prompt = SYSTEM_INSTRUCTIONS
+        user_prompt = prompt
+        if self.llm.backend_name == "remote" and remote_config is not None:
+            safe = serialize_remote_prompt(
+                system_prompt=(
+                    SYSTEM_INSTRUCTIONS
+                    + "\n"
+                    + build_persona_prompt(
+                        domain=output_domain, locale=locale,
+                        mode=conversation_mode, situation=situation, stage=stage,
+                    )
+                ),
+                user_query=query,
+                chunks=chunks,
+                history=tuple((turn.user, turn.assistant) for turn in session.turns),
+                policy=remote_config.remote_prompt_policy(),
+            )
+            system_prompt = safe.system_prompt
+            user_prompt = safe.user_prompt
+            messages = safe.messages
         return LLMRequest(
-            system_prompt=SYSTEM_INSTRUCTIONS,
-            user_prompt=prompt,
-            messages=tuple(
-                message
-                for turn in session.turns[-3:]
-                for message in (
-                    LLMMessage("user", turn.user),
-                    LLMMessage("assistant", turn.assistant),
-                )
-            ),
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            messages=messages,
             temperature=getattr(remote_config, "temperature", 0.2),
             top_p=getattr(remote_config, "top_p", 0.9),
             max_new_tokens=getattr(remote_config, "max_new_tokens", self.max_new_tokens),
