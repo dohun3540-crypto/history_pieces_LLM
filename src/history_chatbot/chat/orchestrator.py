@@ -18,7 +18,10 @@ from history_chatbot.chat.prompt_builder import (
 )
 from history_chatbot.chat.session import ChatSession, SessionStore
 from history_chatbot.dialogue.response_policy import GiroksaeDialogueEngine
+from history_chatbot.dialogue.modes import ConversationMode
 from history_chatbot.dialogue.situation_models import ClassificationInput, ScreenType
+from history_chatbot.dialogue.track_models import SharedSessionContext
+from history_chatbot.dialogue.track_policy import ChatTrackPolicy
 from history_chatbot.models.context_budget import ContextBudgetManager
 from history_chatbot.models.contract import ChatCompletionBackend, LLMMessage, LLMRequest
 from history_chatbot.models.remote import RemoteLLMError
@@ -49,6 +52,7 @@ class ChatResponse:
     next_action: str = "respond"
     follow_up_question: str | None = None
     personalization_tag_candidates: tuple[dict[str, object], ...] = ()
+    personalization_tags: tuple[str, ...] = ()
     citations: tuple[dict[str, object], ...] = ()
     evidence: tuple[str, ...] = ()
     grounded: bool = False
@@ -61,10 +65,37 @@ class ChatResponse:
     embedding_backend: str = ""
     latency_ms: int = 0
     warnings: tuple[str, ...] = ()
+    chat_mode: str = "free_chat"
+    response_text: str = ""
+    response_template_id: str | None = None
+    example_id: str | None = None
+    next_action_code: str | None = None
+    required_context: tuple[str, ...] = ()
+    missing_context: tuple[str, ...] = ()
+    capability_supported: bool = False
+    fallback_used: bool = False
+    policy_flags: tuple[str, ...] = ()
+    context_state: tuple[str, ...] = ()
+    current_place_id: str | None = None
+    current_piece_id: str | None = None
+    completed_piece_ids: tuple[str, ...] = ()
+    game_state_mutation: bool = False
+    mode_transition: dict[str, object] | None = None
+    rag_used: bool = False
+    storage_requested: bool = False
+    storage_permitted: bool = False
+    request_state: str = "success"
+    ui_state: str = "active"
+    suggested_questions: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.response_text:
+            object.__setattr__(self, "response_text", self.answer)
 
     def to_dict(self) -> dict[str, object]:
         value = asdict(self)
         value["sources"] = [asdict(source) for source in self.sources]
+        value["response_text"] = self.answer
         return value
 
 
@@ -100,6 +131,7 @@ class ConversationalRagOrchestrator:
             getattr(backend_config, "context_window", context_window)
         )
         self.dialogue = dialogue or GiroksaeDialogueEngine()
+        self.track_policy = ChatTrackPolicy()
 
     def ask(
         self,
@@ -114,11 +146,28 @@ class ConversationalRagOrchestrator:
         current_place_id: str | None = None,
         visited_piece_ids: tuple[str, ...] = (),
         existing_style_preferences: tuple[str, ...] = (),
+        current_journey_step: str | None = None,
+        piece_follow_up_count: int | None = None,
+        return_target: str = "game",
+        available_capabilities: tuple[str, ...] = (),
+        storage_capability: bool = False,
+        user_consent: bool = False,
     ) -> ChatResponse:
         started = time.perf_counter()
         query = self._validate(user_query, locale, top_k)
         session = self.sessions.get_or_create(session_id, locale)
-        resolved_screen = screen_type or conversation_mode
+        chat_mode = ConversationMode(conversation_mode)
+        resolved_screen = screen_type or chat_mode.value
+        if ScreenType(resolved_screen).value != chat_mode.value:
+            raise ValueError("chat_mode와 screen_type이 일치해야 합니다.")
+        shared_context = SharedSessionContext(
+            session_id=session.session_id, locale=locale,
+            current_place_id=current_place_id, current_piece_id=current_piece_id,
+            completed_piece_ids=visited_piece_ids, current_journey_step=current_journey_step,
+            temporary_response_length_preference=(existing_style_preferences[0] if existing_style_preferences else None),
+            available_capabilities=available_capabilities,
+            storage_capability=storage_capability, user_consent=user_consent,
+        )
         classification_input = ClassificationInput(
             query,
             conversation_mode=conversation_mode,
@@ -129,28 +178,70 @@ class ConversationalRagOrchestrator:
             recent_turns=tuple(turn.user for turn in session.turns[-3:]),
             visited_piece_ids=visited_piece_ids,
             existing_style_preferences=existing_style_preferences,
+            storage_capability=storage_capability,
+            user_consent=user_consent,
+            supported_action_codes=available_capabilities,
         )
         decision = self.dialogue.decide(classification_input)
+        track = self.track_policy.route(
+            mode=chat_mode, query=query, decision=decision, context=shared_context,
+            piece_follow_up_count=(
+                min(len(session.turns), 1)
+                if piece_follow_up_count is None else piece_follow_up_count
+            ),
+            return_target=return_target,
+        )
         classification = decision.classification
         common = {
             "conversation_mode": conversation_mode,
             "screen_type": resolved_screen,
             "primary_situation_id": classification.primary_situation_id.value,
             "secondary_situation_ids": tuple(x.value for x in classification.secondary_situation_ids),
-            "next_action": classification.next_action,
-            "follow_up_question": decision.follow_up_question,
+            "next_action": track.action_code or classification.next_action,
+            "follow_up_question": track.follow_up_question,
             "personalization_tag_candidates": tuple(
                 self.dialogue.tag_candidates(classification, turn_id=uuid.uuid4().hex, user_message=query)
             ),
+            "personalization_tags": classification.personalization_tag_candidates,
             "confidence": classification.confidence,
             "response_length_mode": classification.response_length_mode.value,
             "model_backend": self.llm.backend_name,
             "embedding_backend": self.retrieval.encoder.model_id,
             "warnings": decision.warnings,
+            "chat_mode": chat_mode.value,
+            "response_template_id": decision.response_template_id,
+            "next_action_code": track.action_code,
+            "required_context": decision.required_context,
+            "missing_context": decision.missing_context,
+            "capability_supported": track.capability_supported,
+            "fallback_used": track.fallback_used,
+            "policy_flags": decision.policy_flags,
+            "context_state": tuple(dict.fromkeys(
+                decision.context_state + tuple(
+                    tag for tag in classification.personalization_tag_candidates
+                    if tag.startswith(("current_", "emotion_", "engagement_"))
+                    or tag in {"frustration", "service_dissatisfaction"}
+                )
+            )),
+            "current_place_id": current_place_id,
+            "current_piece_id": current_piece_id,
+            "completed_piece_ids": visited_piece_ids,
+            "game_state_mutation": False,
+            "mode_transition": asdict(track.transition) if track.transition else None,
+            "rag_used": track.should_retrieve,
+            "storage_requested": track.action_code == "SAVE_SHORT_REFLECTION",
+            "storage_permitted": (
+                track.action_code == "SAVE_SHORT_REFLECTION"
+                and storage_capability and user_consent
+                and track.action_code in available_capabilities
+            ),
+            "request_state": track.request_state.value,
+            "ui_state": track.ui_state,
+            "suggested_questions": track.free_ui.suggested_questions if track.free_ui else (),
         }
-        if not decision.should_retrieve:
+        if not track.should_retrieve:
             response = ChatResponse(
-                decision.answer, "ok", (), 0, session.session_id, locale, PROMPT_VERSION,
+                track.response_override or decision.answer, "ok", (), 0, session.session_id, locale, PROMPT_VERSION,
                 grounded=False,
                 latency_ms=round((time.perf_counter() - started) * 1000),
                 **common,
@@ -177,6 +268,8 @@ class ConversationalRagOrchestrator:
             locale=locale,
         )
         if not chunks:
+            insufficient_common = dict(common)
+            insufficient_common.update(request_state="insufficient_evidence", ui_state="insufficient_evidence", rag_used=True)
             response = ChatResponse(
                 "확인 가능한 자료가 부족합니다.",
                 "insufficient_evidence",
@@ -191,7 +284,7 @@ class ConversationalRagOrchestrator:
                 },
                 refusal_reason="insufficient_evidence",
                 latency_ms=round((time.perf_counter() - started) * 1000),
-                **common,
+                **insufficient_common,
             )
         else:
             is_fixture = all(
@@ -207,6 +300,8 @@ class ConversationalRagOrchestrator:
                 answer = self._apply_hackathon_policy(
                     completion.generated_text, chunks
                 )
+                if chat_mode == ConversationMode.PIECE_CHAT:
+                    answer = self._limit_piece_answer(answer)
                 response = ChatResponse(
                     answer,
                     "ok",
@@ -222,7 +317,7 @@ class ConversationalRagOrchestrator:
                     retrieved_chunk_ids=tuple(item.chunk.chunk_id for item in chunks),
                     retrieved_source_ids=tuple(dict.fromkeys(str(item.chunk.payload.get("source_id", item.chunk.document_id)) for item in chunks)),
                     latency_ms=round((time.perf_counter() - started) * 1000),
-                    **common,
+                    **(dict(common) | {"request_state": "success", "ui_state": "showing_citations", "rag_used": True}),
                     **self._provisional_metadata(chunks),
                 )
             except RemoteLLMError as error:
@@ -479,3 +574,8 @@ class ConversationalRagOrchestrator:
         if len(normalized) > 1200:
             normalized = normalized[:1200].rstrip() + "…"
         return normalized
+
+    @staticmethod
+    def _limit_piece_answer(answer: str) -> str:
+        sentences = re.split(r"(?<=[.!?。！？])\s+", answer.strip())
+        return " ".join(sentences[:2]).strip()

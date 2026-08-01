@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from history_chatbot.chat.orchestrator import ConversationalRagOrchestrator
+from history_chatbot.chat.orchestrator import ConversationalRagOrchestrator, StreamEvent
 from history_chatbot.chat.session import SessionStore
 from history_chatbot.models.mock_llm import MockLLM
 from history_chatbot.retrieval.service import HybridRetrievalService, RetrievalConfig
@@ -79,8 +79,9 @@ class ChatApplicationService:
         self.orchestrator = orchestrator
 
     def chat(self, payload: dict[str, object]) -> dict[str, object]:
+        query = self._query(payload)
         response = self.orchestrator.ask(
-            str(payload.get("user_query", "")),
+            query,
             session_id=str(payload["session_id"]) if payload.get("session_id") else None,
             locale=str(payload.get("locale", "ko")),
             top_k=int(payload.get("top_k", 3)),
@@ -90,10 +91,35 @@ class ChatApplicationService:
             current_place_id=str(payload["current_place_id"]) if payload.get("current_place_id") else None,
             visited_piece_ids=tuple(str(x) for x in payload.get("visited_piece_ids", ())),
             existing_style_preferences=tuple(str(x) for x in payload.get("existing_style_preferences", ())),
+            current_journey_step=str(payload["current_journey_step"]) if payload.get("current_journey_step") else None,
+            piece_follow_up_count=(
+                int(payload["piece_follow_up_count"])
+                if payload.get("piece_follow_up_count") is not None else None
+            ),
+            return_target=str(payload.get("return_target", "game")),
+            available_capabilities=tuple(str(x) for x in payload.get("available_capabilities", ())),
+            storage_capability=payload.get("storage_capability") is True,
+            user_consent=payload.get("user_consent") is True,
         )
         return response.to_dict()
 
+    @staticmethod
+    def _query(payload: dict[str, object]) -> str:
+        direct = str(payload.get("user_query", "")).strip()
+        if direct:
+            return direct
+        transition = payload.get("mode_transition")
+        if type(transition) is dict:
+            pending = transition.get("pending_user_question")
+            if type(pending) is str and pending.strip():
+                return pending.strip()
+        return ""
+
     def stream(self, payload: dict[str, object]):
+        if "conversation_mode" in payload:
+            # Track-aware requests use the fully guarded common response contract.
+            yield StreamEvent("completed", self.chat(payload))
+            return
         yield from self.orchestrator.stream(
             str(payload.get("user_query", "")),
             session_id=str(payload["session_id"]) if payload.get("session_id") else None,

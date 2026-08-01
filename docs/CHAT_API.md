@@ -1,5 +1,18 @@
 # Chat API
 
+대화 모드별 상세 계약과 reference UI state는 [CHAT_MODES.md](CHAT_MODES.md)를 따른다.
+`conversation_mode`는 `piece_chat` 또는 `free_chat`만 허용하며, 지정된 `screen_type`은
+같은 값을 가져야 한다. 선택 입력으로 `current_place_id`, `current_piece_id`,
+`visited_piece_ids`(실제 완료 조각), `current_journey_step`, `piece_follow_up_count`,
+`return_target`, `available_capabilities`, `storage_capability`, `user_consent`를 받는다.
+
+응답은 기존 필드와 함께 `chat_mode`, `next_action_code`, `required_context`,
+`missing_context`, `capability_supported`, `fallback_used`, `current_place_id`,
+`current_piece_id`, `completed_piece_ids`, `game_state_mutation`, `mode_transition`,
+`rag_used`, `storage_requested`, `storage_permitted`, `request_state`, `ui_state`,
+`suggested_questions`를 반환한다. 실제 provider가 없는 action은 실행 완료가 아니라
+capability 미지원 fallback이다.
+
 핵심 `ChatApplicationService`는 웹 프레임워크에 의존하지 않는다. FastAPI와
 uvicorn은 선택 의존성이다.
 
