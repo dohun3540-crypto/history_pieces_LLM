@@ -73,3 +73,24 @@ def test_chinese_question_punctuation_routes_to_fact_rag() -> None:
     result = classify("木浦港是哪一年开放的？", locale="zh-CN")
     assert result.primary_situation_id == SituationId.HISTORY_FACT_QUESTION
     assert result.requires_rag
+
+
+@pytest.mark.parametrize(
+    ("message", "situation"),
+    [
+        ("다음 버튼이 안 눌려요.", SituationId.TECHNICAL_HELP),
+        ("다음 조각은 어디예요?", SituationId.NAVIGATION_HELP),
+        ("휠체어로 갈 수 있어요?", SituationId.SAFETY_ACCESSIBILITY),
+    ],
+)
+def test_v03_capability_classification_never_uses_history_rag(message, situation) -> None:
+    result = classify(message)
+    assert result.primary_situation_id == situation
+    assert not result.requires_rag
+    assert "no_rag" in result.policy_flags
+
+
+def test_safety_overrides_history_or_reflection_topic() -> None:
+    result = classify("이 건물 역사가 궁금한데 계단 말고 다른 길 있어요?")
+    assert result.primary_situation_id == SituationId.SAFETY_ACCESSIBILITY
+    assert not result.requires_rag

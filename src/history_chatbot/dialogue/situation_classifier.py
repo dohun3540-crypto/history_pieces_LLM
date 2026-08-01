@@ -5,8 +5,10 @@ from __future__ import annotations
 import re
 
 from history_chatbot.dialogue.situation_models import (
+    ActionCode,
     ClassificationInput,
     ClassificationResult,
+    RequiredContext,
     ResponseLengthMode,
     SituationId as S,
 )
@@ -25,7 +27,13 @@ class SituationClassifier:
         tags: list[str] = []
         length = self._length(text, value.existing_style_preferences)
 
-        if self._contains(text, ("지랄", "개노잼", "뭐래", "ㅈㄴ", "씨발", "꺼져")):
+        if self._contains(text, ("계단", "휠체어", "경사로", "엘리베이터", "쉼터", "안전", "너무 더워", "쉬고 싶")):
+            primary, reason, confidence = S.SAFETY_ACCESSIBILITY, "SAFETY_CAPABILITY_OVERRIDE", 0.99
+        elif self._contains(text, ("사진이 안 겹", "버튼이 안", "버튼 안", "소리가 안", "오디오가 안", "화면 오류")):
+            primary, reason, confidence = S.TECHNICAL_HELP, "TECHNICAL_CAPABILITY_REQUEST", 0.98
+        elif self._contains(text, ("다음 조각", "길을 잃", "얼마나 걸", "거리", "가는 길", "방향 알려")):
+            primary, reason, confidence = S.NAVIGATION_HELP, "NAVIGATION_CAPABILITY_REQUEST", 0.98
+        elif self._contains(text, ("지랄", "개노잼", "뭐래", "ㅈㄴ", "씨발", "꺼져")):
             primary, reason, confidence = S.STRONG_DISSATISFACTION, "DISSATISFACTION_OVERRIDE", 0.99
             tags.append("frustration")
             if "많" in text:
@@ -87,7 +95,8 @@ class SituationClassifier:
         requires_rag = self._requires_rag(primary, text, secondary)
         if requires_clarification:
             requires_rag = False
-        return self._result(primary, tuple(secondary), confidence, self._intent(primary), requires_rag, requires_clarification, length, tuple(dict.fromkeys(tags)), self._next_action(primary, requires_clarification), reason)
+        contract = self._capability_contract(primary, text)
+        return self._result(primary, tuple(secondary), confidence, self._intent(primary), requires_rag, requires_clarification, length, tuple(dict.fromkeys(tags)), self._next_action(primary, requires_clarification), reason, *contract)
 
     @staticmethod
     def _contains(text: str, values: tuple[str, ...]) -> bool:
@@ -105,6 +114,8 @@ class SituationClassifier:
         )
 
     def _requires_rag(self, situation: S, text: str, secondary: list[S]) -> bool:
+        if situation in {S.TECHNICAL_HELP, S.NAVIGATION_HELP, S.SAFETY_ACCESSIBILITY}:
+            return False
         if situation in {S.INTEREST_PEOPLE, S.INTEREST_DAILY_CITY, S.HISTORY_FACT_QUESTION, S.EVIDENCE_AND_CORRECTION, S.CROSS_CULTURAL_COMPARISON}:
             return True
         if S.EVIDENCE_AND_CORRECTION in secondary:
@@ -144,5 +155,31 @@ class SituationClassifier:
         return "retrieve_and_answer" if situation in {S.HISTORY_FACT_QUESTION, S.INTEREST_PEOPLE, S.INTEREST_DAILY_CITY, S.EVIDENCE_AND_CORRECTION, S.CROSS_CULTURAL_COMPARISON} else "respond"
 
     @staticmethod
-    def _result(primary, secondary, confidence, intent, rag, clarify, length, tags, action, reason):
-        return ClassificationResult(primary, secondary, confidence, intent, rag, clarify, length, tags, action, reason)
+    def _capability_contract(situation: S, text: str):
+        if situation == S.TECHNICAL_HELP:
+            action = ActionCode.OPEN_TECH_DIAGNOSTIC_OVERLAY
+            if "버튼" in text:
+                action = ActionCode.CHECK_MISSION_COMPLETION_STATE
+            elif "소리" in text or "오디오" in text:
+                action = ActionCode.OPEN_AUDIO_TROUBLESHOOTING
+            return action.value, (RequiredContext.APP_STATE,), ("requires_app_state", "no_rag"), ("technical_issue",)
+        if situation == S.NAVIGATION_HELP:
+            if "다음 조각" in text:
+                return ActionCode.OPEN_ROUTE_TO_NEXT_PIECE.value, (RequiredContext.JOURNEY_STATE, RequiredContext.MAP_DATA), ("requires_journey_state", "requires_map_data", "no_rag"), ("navigation_issue",)
+            if "얼마나" in text or "시간" in text or "거리" in text:
+                return ActionCode.CALCULATE_ROUTE_ETA.value, (RequiredContext.CURRENT_LOCATION, RequiredContext.MAP_DATA), ("requires_location", "requires_map_data", "no_rag"), ("navigation_issue",)
+            return ActionCode.RECALCULATE_ROUTE_OR_SHOW_HELP.value, (RequiredContext.CURRENT_LOCATION,), ("requires_location", "safety_first", "no_rag"), ("navigation_issue",)
+        if situation == S.SAFETY_ACCESSIBILITY:
+            action = ActionCode.CHECK_ACCESSIBLE_ROUTE
+            state = ("accessibility_request",)
+            if "휠체어" in text:
+                action = ActionCode.CHECK_WHEELCHAIR_ACCESS
+            elif "더워" in text or "쉬" in text or "쉼터" in text:
+                action = ActionCode.SHOW_VERIFIED_REST_AREAS_OR_HELP
+                state = ("current_fatigue", "heat_discomfort")
+            return action.value, (RequiredContext.VERIFIED_FACILITY_DATA,), ("requires_verified_facility_data", "safety_first", "no_rag"), state
+        return None, (), (), ()
+
+    @staticmethod
+    def _result(primary, secondary, confidence, intent, rag, clarify, length, tags, action, reason, action_code=None, required_context=(), policy_flags=(), context_state=()):
+        return ClassificationResult(primary, secondary, confidence, intent, rag, clarify, length, tags, action, reason, action_code, required_context, policy_flags, context_state)

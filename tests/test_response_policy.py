@@ -48,3 +48,47 @@ def test_korean_non_rag_answers_keep_polite_style() -> None:
 def test_zh_cn_locale_hook_is_accepted_without_translation_generation() -> None:
     result = decide("你好", locale="zh-CN")
     assert result.classification.primary_situation_id == SituationId.PERSONAL_AND_LIGHT_CHAT
+
+
+def test_technical_help_without_provider_uses_generic_fallback() -> None:
+    result = decide("사진이 안 겹쳐져요.")
+    assert not result.should_retrieve and result.citations == ()
+    assert not result.capability_supported and result.fallback_used
+    assert result.missing_context == ("app_state",)
+    assert "구체적인 버튼이나 아이콘 위치는 안내할 수 없습니다" in result.response_text
+
+
+def test_navigation_without_context_does_not_invent_route() -> None:
+    result = decide("여기서 얼마나 걸려요?")
+    assert not result.should_retrieve
+    assert result.missing_context == ("current_location", "map_data")
+    assert "안내할 수 없습니다" in result.answer
+    assert result.next_action_code == "CALCULATE_ROUTE_ETA"
+
+
+def test_journey_state_missing_does_not_name_next_piece() -> None:
+    result = decide("다음 조각은 어디예요?")
+    assert "다음 조각 위치를 안내할 수 없습니다" in result.answer
+    assert result.missing_context == ("journey_state", "map_data")
+
+
+def test_accessibility_without_verified_data_does_not_assert_access() -> None:
+    result = decide("휠체어로 갈 수 있어요?")
+    assert result.classification.primary_situation_id == SituationId.SAFETY_ACCESSIBILITY
+    assert not result.should_retrieve and result.citations == ()
+    assert "단정할 수 없습니다" in result.answer
+    assert result.missing_context == ("verified_facility_data",)
+
+
+def test_capability_requires_explicit_provider_support_even_with_context() -> None:
+    result = decide("소리가 안 나요.", app_state={"audio": "unknown"})
+    assert result.missing_context == ()
+    assert not result.capability_supported
+    assert result.fallback_used
+
+
+def test_storage_claim_requires_capability_and_consent() -> None:
+    engine = GiroksaeDialogueEngine()
+    assert not engine.can_claim_persisted(ClassificationInput("기억해 줘"))
+    assert not engine.can_claim_persisted(ClassificationInput("기억해 줘", storage_capability=True))
+    assert engine.can_claim_persisted(ClassificationInput("기억해 줘", storage_capability=True, user_consent=True))

@@ -13,7 +13,10 @@ class TagScope(StrEnum):
     JOURNEY_INTEREST = "journey_interest"
 
 
-SESSION_TAGS = {"current_fatigue", "emotion_sadness", "frustration", "engagement_low"}
+SESSION_TAGS = {
+    "current_fatigue", "heat_discomfort", "technical_issue", "navigation_issue",
+    "accessibility_request", "emotion_sadness", "frustration", "engagement_low",
+}
 PREFERENCE_TAGS = {
     "prefers_short", "prefers_very_short", "prefers_simple", "prefers_detailed",
     "prefers_summary", "prefers_fast_progress",

@@ -1,0 +1,130 @@
+{
+  "schema_version": 2,
+  "source_document": "docs/GIROKSAE_DIALOGUE_V03.md",
+  "source_type": "human_proposed_seed",
+  "review_status": "review_pending",
+  "situations": [
+    {"situation_id": "TECHNICAL_HELP", "screen_type": "piece_chat_or_free_chat", "example_count": 3},
+    {"situation_id": "NAVIGATION_HELP", "screen_type": "piece_chat_or_free_chat", "example_count": 3},
+    {"situation_id": "SAFETY_ACCESSIBILITY", "screen_type": "piece_chat_or_free_chat", "example_count": 3}
+  ],
+  "examples": [
+    {
+      "example_id": "TECH_01", "situation_id": "TECHNICAL_HELP", "screen_type": "piece_chat_or_free_chat",
+      "user_input": "사진이 안 겹쳐져요.", "response_goal": "오버레이 문제 진단",
+      "response_draft": "사진 비교 기능이 작동하지 않는군요. 현재 화면 상태와 권한 정보를 확인한 뒤 가능한 조치를 안내할게요.",
+      "response_draft_original": "사진 비교 기능이 작동하지 않는군요. 현재 화면 상태와 권한 정보를 확인한 뒤 가능한 조치를 안내할게요.",
+      "response_template": "사진 비교 기능이 작동하지 않는군요. 현재 화면 상태와 권한 정보를 확인한 뒤 가능한 조치를 안내할게요.",
+      "next_action": "OPEN_TECH_DIAGNOSTIC_OVERLAY", "next_action_code": "OPEN_TECH_DIAGNOSTIC_OVERLAY",
+      "personalization_tags": [], "context_state": ["technical_issue"], "policy_flags": ["requires_app_state", "no_rag"],
+      "required_context": ["app_state"], "fallback_behavior": "general_technical_guidance",
+      "requires_rag": false, "requires_clarification": false, "allows_follow_up": true,
+      "response_length_mode": "default", "locale": "ko", "source_type": "human_proposed_seed", "review_status": "review_pending",
+      "source_fields": {"screen_type": "piece_chat_or_free_chat", "user_input": "사진이 안 겹쳐져요.", "response_goal": "오버레이 문제 진단", "response_draft": "사진 비교 기능이 작동하지 않는군요. 현재 화면 상태와 권한 정보를 확인한 뒤 가능한 조치를 안내할게요.", "next_action": "OPEN_TECH_DIAGNOSTIC_OVERLAY", "personalization_tags": []}
+    },
+    {
+      "example_id": "TECH_02", "situation_id": "TECHNICAL_HELP", "screen_type": "piece_chat_or_free_chat",
+      "user_input": "다음 버튼이 안 눌려요.", "response_goal": "진행 조건·오류 확인",
+      "response_draft": "다음 단계로 진행되지 않는군요. 완료 조건과 화면 오류 상태를 확인해 볼게요.",
+      "response_draft_original": "다음 단계로 진행되지 않는군요. 완료 조건과 화면 오류 상태를 확인해 볼게요.",
+      "response_template": "다음 단계로 진행되지 않는군요. 완료 조건과 화면 오류 상태를 확인해 볼게요.",
+      "next_action": "CHECK_MISSION_COMPLETION_STATE", "next_action_code": "CHECK_MISSION_COMPLETION_STATE",
+      "personalization_tags": [], "context_state": ["technical_issue"], "policy_flags": ["requires_app_state", "no_rag"],
+      "required_context": ["app_state"], "fallback_behavior": "general_technical_guidance",
+      "requires_rag": false, "requires_clarification": false, "allows_follow_up": true,
+      "response_length_mode": "default", "locale": "ko", "source_type": "human_proposed_seed", "review_status": "review_pending",
+      "source_fields": {"screen_type": "piece_chat_or_free_chat", "user_input": "다음 버튼이 안 눌려요.", "response_goal": "진행 조건·오류 확인", "response_draft": "다음 단계로 진행되지 않는군요. 완료 조건과 화면 오류 상태를 확인해 볼게요.", "next_action": "CHECK_MISSION_COMPLETION_STATE", "personalization_tags": []}
+    },
+    {
+      "example_id": "TECH_03", "situation_id": "TECHNICAL_HELP", "screen_type": "piece_chat_or_free_chat",
+      "user_input": "소리가 안 나요.", "response_goal": "오디오 상태 확인",
+      "response_draft": "오디오가 재생되지 않는군요. 앱의 오디오 상태와 기기 음량 설정을 순서대로 확인해 주세요.",
+      "response_draft_original": "오디오가 재생되지 않는군요. 앱의 오디오 상태와 기기 음량 설정을 순서대로 확인해 주세요.",
+      "response_template": "오디오가 재생되지 않는군요. 앱의 오디오 상태와 기기 음량 설정을 순서대로 확인해 주세요.",
+      "next_action": "OPEN_AUDIO_TROUBLESHOOTING", "next_action_code": "OPEN_AUDIO_TROUBLESHOOTING",
+      "personalization_tags": [], "context_state": ["technical_issue"], "policy_flags": ["requires_app_state", "no_rag"],
+      "required_context": ["app_state"], "fallback_behavior": "general_technical_guidance",
+      "requires_rag": false, "requires_clarification": false, "allows_follow_up": true,
+      "response_length_mode": "default", "locale": "ko", "source_type": "human_proposed_seed", "review_status": "review_pending",
+      "source_fields": {"screen_type": "piece_chat_or_free_chat", "user_input": "소리가 안 나요.", "response_goal": "오디오 상태 확인", "response_draft": "오디오가 재생되지 않는군요. 앱의 오디오 상태와 기기 음량 설정을 순서대로 확인해 주세요.", "next_action": "OPEN_AUDIO_TROUBLESHOOTING", "personalization_tags": []}
+    },
+    {
+      "example_id": "NAV_01", "situation_id": "NAVIGATION_HELP", "screen_type": "piece_chat_or_free_chat",
+      "user_input": "다음 조각은 어디예요?", "response_goal": "다음 스팟 안내",
+      "response_draft": "다음 조각은 {verified_next_spot_name}에 있습니다. 위치 정보가 허용된 경우 지도에서 경로를 표시할게요.",
+      "response_draft_original": "다음 조각은 {verified_next_spot_name}에 있습니다. 위치 정보가 허용된 경우 지도에서 경로를 표시할게요.",
+      "response_template": "다음 조각은 {verified_next_spot_name}에 있습니다. 위치 정보가 허용된 경우 지도에서 경로를 표시할게요.",
+      "next_action": "OPEN_ROUTE_TO_NEXT_PIECE", "next_action_code": "OPEN_ROUTE_TO_NEXT_PIECE",
+      "personalization_tags": [], "context_state": ["navigation_issue"], "policy_flags": ["requires_journey_state", "requires_map_data", "no_rag"],
+      "required_context": ["journey_state", "map_data"], "fallback_behavior": "require_location_or_official_guidance",
+      "requires_rag": false, "requires_clarification": false, "allows_follow_up": true,
+      "response_length_mode": "default", "locale": "ko", "source_type": "human_proposed_seed", "review_status": "review_pending",
+      "source_fields": {"screen_type": "piece_chat_or_free_chat", "user_input": "다음 조각은 어디예요?", "response_goal": "다음 스팟 안내", "response_draft": "다음 조각은 {verified_next_spot_name}에 있습니다. 위치 정보가 허용된 경우 지도에서 경로를 표시할게요.", "next_action": "OPEN_ROUTE_TO_NEXT_PIECE", "personalization_tags": []}
+    },
+    {
+      "example_id": "NAV_02", "situation_id": "NAVIGATION_HELP", "screen_type": "piece_chat_or_free_chat",
+      "user_input": "여기서 얼마나 걸려요?", "response_goal": "검증된 이동 시간 제공",
+      "response_draft": "현재 위치와 목적지가 확인되면 예상 이동 시간을 계산해 드릴게요.",
+      "response_draft_original": "현재 위치와 목적지가 확인되면 예상 이동 시간을 계산해 드릴게요.",
+      "response_template": "현재 위치와 목적지가 확인되면 예상 이동 시간을 계산해 드릴게요.",
+      "next_action": "CALCULATE_ROUTE_ETA", "next_action_code": "CALCULATE_ROUTE_ETA",
+      "personalization_tags": [], "context_state": ["navigation_issue"], "policy_flags": ["requires_location", "requires_map_data", "no_rag"],
+      "required_context": ["current_location", "map_data"], "fallback_behavior": "require_location_or_official_guidance",
+      "requires_rag": false, "requires_clarification": false, "allows_follow_up": true,
+      "response_length_mode": "default", "locale": "ko", "source_type": "human_proposed_seed", "review_status": "review_pending",
+      "source_fields": {"screen_type": "piece_chat_or_free_chat", "user_input": "여기서 얼마나 걸려요?", "response_goal": "검증된 이동 시간 제공", "response_draft": "현재 위치와 목적지가 확인되면 예상 이동 시간을 계산해 드릴게요.", "next_action": "CALCULATE_ROUTE_ETA", "personalization_tags": []}
+    },
+    {
+      "example_id": "NAV_03", "situation_id": "NAVIGATION_HELP", "screen_type": "piece_chat_or_free_chat",
+      "user_input": "길을 잃었어요.", "response_goal": "현재 위치 확인·안전한 복귀",
+      "response_draft": "현재 위치를 확인할 수 있다면 경로를 다시 안내할게요. 위치 확인이 어렵거나 위험한 곳이라면 가까운 안내소나 직원에게 도움을 요청해 주세요.",
+      "response_draft_original": "현재 위치를 확인할 수 있다면 경로를 다시 안내할게요. 위치 확인이 어렵거나 위험한 곳이라면 가까운 안내소나 직원에게 도움을 요청해 주세요.",
+      "response_template": "현재 위치를 확인할 수 있다면 경로를 다시 안내할게요. 위치 확인이 어렵거나 위험한 곳이라면 가까운 안내소나 직원에게 도움을 요청해 주세요.",
+      "next_action": "RECALCULATE_ROUTE_OR_SHOW_HELP", "next_action_code": "RECALCULATE_ROUTE_OR_SHOW_HELP",
+      "personalization_tags": [], "context_state": ["navigation_issue"], "policy_flags": ["requires_location", "safety_first", "no_rag"],
+      "required_context": ["current_location"], "fallback_behavior": "require_location_or_official_guidance",
+      "requires_rag": false, "requires_clarification": false, "allows_follow_up": true,
+      "response_length_mode": "short", "locale": "ko", "source_type": "human_proposed_seed", "review_status": "review_pending",
+      "source_fields": {"screen_type": "piece_chat_or_free_chat", "user_input": "길을 잃었어요.", "response_goal": "현재 위치 확인·안전한 복귀", "response_draft": "현재 위치를 확인할 수 있다면 경로를 다시 안내할게요. 위치 확인이 어렵거나 위험한 곳이라면 가까운 안내소나 직원에게 도움을 요청해 주세요.", "next_action": "RECALCULATE_ROUTE_OR_SHOW_HELP", "personalization_tags": []}
+    },
+    {
+      "example_id": "SAFE_01", "situation_id": "SAFETY_ACCESSIBILITY", "screen_type": "piece_chat_or_free_chat",
+      "user_input": "계단 말고 다른 길 있어요?", "response_goal": "검증된 무장애 동선 제공",
+      "response_draft": "검증된 우회 동선이 있는지 확인해 볼게요. 확인되지 않으면 임의로 길을 안내하지 않고 공식 시설 안내를 보여드릴게요.",
+      "response_draft_original": "검증된 우회 동선이 있는지 확인해 볼게요. 확인되지 않으면 임의로 길을 안내하지 않고 공식 시설 안내를 보여드릴게요.",
+      "response_template": "검증된 우회 동선이 있는지 확인해 볼게요. 확인되지 않으면 임의로 길을 안내하지 않고 공식 시설 안내를 보여드릴게요.",
+      "next_action": "CHECK_ACCESSIBLE_ROUTE", "next_action_code": "CHECK_ACCESSIBLE_ROUTE",
+      "personalization_tags": [], "context_state": ["accessibility_request"], "policy_flags": ["requires_verified_facility_data", "safety_first", "no_rag"],
+      "required_context": ["verified_facility_data"], "fallback_behavior": "require_verified_facility_guidance",
+      "requires_rag": false, "requires_clarification": false, "allows_follow_up": true,
+      "response_length_mode": "short", "locale": "ko", "source_type": "human_proposed_seed", "review_status": "review_pending",
+      "source_fields": {"screen_type": "piece_chat_or_free_chat", "user_input": "계단 말고 다른 길 있어요?", "response_goal": "검증된 무장애 동선 제공", "response_draft": "검증된 우회 동선이 있는지 확인해 볼게요. 확인되지 않으면 임의로 길을 안내하지 않고 공식 시설 안내를 보여드릴게요.", "next_action": "CHECK_ACCESSIBLE_ROUTE", "personalization_tags": []}
+    },
+    {
+      "example_id": "SAFE_02", "situation_id": "SAFETY_ACCESSIBILITY", "screen_type": "piece_chat_or_free_chat",
+      "user_input": "휠체어로 갈 수 있어요?", "response_goal": "접근 가능 여부 확인",
+      "response_draft": "휠체어 접근 가능 여부와 경사로·엘리베이터 정보를 공식 시설 데이터에서 확인해 볼게요.",
+      "response_draft_original": "휠체어 접근 가능 여부와 경사로·엘리베이터 정보를 공식 시설 데이터에서 확인해 볼게요.",
+      "response_template": "휠체어 접근 가능 여부와 경사로·엘리베이터 정보를 공식 시설 데이터에서 확인해 볼게요.",
+      "next_action": "CHECK_WHEELCHAIR_ACCESS", "next_action_code": "CHECK_WHEELCHAIR_ACCESS",
+      "personalization_tags": [], "context_state": ["accessibility_request"], "policy_flags": ["requires_verified_facility_data", "safety_first", "no_rag"],
+      "required_context": ["verified_facility_data"], "fallback_behavior": "require_verified_facility_guidance",
+      "requires_rag": false, "requires_clarification": false, "allows_follow_up": true,
+      "response_length_mode": "short", "locale": "ko", "source_type": "human_proposed_seed", "review_status": "review_pending",
+      "source_fields": {"screen_type": "piece_chat_or_free_chat", "user_input": "휠체어로 갈 수 있어요?", "response_goal": "접근 가능 여부 확인", "response_draft": "휠체어 접근 가능 여부와 경사로·엘리베이터 정보를 공식 시설 데이터에서 확인해 볼게요.", "next_action": "CHECK_WHEELCHAIR_ACCESS", "personalization_tags": []}
+    },
+    {
+      "example_id": "SAFE_03", "situation_id": "SAFETY_ACCESSIBILITY", "screen_type": "piece_chat_or_free_chat",
+      "user_input": "너무 더워서 쉬고 싶어요.", "response_goal": "휴식 우선·검증된 쉼터 안내",
+      "response_draft": "우선 무리하지 말고 쉬어 주세요. 검증된 쉼터 정보가 있으면 가까운 장소를 안내하고, 없으면 현장 안내 표지나 직원에게 확인하도록 도와드릴게요.",
+      "response_draft_original": "우선 무리하지 말고 쉬어 주세요. 검증된 쉼터 정보가 있으면 가까운 장소를 안내하고, 없으면 현장 안내 표지나 직원에게 확인하도록 도와드릴게요.",
+      "response_template": "우선 무리하지 말고 쉬어 주세요. 검증된 쉼터 정보가 있으면 가까운 장소를 안내하고, 없으면 현장 안내 표지나 직원에게 확인하도록 도와드릴게요.",
+      "next_action": "SHOW_VERIFIED_REST_AREAS_OR_HELP", "next_action_code": "SHOW_VERIFIED_REST_AREAS_OR_HELP",
+      "personalization_tags": [], "context_state": ["current_fatigue", "heat_discomfort"], "policy_flags": ["requires_verified_facility_data", "safety_first", "no_rag"],
+      "required_context": ["verified_facility_data"], "fallback_behavior": "require_verified_facility_guidance",
+      "requires_rag": false, "requires_clarification": false, "allows_follow_up": false,
+      "response_length_mode": "very_short", "locale": "ko", "source_type": "human_proposed_seed", "review_status": "review_pending",
+      "source_fields": {"screen_type": "piece_chat_or_free_chat", "user_input": "너무 더워서 쉬고 싶어요.", "response_goal": "휴식 우선·검증된 쉼터 안내", "response_draft": "우선 무리하지 말고 쉬어 주세요. 검증된 쉼터 정보가 있으면 가까운 장소를 안내하고, 없으면 현장 안내 표지나 직원에게 확인하도록 도와드릴게요.", "next_action": "SHOW_VERIFIED_REST_AREAS_OR_HELP", "personalization_tags": []}
+    }
+  ]
+}

@@ -73,3 +73,28 @@ API 키, chain-of-thought를 포함하지 않는다.
 `existing_style_preferences`를 받을 수 있다. 결과에는 기존 필드를 유지하면서 상황,
 다음 행동, follow-up, 개인화 후보, citation/evidence, grounded, confidence, refusal,
 길이 모드, 검색 ID, model/embedding backend, latency와 warnings를 추가한다.
+
+## V03 안전·도움 흐름
+
+V03은 기존 17개 상황과 54개 reviewed human-authored seed를 변경하지 않고
+`TECHNICAL_HELP`, `NAVIGATION_HELP`, `SAFETY_ACCESSIBILITY` 및 9개
+`human_proposed_seed`를 별도 bundle로 추가한다. 제안 seed는 `review_pending`이며,
+loader가 런타임에서 두 bundle을 합쳐 20개 상황·63개 사례로 제공한다. 구형 bundle만
+읽어야 할 때는 `SituationSeedLoader(additions_path=None)`을 사용한다.
+
+기존 `response_draft`는 `response_draft_original`로 그대로 노출하고 제거하지 않는다.
+신규 bundle의 `response_template`은 존댓말 서비스 문구로 별도 저장한다. 기존 seed에
+런타임 템플릿이 없으면 빈 값이 안전한 기본값이며, 서비스 응답은 원문을 직접 출력하지
+않고 response policy의 존댓말 응답을 사용한다.
+
+세 신규 상황은 `piece_chat`과 `free_chat` 모두에서 허용되며 역사 RAG와 citation을
+사용하지 않는다. action code, required context, missing context, provider capability,
+fallback 사용 여부를 구조적으로 반환한다. 현재 실제 UI·지도·검증 시설 provider가
+연결되지 않았으므로 구체적인 버튼·아이콘, 다음 조각, 거리·시간·방향, 접근성 시설을
+만들지 않고 일반 점검, 공식 안내, 현장 직원 확인으로 fallback한다. 저장 완료 표현은
+저장 capability와 사용자 동의가 모두 확인될 때만 허용한다.
+
+개인화 태그는 관심·선호 후보만 유지하고, 피로·더위·불만·기술·길찾기·접근성 요청은
+현재 세션의 `context_state`로 분리한다. `policy_flags`는 처리 규칙이며 사용자 프로필로
+저장하지 않는다. 역사 corpus, production/provisional lane, hashing/E5 인덱스와 검색
+설정에는 V03 반영으로 인한 변경이 없다.

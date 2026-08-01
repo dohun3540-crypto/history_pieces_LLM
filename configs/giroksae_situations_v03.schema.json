@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "giroksae_situations_v03.schema.json",
+  "title": "Giroksae V03 proposed situation seeds",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "source_document", "source_type", "review_status", "situations", "examples"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "source_document": {"const": "docs/GIROKSAE_DIALOGUE_V03.md"},
+    "source_type": {"const": "human_proposed_seed"},
+    "review_status": {"const": "review_pending"},
+    "situations": {"type": "array", "minItems": 3, "maxItems": 3},
+    "examples": {
+      "type": "array", "minItems": 9, "maxItems": 9,
+      "items": {
+        "type": "object",
+        "required": [
+          "example_id", "situation_id", "screen_type", "user_input", "response_goal",
+          "response_draft", "response_draft_original", "response_template", "next_action",
+          "next_action_code", "personalization_tags", "context_state", "policy_flags",
+          "required_context", "fallback_behavior", "requires_rag", "requires_clarification",
+          "allows_follow_up", "response_length_mode", "locale", "source_type",
+          "review_status", "source_fields"
+        ],
+        "properties": {
+          "example_id": {"pattern": "^(TECH|NAV|SAFE)_0[1-3]$"},
+          "situation_id": {"enum": ["TECHNICAL_HELP", "NAVIGATION_HELP", "SAFETY_ACCESSIBILITY"]},
+          "screen_type": {"const": "piece_chat_or_free_chat"},
+          "response_draft_original": {"type": "string", "minLength": 1},
+          "response_template": {"type": "string", "minLength": 1},
+          "personalization_tags": {"type": "array", "items": {"type": "string"}},
+          "context_state": {"type": "array", "items": {"type": "string"}},
+          "policy_flags": {"type": "array", "items": {"type": "string"}},
+          "required_context": {"type": "array", "items": {"enum": ["app_state", "journey_state", "current_location", "map_data", "verified_facility_data", "storage_capability", "user_consent"]}},
+          "next_action_code": {"enum": ["OPEN_TECH_DIAGNOSTIC_OVERLAY", "CHECK_MISSION_COMPLETION_STATE", "OPEN_AUDIO_TROUBLESHOOTING", "OPEN_ROUTE_TO_NEXT_PIECE", "CALCULATE_ROUTE_ETA", "RECALCULATE_ROUTE_OR_SHOW_HELP", "CHECK_ACCESSIBLE_ROUTE", "CHECK_WHEELCHAIR_ACCESS", "SHOW_VERIFIED_REST_AREAS_OR_HELP"]},
+          "fallback_behavior": {"enum": ["general_technical_guidance", "require_location_or_official_guidance", "require_verified_facility_guidance"]},
+          "source_type": {"const": "human_proposed_seed"},
+          "review_status": {"const": "review_pending"}
+        }
+      }
+    }
+  }
+}
