@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from history_chatbot.indexing.snapshot import stable_json_hash
+from history_chatbot.ingestion.development import DevelopmentSourceDocument
 from history_chatbot.retrieval.base import DenseEncoder, RankedChunk, RetrievalChunk
 from history_chatbot.retrieval.dense import DenseSearcher, HashingDenseEncoder, SentenceTransformerEncoder
 from history_chatbot.retrieval.fusion import reciprocal_rank_fusion
@@ -47,6 +48,7 @@ class RetrievalConfig:
     runtime_mode: str = "production"
     fixture_chunks_path: Path | None = None
     provisional_chunks_path: Path | None = None
+    development_chunks_path: Path | None = None
 
     def validate(self) -> None:
         mode = RuntimeMode.parse(self.runtime_mode)
@@ -56,10 +58,27 @@ class RetrievalConfig:
             raise ProvisionalDataDetectedError(
                 "production 모드에는 provisional_hackathon 자료를 설정할 수 없습니다."
             )
+        if mode == RuntimeMode.PRODUCTION and self.development_chunks_path is not None:
+            raise ValueError("production 모드에서는 development_real 자료를 설정할 수 없습니다.")
         if mode != RuntimeMode.HACKATHON and self.provisional_chunks_path is not None:
             raise ValueError("provisional_chunks_path는 hackathon 모드에서만 사용할 수 있습니다.")
         if mode == RuntimeMode.HACKATHON and self.fixture_chunks_path is not None:
             raise ValueError("hackathon 모드에는 개발 fixture를 사용할 수 없습니다.")
+        if self.development_chunks_path is not None and mode not in {
+            RuntimeMode.DEVELOPMENT,
+            RuntimeMode.TEST,
+        }:
+            raise ValueError("development_real 자료는 development/test에서만 사용할 수 있습니다.")
+        configured_lanes = sum(
+            path is not None
+            for path in (
+                self.fixture_chunks_path,
+                self.provisional_chunks_path,
+                self.development_chunks_path,
+            )
+        )
+        if configured_lanes > 1:
+            raise ValueError("fixture, provisional, development_real 데이터 lane은 혼합할 수 없습니다.")
         if self.backend != "local_json":
             raise ValueError("현재 다운로드 없는 기본 백엔드는 local_json만 지원합니다.")
         if self.embedding_model != "hashing-v1" and not self.embedding_model.startswith("intfloat/"):
@@ -97,7 +116,11 @@ class RetrievalConfig:
                 values[key] = float(value)
             elif key in {"local_storage_path", "index_ready_path"}:
                 values[key] = Path(value)
-            elif key in {"fixture_chunks_path", "provisional_chunks_path"}:
+            elif key in {
+                "fixture_chunks_path",
+                "provisional_chunks_path",
+                "development_chunks_path",
+            }:
                 values[key] = Path(value) if value else None
             else:
                 values[key] = value
@@ -152,6 +175,9 @@ class IndexReadyReader:
         seen: set[str] = set()
         seen_content: set[str] = set()
         for record in records:
+            development_errors = self._development_lane_errors(record)
+            if development_errors:
+                raise ValueError("production index_ready에 development 자료가 포함됨: " + "; ".join(development_errors))
             if record.get("data_classification") == "fictional_fixture":
                 raise ValueError("개발용 fixture는 data/index_ready에 포함할 수 없습니다.")
             document_id = str(record.get("document_id", ""))
@@ -177,6 +203,24 @@ class IndexReadyReader:
             seen_content.add(content_key)
             chunks.append(chunk)
         return chunks, expected
+
+    @staticmethod
+    def _development_lane_errors(record: dict[str, Any]) -> list[str]:
+        errors: list[str] = []
+        if record.get("approval_tier") in {
+            "development_pending_review",
+            "development_approved",
+        }:
+            errors.append(f"approval_tier={record.get('approval_tier')}")
+        if record.get("development_only") is True:
+            errors.append("development_only=true")
+        if record.get("source_status") == "development_only":
+            errors.append("source_status=development_only")
+        if record.get("data_classification") == "real_historical_source" and record.get(
+            "production_approved"
+        ) is False:
+            errors.append("production_approved=false")
+        return errors
 
 
 class FixtureReader:
@@ -241,6 +285,48 @@ class ProvisionalReader:
         return chunks, stable_json_hash(records)
 
 
+class DevelopmentRealReader:
+    """Load isolated, explicitly approved real-source development chunks."""
+
+    def __init__(self, path: Path, runtime_mode: RuntimeMode) -> None:
+        if runtime_mode not in {RuntimeMode.DEVELOPMENT, RuntimeMode.TEST}:
+            raise ValueError("development_real 자료는 development/test에서만 로드할 수 있습니다.")
+        self.path = path
+
+    def load(self) -> tuple[list[RetrievalChunk], str]:
+        if not self.path.is_file():
+            return [], ""
+        records = [
+            json.loads(line)
+            for line in self.path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        chunks: list[RetrievalChunk] = []
+        for record in records:
+            errors = self._validation_errors(record)
+            if errors:
+                document_id = str(record.get("document_id", "unknown"))
+                raise ValueError(
+                    f"development_real chunk rejected ({document_id}): "
+                    + "; ".join(errors)
+                )
+            safe_record = dict(record)
+            safe_record["badge_label"] = "개발 검증용 자료"
+            safe_record["usage_notice"] = (
+                "실제 역사 자료이나 production 공개 승인을 받지 않았습니다."
+            )
+            chunks.append(RetrievalChunk.from_record(safe_record))
+        return chunks, stable_json_hash(records)
+
+    @staticmethod
+    def _validation_errors(record: dict[str, Any]) -> list[str]:
+        try:
+            document = DevelopmentSourceDocument.from_dict(record)
+        except (TypeError, ValueError) as error:
+            return [f"invalid_schema:{error}"]
+        return list(document.validation_errors())
+
+
 class HybridRetrievalService:
     def __init__(
         self,
@@ -265,6 +351,13 @@ class HybridRetrievalService:
             raise ProvisionalIndexDetectedError(
                 "production 경로에서 hackathon 전용 인덱스가 탐지되었습니다."
             )
+        if self.runtime_mode == RuntimeMode.PRODUCTION and (
+            self.store.metadata().get("data_lane") == "development_real"
+            or self.store.metadata().get("production_approved") is False
+        ):
+            raise ProvisionalIndexDetectedError(
+                "production 경로에서 development_real 인덱스가 감지되었습니다."
+            )
         self.reranker = NoOpReranker()
 
     @property
@@ -277,6 +370,10 @@ class HybridRetrievalService:
         if self.config.provisional_chunks_path is not None:
             return ProvisionalReader(
                 self.config.provisional_chunks_path, self.runtime_mode
+            )
+        if self.config.development_chunks_path is not None:
+            return DevelopmentRealReader(
+                self.config.development_chunks_path, self.runtime_mode
             )
         return IndexReadyReader(
             self.config.index_ready_path, runtime_mode=self.runtime_mode
@@ -422,8 +519,13 @@ class HybridRetrievalService:
             "data_lane": (
                 "provisional_hackathon"
                 if self.runtime_mode == RuntimeMode.HACKATHON
-                else self.runtime_mode.value
+                else (
+                    "development_real"
+                    if self.config.development_chunks_path is not None
+                    else self.runtime_mode.value
+                )
             ),
+            "production_approved": self.runtime_mode == RuntimeMode.PRODUCTION,
         }
         if self.runtime_mode != RuntimeMode.HACKATHON:
             return {"mode": self.runtime_mode.value, **embedding}

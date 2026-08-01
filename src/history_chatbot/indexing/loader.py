@@ -53,6 +53,16 @@ class IndexChunk:
         value = asdict(self)
         for name in ("people", "places", "organizations", "events", "keywords"):
             value[name] = list(value[name])
+        value.update(
+            {
+                "approval_tier": "production_approved",
+                "data_classification": "real_historical_source",
+                "is_fixture": False,
+                "development_only": False,
+                "production_approved": True,
+                "source_status": "production",
+            }
+        )
         return value
 
 

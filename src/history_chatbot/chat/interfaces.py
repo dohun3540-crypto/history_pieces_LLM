@@ -25,6 +25,11 @@ class Citation:
     rights_status: str = ""
     usage_scope: str = ""
     provisional_notice: str = ""
+    source_status: str = ""
+    approval_tier: str = ""
+    production_approved: bool | None = None
+    badge_label: str = ""
+    usage_notice: str = ""
 
 
 class ConversationSession(Protocol):

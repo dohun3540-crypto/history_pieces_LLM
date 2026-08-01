@@ -1,0 +1,17 @@
+# Real historical sources for isolated development/integration verification only.
+retrieval:
+  backend: "local_json"
+  embedding_model: "hashing-v1"
+  embedding_revision: "builtin"
+  sparse_model: "bm25"
+  reranker_model: "none"
+  dense_top_k: 12
+  sparse_top_k: 12
+  final_top_k: 5
+  minimum_score: 0.20
+  minimum_dense_score: 0.72
+  max_chunks_per_document: 2
+  runtime_mode: "development"
+  local_storage_path: "data/development_real/retrieval_index"
+  index_ready_path: "data/development_real/index_ready"
+  development_chunks_path: "data/development_real/index_ready/chunks.jsonl"

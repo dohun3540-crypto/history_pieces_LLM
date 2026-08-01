@@ -36,6 +36,15 @@ def build_citations(chunks: Sequence[RankedChunk]) -> tuple[Citation, ...]:
                     if payload.get("usage_status") == "provisional_hackathon"
                     else ""
                 ),
+                source_status=str(payload.get("source_status", "")),
+                approval_tier=str(payload.get("approval_tier", "")),
+                production_approved=(
+                    payload.get("production_approved")
+                    if isinstance(payload.get("production_approved"), bool)
+                    else None
+                ),
+                badge_label=str(payload.get("badge_label", "")),
+                usage_notice=str(payload.get("usage_notice", "")),
             )
         )
     return tuple(citations)
