@@ -34,9 +34,17 @@ def test_health_and_main_static_assets(client: TestClient) -> None:
     }
     html = client.get("/")
     assert html.status_code == 200 and "History Pieces" in html.text
-    assert "IMAGE ASSET PLACEHOLDER" in html.text
+    assert "giroksae_character.png" in html.text
+    assert "free-chat-panel" in html.text
+    assert "기록새에게 물어보기" in html.text
     assert client.get("/static/styles.css").status_code == 200
     assert client.get("/static/app.js").status_code == 200
+    character = client.get("/assets/giroksae/giroksae_character.png")
+    assert character.status_code == 200 and character.headers["content-type"] == "image/png"
+    for index in range(1, 8):
+        background = client.get(f"/assets/backgrounds/background_{index:02}.png")
+        assert background.status_code == 200
+        assert background.headers["content-type"] == "image/png"
 
 
 def test_session_create_lookup_and_missing(client: TestClient) -> None:
@@ -169,9 +177,26 @@ def test_unsupported_action_and_invalid_payload_are_structured(client: TestClien
 def test_client_state_uses_safe_dom_and_guarded_ui_logic(client: TestClient) -> None:
     script = client.get("/static/app.js").text
     assert ".innerHTML" not in script and "textContent" in script
-    assert 'state.request==="loading"' in script
+    assert 'state.request === "loading"' in script
     assert "renderCitations(result.citations)" in script
     assert 'toggle.hidden = valid.length === 0' in script
-    assert 'action_code:action' in script
-    assert 'to_mode:"game"' in script
+    assert "action_code: action" in script
+    assert 'to_mode: "game"' in script
     assert "IMAGE ASSET" not in script
+
+
+def test_integrated_ui_has_accessible_mode_and_asset_contract(client: TestClient) -> None:
+    html = client.get("/").text
+    styles = client.get("/static/styles.css").text
+    script = client.get("/static/app.js").text
+    assert 'role="dialog"' in html and 'aria-modal="true"' in html
+    assert 'aria-live="polite"' in html and 'aria-label="자유대화 메시지"' in html
+    assert 'id="return-to-game"' in html and 'id="citation-toggle"' in html
+    assert "prefers-reduced-motion" in styles
+    assert "@media (max-width:640px)" in styles
+    assert 'event.key === "Escape"' in script
+    assert "BACKGROUND_BY_PIECE" in script and "BACKGROUND_BY_STATE" in script
+    for index in range(1, 8):
+        assert f"background_{index:02}.png" in script or f"background_{index:02}.png" in styles
+    assert "result.next_action_code" in script
+    assert "result.output_domain" in script

@@ -22,7 +22,11 @@ history-chatbot = "history_chatbot.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-history_chatbot = ["web/static/*"]
+history_chatbot = [
+  "web/static/*",
+  "chat/static/assets/giroksae/*.png",
+  "chat/static/assets/backgrounds/*.png",
+]
 
 [tool.pytest.ini_options]
 addopts = "-q -p no:cacheprovider"

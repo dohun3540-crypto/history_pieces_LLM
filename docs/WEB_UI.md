@@ -1,5 +1,29 @@
 # History Pieces reference web UI
 
+## 통합 시각 디자인
+
+웹 데모는 `docs/design/GAME_UI_UX_DESIGN_SPEC.md`의 종이 기록물, 갈색·금색,
+어두운 촬영 화면 분위기를 참고한다. 제공된 PNG는 완성된 세로 화면 시안이므로
+그 안의 버튼이나 문구를 실제 기능으로 취급하지 않는다. 대신 가독성 오버레이 아래
+여정 분위기 배경으로만 사용한다.
+
+배경 매핑은 역사적 장소나 사실을 뜻하지 않는 순수한 데모 상태 매핑이다.
+
+- 로딩/초기 상태: `background_06.png`
+- 조각 1: `background_02.png`
+- 조각 2: `background_07.png`
+- 조각 3: `background_01.png`
+- 감상 건너뛰기: `background_03.png`
+- 일시정지: `background_04.png`
+- 데모 여정 완료: `background_05.png`
+
+`giroksae_character.png`도 투명 캐릭터 단독 컷이 아니라 배경과 문구가 포함된
+승인 시안이다. 원본을 수정하거나 늘리지 않고 `object-fit: cover`로 crop해 piece_chat,
+free_chat, 플로팅 진입점에서 같은 기록새 정체성을 보여준다.
+
+정적 자산은 `/assets/...` 경로로 FastAPI가 제공한다. 실제 게임 장면, 촬영 기능,
+지도, 위치, 시설 또는 저장 provider가 연결된 것으로 해석하면 안 된다.
+
 이 UI는 `piece_chat`과 `free_chat` backend 계약을 브라우저에서 확인하기 위한 최소
 통합 데모다. 상용 디자인이나 실제 게임 프런트엔드가 아니며, 외부 CDN·Node 빌드·외부
 이미지 없이 FastAPI가 정적 HTML/CSS/vanilla JavaScript를 제공한다.

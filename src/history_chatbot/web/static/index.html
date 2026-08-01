@@ -3,74 +3,175 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>History Pieces — 기록새 대화 데모</title>
+  <meta name="theme-color" content="#24160e">
+  <title>History Pieces · 기록새와 걷는 목포</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
   <a class="skip-link" href="#piece-input">대화 입력으로 건너뛰기</a>
+
   <header class="topbar">
-    <div><span class="eyebrow">MOKPO HISTORY DEMO</span><h1>History Pieces</h1></div>
-    <dl class="status-grid">
-      <div><dt>장소</dt><dd id="current-place">—</dd></div>
-      <div><dt>현재 조각</dt><dd id="current-piece">—</dd></div>
-      <div><dt>완료</dt><dd id="completed-count">0</dd></div>
-      <div><dt>서버</dt><dd id="server-status">연결 중</dd></div>
-      <div><dt>대화 모드</dt><dd id="chat-mode">piece_chat</dd></div>
-    </dl>
+    <a class="brand" href="#journey-stage" aria-label="History Pieces 데모 홈">
+      <span class="brand-mark" aria-hidden="true">✦</span>
+      <span><strong>History Pieces</strong><small>기록으로 오래된 이야기를 깨우다</small></span>
+    </a>
+    <div class="top-actions">
+      <span id="server-pill" class="connection-pill" data-state="connecting">
+        <span class="status-dot" aria-hidden="true"></span><span id="server-status">연결 중</span>
+      </span>
+      <button type="button" id="header-free-chat" class="header-chat-button" aria-haspopup="dialog">
+        <span aria-hidden="true">✦</span> 기록새에게 물어보기
+      </button>
+    </div>
   </header>
 
-  <main class="layout">
-    <section class="piece-card" aria-labelledby="piece-title">
-      <div class="piece-heading"><span>DEMO JOURNEY</span><span id="journey-step">초기화 중</span></div>
-      <h2 id="piece-title">현재 조각</h2>
-      <div class="image-placeholder" role="img" aria-label="옛 사진 오버레이 이미지 자리 표시자">
-        <span>IMAGE ASSET PLACEHOLDER</span>
-        <small>검증된 이미지 자산이 연결되지 않았습니다.</small>
-      </div>
-      <div class="journey-actions" aria-label="여정 동작">
-        <button type="button" data-action="SKIP_REFLECTION">감상 건너뛰기</button>
-        <button type="button" data-action="PAUSE_JOURNEY">잠시 쉬기</button>
-        <button type="button" data-action="GO_NEXT_PIECE" class="primary">다음 조각</button>
+  <main>
+    <section id="journey-stage" class="journey-stage" aria-labelledby="piece-title">
+      <div class="stage-shade" aria-hidden="true"></div>
+      <div class="stage-content">
+        <div class="journey-meta" aria-label="현재 여정 상태">
+          <span class="stage-kicker">DEMO JOURNEY · 휘발성 세션</span>
+          <dl class="status-grid">
+            <div><dt>현재 장소</dt><dd id="current-place">불러오는 중</dd></div>
+            <div><dt>현재 조각</dt><dd id="current-piece">불러오는 중</dd></div>
+            <div><dt>완료한 조각</dt><dd><span id="completed-count">0</span> / 3</dd></div>
+          </dl>
+        </div>
+
+        <div class="piece-hero">
+          <div class="piece-copy">
+            <p id="journey-step" class="step-label">여정을 준비하고 있어요</p>
+            <h1 id="piece-title">현재 조각</h1>
+            <p class="hero-description">현재 조각을 살펴보고, 떠오른 인상이나 궁금한 점을 기록새와 나눠보세요.</p>
+            <div class="progress-track" role="progressbar" aria-label="데모 여정 진행률" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0">
+              <span id="progress-fill"></span>
+            </div>
+          </div>
+          <div class="asset-note">
+            <span aria-hidden="true">◎</span>
+            <span>제공된 디자인 시안을 분위기 배경으로 사용한 데모 화면입니다.</span>
+          </div>
+        </div>
+
+        <div class="journey-controls" aria-label="여정 동작">
+          <button type="button" data-action="SKIP_REFLECTION" class="secondary-action">감상 건너뛰기</button>
+          <button type="button" data-action="PAUSE_JOURNEY" class="secondary-action">잠시 쉬기</button>
+          <button type="button" data-action="GO_NEXT_PIECE" class="primary-action">다음 조각으로 <span aria-hidden="true">→</span></button>
+        </div>
       </div>
     </section>
 
-    <section class="piece-chat" aria-labelledby="piece-chat-title">
-      <div class="chat-heading">
-        <div class="avatar-placeholder" role="img" aria-label="기록새 이미지 자리 표시자">기록새</div>
-        <div><span class="eyebrow">PIECE CHAT</span><h2 id="piece-chat-title">짧은 감상 대화</h2></div>
-      </div>
-      <div id="piece-response" class="bird-bubble" data-output-domain="character_dialogue" aria-live="polite">조각을 보고 어떤 느낌이 들었나요?</div>
-      <div class="quick-actions" aria-label="빠른 감상 선택">
-        <button type="button" data-quick="인상 깊었어요.">인상 깊었어</button>
-        <button type="button" data-quick="잘 모르겠어요.">잘 모르겠어</button>
-        <button type="button" data-quick="조금 피곤해요.">조금 피곤해</button>
-        <button type="button" data-quick="이 장소의 역사를 자세히 알려주세요.">더 자세히 알고 싶어</button>
-      </div>
-      <form id="piece-form" class="composer">
-        <label for="piece-input">감상 또는 질문</label>
-        <div><input id="piece-input" maxlength="2000" autocomplete="off"><button class="primary" type="submit">전송</button></div>
-      </form>
-      <button type="button" id="open-free-chat" class="text-button">기록새에게 자세히 물어보기</button>
+    <section class="experience-shell" aria-label="조각 대화">
+      <article class="piece-chat-card" aria-labelledby="piece-chat-title">
+        <div class="bird-presence" aria-hidden="true">
+          <img src="/assets/giroksae/giroksae_character.png" alt="">
+        </div>
+        <div class="piece-chat-content">
+          <header class="chat-heading">
+            <img class="bird-avatar" src="/assets/giroksae/giroksae_character.png" alt="기록 수집가 기록새">
+            <div>
+              <span class="eyebrow">PIECE CHAT</span>
+              <h2 id="piece-chat-title">조각을 보고 난 뒤</h2>
+              <p><span id="piece-context-place">현재 장소</span> · <span id="piece-context-label">현재 조각</span></p>
+            </div>
+          </header>
+
+          <div id="piece-response" class="bird-bubble" data-output-domain="character_dialogue" aria-live="polite">
+            이 조각에서 가장 먼저 눈에 들어온 건 뭐였어?
+          </div>
+
+          <div id="action-hint" class="action-hint" hidden aria-live="polite">
+            <span id="action-hint-text"></span>
+            <button type="button" id="action-hint-button" class="compact-action"></button>
+          </div>
+
+          <div class="quick-actions" aria-label="빠른 감상 선택">
+            <button type="button" data-quick="인상 깊었어.">인상 깊었어</button>
+            <button type="button" data-quick="잘 모르겠어.">잘 모르겠어</button>
+            <button type="button" data-quick="조금 피곤해.">조금 피곤해</button>
+            <button type="button" data-quick="이 장소의 역사를 자세히 알려줘.">더 자세히 알고 싶어</button>
+          </div>
+
+          <form id="piece-form" class="composer">
+            <label for="piece-input">감상 또는 궁금한 점</label>
+            <div class="input-row">
+              <input id="piece-input" maxlength="2000" autocomplete="off" placeholder="짧게 남겨도 괜찮아">
+              <button class="send-button" type="submit" aria-label="조각 대화 보내기">보내기</button>
+            </div>
+          </form>
+
+          <button type="button" id="open-free-chat" class="open-chat-card">
+            <span class="open-chat-icon" aria-hidden="true">✦</span>
+            <span><strong>역사가 더 궁금하다면</strong><small>기록새 자유대화에서 출처와 함께 물어볼 수 있어요.</small></span>
+            <span aria-hidden="true">→</span>
+          </button>
+        </div>
+      </article>
+
+      <aside class="demo-guide" aria-labelledby="guide-title">
+        <span class="eyebrow">DEMO STATUS</span>
+        <h2 id="guide-title">지금 체험할 수 있는 것</h2>
+        <ul>
+          <li><span aria-hidden="true">✓</span> 조각 감상과 피로 반응</li>
+          <li><span aria-hidden="true">✓</span> 역사 질문과 실제 출처 확인</li>
+          <li><span aria-hidden="true">✓</span> 자유대화 후 여정 상태 복귀</li>
+        </ul>
+        <p>이 화면은 임시 데모 세션을 사용합니다. 서버가 재시작되면 진행 상태가 사라질 수 있어요.</p>
+        <div class="mode-row"><span>현재 대화 모드</span><strong id="chat-mode">piece_chat</strong></div>
+      </aside>
     </section>
   </main>
 
-  <button type="button" id="floating-chat" class="floating-chat" aria-haspopup="dialog">기록새 자유대화 열기</button>
+  <button type="button" id="floating-chat" class="floating-chat" aria-haspopup="dialog" aria-controls="free-chat-panel">
+    <span class="floating-avatar"><img src="/assets/giroksae/giroksae_character.png" alt=""></span>
+    <span><strong>기록새에게 물어보기</strong><small>역사 질문 · 출처 확인</small></span>
+  </button>
 
   <div id="free-chat-backdrop" class="backdrop" hidden>
     <section id="free-chat-panel" class="free-panel" role="dialog" aria-modal="true" aria-labelledby="free-chat-title" tabindex="-1">
-      <header>
-        <div><span class="eyebrow">FREE CHAT</span><h2 id="free-chat-title">기록새 자유대화</h2></div>
-        <button type="button" id="close-free-chat" aria-label="자유대화를 닫고 게임으로 돌아가기">닫기</button>
+      <header class="free-header">
+        <div class="free-title-wrap">
+          <img class="bird-avatar" src="/assets/giroksae/giroksae_character.png" alt="기록 수집가 기록새">
+          <div><span class="eyebrow">FREE CHAT</span><h2 id="free-chat-title">기록새에게 물어보기</h2></div>
+        </div>
+        <button type="button" id="close-free-chat" class="icon-button" aria-label="자유대화를 닫고 게임으로 돌아가기">닫기</button>
       </header>
-      <p id="free-context" class="context-line"></p>
-      <div id="free-messages" class="messages" aria-live="polite"></div>
-      <div id="suggestions" class="quick-actions" aria-label="추천 질문"></div>
-      <form id="free-form" class="composer">
-        <label for="free-input">역사 질문 또는 자유대화</label>
-        <div><input id="free-input" maxlength="2000" autocomplete="off"><button class="primary" type="submit">전송</button></div>
+
+      <div class="free-context-card">
+        <span aria-hidden="true">⌖</span>
+        <p id="free-context">현재 여정 문맥을 불러오는 중입니다.</p>
+      </div>
+
+      <div id="free-state" class="free-state" data-state="idle" aria-live="polite">
+        <span class="status-dot" aria-hidden="true"></span><span id="free-state-text">질문을 기다리고 있어요</span>
+      </div>
+      <div id="free-messages" class="messages" aria-live="polite" aria-label="자유대화 메시지">
+        <div class="welcome-message">
+          <strong>현재 장소와 완료한 조각을 바탕으로 답할게.</strong>
+          <span>역사, 인물, 건축, 도시 변화나 출처가 궁금하면 물어봐.</span>
+        </div>
+      </div>
+
+      <section class="suggestion-wrap" aria-labelledby="suggestion-title">
+        <h3 id="suggestion-title">이렇게 물어볼 수 있어요</h3>
+        <div id="suggestions" class="quick-actions suggestions" aria-label="추천 질문"></div>
+      </section>
+
+      <section class="citation-wrap" aria-labelledby="citation-title">
+        <button type="button" id="citation-toggle" class="citation-toggle" hidden aria-expanded="false" aria-controls="citation-panel">
+          <span id="citation-title">출처 보기</span><span id="citation-count" class="count-badge">0</span>
+        </button>
+        <div id="citation-panel" class="citations" hidden aria-label="검색 출처"></div>
+      </section>
+
+      <form id="free-form" class="composer free-composer">
+        <label for="free-input">기록새에게 질문하기</label>
+        <div class="input-row">
+          <input id="free-input" maxlength="2000" autocomplete="off" placeholder="현재 장소의 역사나 출처를 물어보세요">
+          <button class="send-button" type="submit" aria-label="자유대화 보내기">보내기</button>
+        </div>
       </form>
-      <button type="button" id="citation-toggle" hidden aria-expanded="false" aria-controls="citation-panel">출처 보기</button>
-      <section id="citation-panel" class="citations" hidden aria-label="검색 출처"></section>
+      <button type="button" id="return-to-game" class="return-button">게임으로 돌아가기</button>
     </section>
   </div>
 

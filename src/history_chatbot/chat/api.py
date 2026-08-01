@@ -23,6 +23,7 @@ from history_chatbot.runtime import RuntimeMode
 SESSION_PATTERN = re.compile(r"^[a-f0-9]{32}$")
 MAX_MESSAGE_LENGTH = 2000
 STATIC_DIR = Path(__file__).resolve().parent.parent / "web" / "static"
+ASSET_DIR = Path(__file__).resolve().parent / "static" / "assets"
 
 
 def create_app(
@@ -74,6 +75,7 @@ def create_app(
         return FileResponse(STATIC_DIR / "index.html", media_type="text/html")
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    app.mount("/assets", StaticFiles(directory=ASSET_DIR), name="assets")
 
     @app.get("/health")
     @app.get("/api/health")
