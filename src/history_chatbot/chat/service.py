@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from history_chatbot.chat.orchestrator import ConversationalRagOrchestrator, StreamEvent
 from history_chatbot.chat.session import SessionStore
-from history_chatbot.models.mock_llm import MockLLM
+from history_chatbot.models.contract import ChatCompletionBackend
+from history_chatbot.models.factory import build_llm_from_environment
 from history_chatbot.retrieval.service import HybridRetrievalService, RetrievalConfig
 from history_chatbot.runtime import RuntimeMode
 
@@ -15,6 +17,8 @@ def create_development_orchestrator(
     *,
     runtime_dir: Path = Path(".runtime/development"),
     session_path: Path | None = None,
+    environ: Mapping[str, str] | None = None,
+    llm: ChatCompletionBackend | None = None,
 ) -> ConversationalRagOrchestrator:
     mode = RuntimeMode.DEVELOPMENT
     config = RetrievalConfig(
@@ -36,7 +40,7 @@ def create_development_orchestrator(
     )
     return ConversationalRagOrchestrator(
         retrieval,
-        MockLLM("확인 가능한 자료가 부족합니다."),
+        llm or build_llm_from_environment(mode, environ=environ),
         sessions,
         mode=mode,
     )
@@ -47,6 +51,8 @@ def create_hackathon_orchestrator(
     runtime_dir: Path = Path(".runtime/hackathon"),
     chunks_path: Path = Path("data/provisional_hackathon/processed/chunks.jsonl"),
     session_path: Path | None = None,
+    environ: Mapping[str, str] | None = None,
+    llm: ChatCompletionBackend | None = None,
 ) -> ConversationalRagOrchestrator:
     mode = RuntimeMode.HACKATHON
     config = RetrievalConfig(
@@ -68,7 +74,7 @@ def create_hackathon_orchestrator(
     )
     return ConversationalRagOrchestrator(
         retrieval,
-        MockLLM("확인 가능한 자료가 부족합니다."),
+        llm or build_llm_from_environment(mode, environ=environ),
         sessions,
         mode=mode,
     )
@@ -171,6 +177,8 @@ class ChatApplicationService:
                 status = "hackathon_index_ready"
         elif not llm.get("configured"):
             status = "remote_llm_unconfigured"
+        elif llm.get("status") == "remote_unverified":
+            status = "remote_unverified"
         elif not llm.get("reachable"):
             status = "remote_llm_unreachable"
         elif not llm.get("model_ready"):
@@ -183,6 +191,7 @@ class ChatApplicationService:
             status = "production_ready"
         return {
             "status": status,
+            "llm_status": str(llm.get("status", "unknown")),
             "llm_configured": bool(llm.get("configured")),
             "remote_server_reachable": bool(llm.get("reachable")),
             "model_ready": bool(llm.get("model_ready")),

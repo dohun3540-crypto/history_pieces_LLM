@@ -5,13 +5,18 @@ import pytest
 from history_chatbot.models.context_budget import ContextBudgetManager
 from history_chatbot.models.contract import LLMRequest
 from history_chatbot.models.factory import build_llm_from_environment
+from history_chatbot.models.mock_llm import MockLLM
 from history_chatbot.models.remote import (
     HttpResponse,
     HttpStreamResponse,
+    OpenAICompatibleAdapter,
+    ProjectLlamaAdapter,
     RemoteLLMBackend,
     RemoteLLMConfig,
     RemoteLLMError,
+    TransportConnectionError,
     TransportTimeoutError,
+    UnconfiguredRemoteLLMBackend,
 )
 from history_chatbot.runtime import RuntimeMode
 
@@ -131,9 +136,19 @@ def test_timeout_is_structured_and_limited_retry() -> None:
     assert len(transport.calls) == 1
 
 
+def test_connection_error_is_structured_after_retries() -> None:
+    transport = FakeTransport([TransportConnectionError()] * 3)
+    with pytest.raises(RemoteLLMError) as raised:
+        backend(transport).complete(request())
+    assert raised.value.code == "connection_error"
+    assert raised.value.retryable
+    assert len(transport.calls) == 3
+
+
 @pytest.mark.parametrize(
     ("status", "code"),
     [
+        (400, "generation_failed"),
         (401, "authentication_error"),
         (404, "model_not_found"),
         (429, "rate_limited"),
@@ -165,6 +180,17 @@ def test_server_error_retries_then_succeeds() -> None:
 def test_invalid_json_or_missing_fields(response) -> None:
     with pytest.raises(RemoteLLMError) as raised:
         backend(FakeTransport([response])).complete(request())
+    assert raised.value.code == "invalid_response"
+
+
+def test_empty_content_is_rejected() -> None:
+    response = openai_response()
+    payload = json.loads(response.body)
+    payload["choices"][0]["message"]["content"] = "   "
+    with pytest.raises(RemoteLLMError) as raised:
+        backend(FakeTransport([HttpResponse(200, json.dumps(payload).encode())])).complete(
+            request()
+        )
     assert raised.value.code == "invalid_response"
 
 
@@ -200,6 +226,109 @@ def test_production_configuration_and_arbitrary_url_are_rejected() -> None:
             mode=RuntimeMode.PRODUCTION,
             transport=FakeTransport(),
         )
+
+
+def test_environment_factory_keeps_mock_for_development_and_blocks_production() -> None:
+    assert isinstance(
+        build_llm_from_environment(RuntimeMode.DEVELOPMENT, environ={}), MockLLM
+    )
+    with pytest.raises(ValueError, match="LLM_BACKEND"):
+        build_llm_from_environment(RuntimeMode.PRODUCTION, environ={})
+
+
+@pytest.mark.parametrize(
+    ("backend_name", "adapter_type"),
+    [
+        ("openai_compatible", OpenAICompatibleAdapter),
+        ("project_llama", ProjectLlamaAdapter),
+    ],
+)
+def test_environment_factory_selects_remote_adapter_without_network(
+    backend_name, adapter_type
+) -> None:
+    selected = build_llm_from_environment(
+        RuntimeMode.DEVELOPMENT,
+        environ={
+            "LLM_BACKEND": backend_name,
+            "LLM_BASE_URL": "http://localhost:8001",
+            "LLM_MODEL": "test-model",
+            "LLM_READINESS_PROBE": "false",
+        },
+    )
+    assert isinstance(selected, RemoteLLMBackend)
+    assert isinstance(selected.adapter, adapter_type)
+    assert selected.readiness()["status"] == "remote_unverified"
+
+
+@pytest.mark.parametrize(
+    "environment",
+    [
+        {"LLM_BACKEND": "remote", "LLM_MODEL": "test-model"},
+        {"LLM_BACKEND": "remote", "LLM_BASE_URL": "http://localhost:8001"},
+        {
+            "LLM_BACKEND": "remote",
+            "LLM_BASE_URL": "http://localhost:8001",
+            "LLM_MODEL": "test-model",
+            "LLM_API_KEY_REQUIRED": "true",
+        },
+    ],
+)
+def test_environment_factory_reports_incomplete_remote_configuration(environment) -> None:
+    selected = build_llm_from_environment(RuntimeMode.DEVELOPMENT, environ=environment)
+    assert isinstance(selected, UnconfiguredRemoteLLMBackend)
+    readiness = selected.readiness()
+    assert readiness["configuration_status"] == "not_configured"
+    assert readiness["missing_fields"]
+
+
+def test_environment_factory_rejects_invalid_timeout_and_boolean() -> None:
+    base = {
+        "LLM_BACKEND": "remote",
+        "LLM_BASE_URL": "http://localhost:8001",
+        "LLM_MODEL": "test-model",
+    }
+    with pytest.raises(ValueError):
+        build_llm_from_environment(
+            RuntimeMode.DEVELOPMENT,
+            environ={**base, "LLM_TIMEOUT_SECONDS": "not-a-number"},
+        )
+    with pytest.raises(ValueError, match="LLM_READINESS_PROBE"):
+        build_llm_from_environment(
+            RuntimeMode.DEVELOPMENT,
+            environ={**base, "LLM_READINESS_PROBE": "sometimes"},
+        )
+
+
+def test_development_service_factory_uses_environment_backend(monkeypatch) -> None:
+    from history_chatbot.chat import service
+
+    selected = MockLLM("selected")
+
+    class FakeRetrieval:
+        def __init__(self, config) -> None:
+            self.config = config
+
+        def validate_index(self) -> bool:
+            return False
+
+    class FakeSessions:
+        def __init__(self, mode, path) -> None:
+            self.mode = mode
+            self.path = path
+
+    monkeypatch.setattr(service, "HybridRetrievalService", FakeRetrieval)
+    monkeypatch.setattr(service, "SessionStore", FakeSessions)
+    monkeypatch.setattr(
+        service,
+        "build_llm_from_environment",
+        lambda mode, environ: selected,
+    )
+
+    orchestrator = service.create_development_orchestrator(
+        environ={"LLM_BACKEND": "openai_compatible"}
+    )
+
+    assert orchestrator.llm is selected
 
 
 def test_context_budget_keeps_system_question_and_high_score_evidence() -> None:

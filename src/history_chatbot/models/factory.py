@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 
 from history_chatbot.models.base import BaseLLM, GenerationRequest
 from history_chatbot.models.mock_llm import MockLLM
@@ -52,24 +52,61 @@ def build_llm_backend(
 def build_llm_from_environment(
     runtime_mode: RuntimeMode,
     *,
-    environ: dict[str, str] | None = None,
+    environ: Mapping[str, str] | None = None,
     fallback_message: str = "확인 가능한 자료가 부족합니다.",
 ) -> object:
     import os
 
     values = os.environ if environ is None else environ
-    backend = values.get("LLM_BACKEND", "mock" if runtime_mode.allows_fixtures else "")
+    requested_backend = values.get(
+        "LLM_BACKEND", "mock" if runtime_mode.allows_fixtures else ""
+    ).strip().lower()
+    aliases = {
+        "openai_compatible": "openai",
+        "project_llama": "project",
+    }
+    api_format = aliases.get(requested_backend)
+    backend = "remote" if api_format else requested_backend
     if not backend:
         raise ValueError("production에는 LLM_BACKEND 설정이 필요합니다.")
-    if backend == "remote" and (
-        not values.get("LLM_BASE_URL", "").strip()
-        or not values.get("LLM_MODEL", "").strip()
-    ):
-        return UnconfiguredRemoteLLMBackend()
-    remote_config = RemoteLLMConfig.from_environment(runtime_mode, values) if backend == "remote" else None
+    remote_values = dict(values)
+    if api_format:
+        remote_values["LLM_API_FORMAT"] = api_format
+    if backend == "remote":
+        missing_fields = [
+            name
+            for name in ("LLM_BASE_URL", "LLM_MODEL")
+            if not remote_values.get(name, "").strip()
+        ]
+        if (
+            _environment_flag(remote_values, "LLM_API_KEY_REQUIRED", False)
+            and not remote_values.get("LLM_API_KEY", "").strip()
+        ):
+            missing_fields.append("LLM_API_KEY")
+        if missing_fields:
+            return UnconfiguredRemoteLLMBackend(tuple(missing_fields))
+    remote_config = (
+        RemoteLLMConfig.from_environment(runtime_mode, remote_values)
+        if backend == "remote"
+        else None
+    )
     return build_llm_backend(
         backend,
         runtime_mode=runtime_mode,
         fallback_message=fallback_message,
         remote_config=remote_config,
     )
+
+
+def _environment_flag(
+    values: Mapping[str, str], name: str, default: bool
+) -> bool:
+    raw = values.get(name)
+    if raw is None or not raw.strip():
+        return default
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name}은 true 또는 false여야 합니다.")

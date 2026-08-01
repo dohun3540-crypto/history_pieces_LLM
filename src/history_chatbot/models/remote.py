@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from typing import Callable, Iterable, Protocol
 from urllib.error import HTTPError, URLError
@@ -108,6 +109,8 @@ class RemoteLLMConfig:
     model: str
     model_revision: str = ""
     api_key: str = field(default="", repr=False)
+    api_key_required: bool = False
+    readiness_probe_enabled: bool = True
     timeout_seconds: float = 60.0
     max_retries: int = 2
     backoff_seconds: float = 0.25
@@ -122,6 +125,8 @@ class RemoteLLMConfig:
             raise ValueError("LLM API 형식은 openai 또는 project여야 합니다.")
         if mode == RuntimeMode.PRODUCTION and (not self.base_url or not self.model):
             raise ValueError("production에는 LLM_BASE_URL과 LLM_MODEL이 필요합니다.")
+        if self.api_key_required and not self.api_key:
+            raise ValueError("LLM_API_KEY_REQUIRED=true이면 LLM_API_KEY가 필요합니다.")
         parts = urlsplit(self.base_url)
         if parts.scheme not in {"http", "https"} or not parts.hostname:
             raise ValueError("LLM_BASE_URL은 유효한 http(s) URL이어야 합니다.")
@@ -152,13 +157,19 @@ class RemoteLLMConfig:
 
     @classmethod
     def from_environment(
-        cls, mode: RuntimeMode, environ: dict[str, str] | None = None
+        cls, mode: RuntimeMode, environ: Mapping[str, str] | None = None
     ) -> "RemoteLLMConfig":
         values = os.environ if environ is None else environ
         config = cls(
             api_format=values.get("LLM_API_FORMAT", "openai"),
             base_url=values.get("LLM_BASE_URL", ""),
             api_key=values.get("LLM_API_KEY", ""),
+            api_key_required=_environment_flag(
+                values, "LLM_API_KEY_REQUIRED", False
+            ),
+            readiness_probe_enabled=_environment_flag(
+                values, "LLM_READINESS_PROBE", False
+            ),
             model=values.get("LLM_MODEL", ""),
             model_revision=values.get("LLM_MODEL_REVISION", ""),
             timeout_seconds=float(values.get("LLM_TIMEOUT_SECONDS") or 60),
@@ -392,6 +403,10 @@ class RemoteLLMBackend(ChatCompletionBackend):
                     "generation_failed",
                     "원격 생성 스트림이 완료 이벤트 없이 종료되었습니다.",
                 )
+            if not "".join(text_parts).strip():
+                raise RemoteLLMError(
+                    "invalid_response", "원격 LLM이 빈 응답을 반환했습니다."
+                )
             response_value = LLMResponse(
                 "".join(text_parts),
                 finish_reason,
@@ -407,6 +422,14 @@ class RemoteLLMBackend(ChatCompletionBackend):
             yield LLMStreamEvent("error", normalized.to_dict())
 
     def readiness(self) -> dict[str, object]:
+        if not self.config.readiness_probe_enabled:
+            return {
+                "configured": True,
+                "reachable": False,
+                "model_ready": False,
+                "status": "remote_unverified",
+                "verification": "not_probed",
+            }
         try:
             health = self.transport.request(
                 "GET", self._url(self.adapter.health_path), self._headers(), None, 3.0
@@ -512,7 +535,7 @@ class RemoteLLMBackend(ChatCompletionBackend):
 
 
 def _response(text, finish_reason, usage, model, revision, request_id, latency):
-    if not isinstance(text, str) or not isinstance(usage, dict):
+    if not isinstance(text, str) or not text.strip() or not isinstance(usage, dict):
         raise RemoteLLMError("invalid_response", "원격 LLM 응답 타입이 올바르지 않습니다.")
     try:
         prompt = int(usage["prompt_tokens"])
@@ -536,6 +559,9 @@ class UnconfiguredRemoteLLMBackend(ChatCompletionBackend):
 
     backend_name = "remote"
 
+    def __init__(self, missing_fields: tuple[str, ...] = ()) -> None:
+        self.missing_fields = missing_fields
+
     def complete(self, request: LLMRequest) -> LLMResponse:
         del request
         raise RemoteLLMError("server_not_ready", "원격 LLM 설정이 완료되지 않았습니다.")
@@ -557,4 +583,20 @@ class UnconfiguredRemoteLLMBackend(ChatCompletionBackend):
             "reachable": False,
             "model_ready": False,
             "status": "remote_llm_unconfigured",
+            "configuration_status": "not_configured",
+            "missing_fields": list(self.missing_fields),
         }
+
+
+def _environment_flag(
+    values: Mapping[str, str], name: str, default: bool
+) -> bool:
+    raw = values.get(name)
+    if raw is None or not raw.strip():
+        return default
+    normalized = raw.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name}은 true 또는 false여야 합니다.")
