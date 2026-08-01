@@ -4,10 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from history_chatbot.dialogue.modes import ConversationMode
+from history_chatbot.dialogue.persona import (
+    ConversationStage, OutputDomain, build_persona_prompt,
+)
+from history_chatbot.dialogue.situation_models import SituationId
 from history_chatbot.retrieval.base import RankedChunk
 
 
-PROMPT_VERSION = "history-chat-dev-v1"
+PROMPT_VERSION = "history-chat-giroksae-v1.1"
 SYSTEM_INSTRUCTIONS = """\
 - 제공된 검색 근거 안에서만 답변한다.
 - 근거에 없는 내용은 추측하거나 일반 상식으로 보충하지 않는다.
@@ -27,6 +32,10 @@ def build_prompt(
     conversation_summary: str,
     chunks: Sequence[RankedChunk],
     locale: str,
+    conversation_mode: ConversationMode = ConversationMode.FREE_CHAT,
+    output_domain: OutputDomain = OutputDomain.CHARACTER_DIALOGUE,
+    situation: SituationId = SituationId.HISTORY_FACT_QUESTION,
+    conversation_stage: ConversationStage | None = None,
 ) -> str:
     evidence = "\n\n".join(
         f"[근거 {index}]\n"
@@ -38,7 +47,8 @@ def build_prompt(
     )
     return (
         f"[시스템 지침 | {PROMPT_VERSION} | locale={locale}]\n"
-        f"{SYSTEM_INSTRUCTIONS}\n\n"
+        f"{SYSTEM_INSTRUCTIONS}\n"
+        f"{build_persona_prompt(domain=output_domain, locale=locale, mode=conversation_mode, situation=situation, stage=conversation_stage)}\n\n"
         f"[이전 대화 요약]\n{conversation_summary or '(없음)'}\n\n"
         f"[검색 근거]\n{evidence or '(없음)'}\n\n"
         f"[사용자 질문]\n{user_query}"

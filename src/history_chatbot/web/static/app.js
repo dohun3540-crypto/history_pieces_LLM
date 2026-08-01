@@ -26,10 +26,11 @@ function renderSession(session) {
   byId("chat-mode").textContent = session.chat_mode;
   byId("free-context").textContent = `장소 ${session.current_place_id} · 현재 ${session.current_piece_label} · 완료 ${session.completed_piece_ids.length}개`;
 }
-function appendMessage(role, text, extraClass="") {
+function appendMessage(role, text, extraClass="", outputDomain="character_dialogue") {
   const item = document.createElement("p");
   item.className = `message ${role} ${extraClass}`.trim();
   item.textContent = text;
+  item.dataset.outputDomain = outputDomain;
   byId("free-messages").appendChild(item);
   item.scrollIntoView({block:"nearest"});
 }
@@ -62,6 +63,7 @@ async function sendPiece(message) {
   try {
     const result=await api("/api/chat/piece",{method:"POST",body:JSON.stringify({session_id:state.session.session_id,user_message:normalized,ui_state:"awaiting_reflection"})});
     byId("piece-response").textContent=result.response_text;
+    byId("piece-response").dataset.outputDomain=result.output_domain;
     if (result.mode_transition) { pendingTransition=result.mode_transition; transitionNotice=result.response_text; }
   } catch(error) { byId("piece-response").textContent=error.message; state.request="error"; }
   finally { state.lastRequest=""; setBusy(false); byId("piece-input").focus(); }
@@ -72,7 +74,7 @@ async function sendFree(message) {
   state.lastRequest=`free:${normalized}`; appendMessage("user",normalized); setBusy(true);
   try {
     const result=await api("/api/chat/free",{method:"POST",body:JSON.stringify({session_id:state.session.session_id,user_message:normalized,ui_state:"active"})});
-    appendMessage("assistant",result.response_text,result.request_state==="insufficient_evidence"?"state":"");
+    appendMessage("assistant",result.response_text,result.request_state==="insufficient_evidence"?"state":"",result.output_domain);
     renderCitations(result.citations); renderSuggestions(result.suggested_questions);
     if (result.request_state==="insufficient_evidence") announce("확인 가능한 근거가 부족합니다.");
   } catch(error) { appendMessage("assistant",error.message,"state"); state.request="error"; }

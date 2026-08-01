@@ -64,5 +64,6 @@ Refresh 시 `sessionStorage`의 session ID로 같은 server process의 상태를
 현재 실제 게임 DB, 계정 간 영속 상태, 감상 저장, 지도·위치·검증 시설 provider,
 사진 overlay, 기록새 이미지와 production LLM은 연결하지 않았다.
 `SAVE_SHORT_REFLECTION`은 capability unavailable을 반환한다. V03 기술·길·접근성
-문의는 기존 안전 fallback을 사용한다. 새 persona Markdown이나 기록새 말투 데이터는
-이번 UI 작업에서 반영하거나 수정하지 않았다.
+문의는 기존 안전 fallback을 사용한다. 기록새 말풍선은
+`character_dialogue=banmal`, 기능·오류 안내는 `system_ui=polite_ui` metadata를
+따르며 최종 기준은 [기록새 최종 캐릭터 원칙](GIROKSAE_CHARACTER_PRINCIPLES_V11.md)이다.

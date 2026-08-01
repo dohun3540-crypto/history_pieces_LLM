@@ -1,5 +1,9 @@
 # 기록새 대화 모드 계약
 
+> 이 문서는 piece/free state와 전환 계약만 담당한다. Persona와 말투는
+> [GIROKSAE_CHARACTER_PRINCIPLES_V11.md](GIROKSAE_CHARACTER_PRINCIPLES_V11.md)를
+> 유일한 기준으로 사용한다.
+
 기록새 backend는 같은 persona와 상황 classifier를 사용하면서 `piece_chat`과
 `free_chat`을 별도 정책 트랙으로 처리한다. 이 문서는 프런트엔드 구현 설명이 아니라
 서비스 DTO와 reference UI state 계약이다.

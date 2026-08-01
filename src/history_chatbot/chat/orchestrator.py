@@ -19,7 +19,13 @@ from history_chatbot.chat.prompt_builder import (
 from history_chatbot.chat.session import ChatSession, SessionStore
 from history_chatbot.dialogue.response_policy import GiroksaeDialogueEngine
 from history_chatbot.dialogue.modes import ConversationMode
-from history_chatbot.dialogue.situation_models import ClassificationInput, ScreenType
+from history_chatbot.dialogue.persona import (
+    OutputDomain, PERSONA_ID, SourceSufficiency,
+    conversation_stage_for, locale_policy, output_domain_for,
+    render_mock_grounded, speech_level_for,
+)
+from history_chatbot.dialogue.response_renderer import GiroksaeResponseRenderer
+from history_chatbot.dialogue.situation_models import ClassificationInput, ScreenType, SituationId
 from history_chatbot.dialogue.track_models import SharedSessionContext
 from history_chatbot.dialogue.track_policy import ChatTrackPolicy
 from history_chatbot.models.context_budget import ContextBudgetManager
@@ -87,6 +93,14 @@ class ChatResponse:
     request_state: str = "success"
     ui_state: str = "active"
     suggested_questions: tuple[str, ...] = ()
+    output_domain: str = "character_dialogue"
+    speech_level: str = "banmal"
+    persona_id: str = PERSONA_ID
+    language: str = "ko"
+    culture: str = "korea"
+    conversation_stage: str = "historical_question"
+    source_sufficiency: str = "sufficient"
+    translation_status: str = "native_policy"
 
     def __post_init__(self) -> None:
         if not self.response_text:
@@ -132,6 +146,7 @@ class ConversationalRagOrchestrator:
         )
         self.dialogue = dialogue or GiroksaeDialogueEngine()
         self.track_policy = ChatTrackPolicy()
+        self.response_renderer = GiroksaeResponseRenderer()
 
     def ask(
         self,
@@ -158,7 +173,11 @@ class ConversationalRagOrchestrator:
         session = self.sessions.get_or_create(session_id, locale)
         chat_mode = ConversationMode(conversation_mode)
         resolved_screen = screen_type or chat_mode.value
-        if ScreenType(resolved_screen).value != chat_mode.value:
+        resolved_screen_type = ScreenType(resolved_screen)
+        if resolved_screen_type.value != chat_mode.value and not (
+            chat_mode == ConversationMode.PIECE_CHAT
+            and resolved_screen_type == ScreenType.INTRO
+        ):
             raise ValueError("chat_mode와 screen_type이 일치해야 합니다.")
         shared_context = SharedSessionContext(
             session_id=session.session_id, locale=locale,
@@ -171,7 +190,7 @@ class ConversationalRagOrchestrator:
         classification_input = ClassificationInput(
             query,
             conversation_mode=conversation_mode,
-            screen_type=ScreenType(resolved_screen),
+            screen_type=resolved_screen_type,
             locale=locale,
             current_piece_id=current_piece_id,
             current_place_id=current_place_id,
@@ -192,6 +211,12 @@ class ConversationalRagOrchestrator:
             return_target=return_target,
         )
         classification = decision.classification
+        output_domain = output_domain_for(classification.primary_situation_id)
+        if track.action_code == "SAVE_SHORT_REFLECTION":
+            output_domain = OutputDomain.SYSTEM_UI
+        speech_level = speech_level_for(output_domain)
+        stage = conversation_stage_for(classification.primary_situation_id)
+        language, culture, translation_status = locale_policy(locale, output_domain)
         common = {
             "conversation_mode": conversation_mode,
             "screen_type": resolved_screen,
@@ -238,13 +263,38 @@ class ConversationalRagOrchestrator:
             "request_state": track.request_state.value,
             "ui_state": track.ui_state,
             "suggested_questions": track.free_ui.suggested_questions if track.free_ui else (),
+            "output_domain": output_domain.value,
+            "speech_level": speech_level.value,
+            "persona_id": PERSONA_ID,
+            "language": language,
+            "culture": culture,
+            "conversation_stage": stage.value,
+            "source_sufficiency": SourceSufficiency.SUFFICIENT.value,
+            "translation_status": translation_status.value,
         }
         if not track.should_retrieve:
+            raw_answer = track.response_override or decision.answer
+            if locale.lower() == "zh-cn":
+                raw_answer = self._pending_zh_text(output_domain)
+            if (
+                classification.primary_situation_id == SituationId.INTRO_GIROKSAE
+                and session.turns
+            ):
+                raw_answer = raw_answer.replace("위대한 기록새", "기록새")
+            guarded_answer, style_warnings = self._guard_answer(
+                raw_answer,
+                output_domain=output_domain,
+                situation=classification.primary_situation_id,
+                stage=stage,
+                locale=locale,
+            )
+            non_rag_common = dict(common)
+            non_rag_common["warnings"] = tuple(dict.fromkeys(common["warnings"] + style_warnings))
             response = ChatResponse(
-                track.response_override or decision.answer, "ok", (), 0, session.session_id, locale, PROMPT_VERSION,
+                guarded_answer, "ok", (), 0, session.session_id, locale, PROMPT_VERSION,
                 grounded=False,
                 latency_ms=round((time.perf_counter() - started) * 1000),
-                **common,
+                **non_rag_common,
             )
             self.sessions.add_turn(session.session_id, query, response.answer)
             return response
@@ -266,12 +316,19 @@ class ConversationalRagOrchestrator:
             conversation_summary="\n".join(budget.conversation),
             chunks=chunks,
             locale=locale,
+            conversation_mode=chat_mode,
+            output_domain=output_domain,
+            situation=classification.primary_situation_id,
+            conversation_stage=stage,
         )
         if not chunks:
             insufficient_common = dict(common)
-            insufficient_common.update(request_state="insufficient_evidence", ui_state="insufficient_evidence", rag_used=True)
+            insufficient_common.update(
+                request_state="insufficient_evidence", ui_state="insufficient_evidence",
+                rag_used=True, source_sufficiency=SourceSufficiency.INSUFFICIENT.value,
+            )
             response = ChatResponse(
-                "확인 가능한 자료가 부족합니다.",
+                self._insufficient_text(output_domain, locale),
                 "insufficient_evidence",
                 (),
                 0,
@@ -300,8 +357,24 @@ class ConversationalRagOrchestrator:
                 answer = self._apply_hackathon_policy(
                     completion.generated_text, chunks
                 )
+                if self.llm.backend_name == "mock":
+                    answer = render_mock_grounded(answer, domain=output_domain, locale=locale)
+                    if self._source_sufficiency(chunks) == SourceSufficiency.CONFLICTING:
+                        answer = "자료마다 설명이 달라. 확인된 차이를 나눠서 볼게. " + answer
                 if chat_mode == ConversationMode.PIECE_CHAT:
                     answer = self._limit_piece_answer(answer)
+                answer, style_warnings = self._guard_answer(
+                    answer, output_domain=output_domain,
+                    situation=classification.primary_situation_id,
+                    stage=stage, locale=locale,
+                    citations=tuple(asdict(item) for item in citations),
+                )
+                grounded_common = dict(common) | {
+                    "request_state": "success", "ui_state": "showing_citations",
+                    "rag_used": True,
+                    "source_sufficiency": self._source_sufficiency(chunks).value,
+                    "warnings": tuple(dict.fromkeys(common["warnings"] + style_warnings)),
+                }
                 response = ChatResponse(
                     answer,
                     "ok",
@@ -317,7 +390,7 @@ class ConversationalRagOrchestrator:
                     retrieved_chunk_ids=tuple(item.chunk.chunk_id for item in chunks),
                     retrieved_source_ids=tuple(dict.fromkeys(str(item.chunk.payload.get("source_id", item.chunk.document_id)) for item in chunks)),
                     latency_ms=round((time.perf_counter() - started) * 1000),
-                    **(dict(common) | {"request_state": "success", "ui_state": "showing_citations", "rag_used": True}),
+                    **grounded_common,
                     **self._provisional_metadata(chunks),
                 )
             except RemoteLLMError as error:
@@ -579,3 +652,53 @@ class ConversationalRagOrchestrator:
     def _limit_piece_answer(answer: str) -> str:
         sentences = re.split(r"(?<=[.!?。！？])\s+", answer.strip())
         return " ".join(sentences[:2]).strip()
+
+    @staticmethod
+    def _source_sufficiency(chunks: list[RankedChunk]) -> SourceSufficiency:
+        if not chunks:
+            return SourceSufficiency.INSUFFICIENT
+        if any(
+            item.chunk.payload.get("source_conflict") is True
+            or item.chunk.payload.get("fact_status") == "conflicting"
+            for item in chunks
+        ):
+            return SourceSufficiency.CONFLICTING
+        return SourceSufficiency.SUFFICIENT
+
+    def _guard_answer(
+        self, answer: str, *, output_domain: OutputDomain, situation,
+        stage, locale: str, citations: tuple[dict[str, object], ...] = (),
+    ) -> tuple[str, tuple[str, ...]]:
+        violations = self.response_renderer.guard.validate(
+            answer, domain=output_domain, situation=situation,
+            stage=stage, locale=locale, citations=citations,
+        )
+        if not violations:
+            rendered = self.response_renderer.render(
+                answer, domain=output_domain, situation=situation,
+                stage=stage, locale=locale, citations=citations,
+            )
+            return rendered.text, ()
+        if output_domain == OutputDomain.SYSTEM_UI:
+            fallback = "현재 확인된 기능 정보만으로는 안내하기 어렵습니다. 공식 안내 또는 현장 직원에게 확인해 주세요."
+        elif locale.lower() == "zh-cn":
+            fallback = "这段角色回复尚未完成审核，暂时无法显示。"
+        else:
+            fallback = "확인된 근거와 말투를 다시 점검한 뒤 답할게. 지금은 추측해서 말하지 않을게."
+        return fallback, tuple(f"style_guard:{item.code}" for item in violations)
+
+    @staticmethod
+    def _pending_zh_text(domain: OutputDomain) -> str:
+        if domain == OutputDomain.SYSTEM_UI:
+            return "该功能信息尚未完成中文审核，请以现场官方说明为准。"
+        return "这段记录鸟角色回复尚未完成审核，暂时不作为正式台词。"
+
+    @staticmethod
+    def _insufficient_text(domain: OutputDomain, locale: str) -> str:
+        if locale.lower() == "zh-cn":
+            return ConversationalRagOrchestrator._pending_zh_text(domain)
+        if domain == OutputDomain.CHARACTER_DIALOGUE:
+            return "지금 확인할 수 있는 자료가 부족해. 추측해서 말하지 않을게."
+        if domain == OutputDomain.HISTORICAL_DOCENT:
+            return "현재 검수된 자료만으로는 확인할 수 없습니다."
+        return "현재 확인 가능한 자료가 부족합니다."

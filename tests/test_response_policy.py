@@ -39,10 +39,10 @@ def test_clarification_blocks_retrieval_and_llm() -> None:
     assert result.follow_up_question
 
 
-def test_korean_non_rag_answers_keep_polite_style() -> None:
+def test_korean_character_answers_use_final_banmal_style() -> None:
     result = decide("안녕하세요")
-    assert "예요" in result.answer or "요" in result.answer
-    assert "야." not in result.answer
+    assert "기록새야" in result.answer
+    assert "예요" not in result.answer and "습니다" not in result.answer
 
 
 def test_zh_cn_locale_hook_is_accepted_without_translation_generation() -> None:

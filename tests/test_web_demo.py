@@ -60,6 +60,9 @@ def test_piece_emotion_and_fatigue_are_no_rag(client: TestClient) -> None:
     assert emotion.status_code == 200
     assert emotion.json()["chat_mode"] == "piece_chat"
     assert "piece_ui_state" in emotion.json()
+    assert emotion.json()["output_domain"] == "character_dialogue"
+    assert emotion.json()["speech_level"] == "banmal"
+    assert emotion.json()["persona_id"] == "giroksae-v1.1"
     assert emotion.json()["rag_used"] is False
     assert emotion.json()["game_state_mutation"] is False
     assert emotion.json()["storage_permitted"] is False
@@ -69,6 +72,11 @@ def test_piece_emotion_and_fatigue_are_no_rag(client: TestClient) -> None:
     assert fatigue.status_code == 200
     assert fatigue.json()["next_action_code"] == "PAUSE_JOURNEY"
     assert fatigue.json()["rag_used"] is False
+    technical = client.post("/api/chat/piece", json={
+        "session_id": session["session_id"], "user_message": "다음 버튼이 안 눌려요.",
+    })
+    assert technical.json()["output_domain"] == "system_ui"
+    assert technical.json()["speech_level"] == "polite_ui"
 
 
 def test_piece_detail_returns_preserved_free_chat_transition(client: TestClient) -> None:

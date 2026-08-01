@@ -13,6 +13,12 @@
 `suggested_questions`를 반환한다. 실제 provider가 없는 action은 실행 완료가 아니라
 capability 미지원 fallback이다.
 
+Persona metadata는 하위 호환 필드에 추가해 `output_domain`, `speech_level`,
+`persona_id`, `language`, `culture`, `conversation_stage`, `source_sufficiency`,
+`translation_status`를 반환한다. `character_dialogue`는 한국어 반말,
+`system_ui`는 기능 중심 존댓말이며 최종 기준은
+[GIROKSAE_CHARACTER_PRINCIPLES_V11.md](GIROKSAE_CHARACTER_PRINCIPLES_V11.md)다.
+
 ## Reference web demo endpoints
 
 - `GET /health`: 서비스 상태와 허용 chat mode

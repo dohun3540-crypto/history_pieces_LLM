@@ -44,6 +44,35 @@ class ChatTrackPolicy:
     ) -> TrackDecision:
         if piece_follow_up_count < 0:
             raise ValueError("piece_follow_up_count는 0 이상이어야 합니다.")
+        compact = query.replace(" ", "")
+        if any(signal in compact for signal in ("그만할래", "대화끝낼게", "채팅창닫아줘")):
+            action = (
+                ActionCode.SKIP_REFLECTION.value
+                if mode == ConversationMode.PIECE_CHAT
+                else ActionCode.RETURN_TO_GAME.value
+            )
+            ui_state = (
+                PieceChatUiState.SKIPPED.value
+                if mode == ConversationMode.PIECE_CHAT
+                else FreeChatUiState.RETURNING_TO_GAME.value
+            )
+            return TrackDecision(
+                action, "알겠어. 여기서 마칠게.", None, False, False, None,
+                RequestState.SUCCESS, ui_state,
+                piece_ui=(PieceChatUiContract(PieceChatUiState.SKIPPED) if mode == ConversationMode.PIECE_CHAT else None),
+                free_ui=(FreeChatUiContract(FreeChatUiState.RETURNING_TO_GAME) if mode == ConversationMode.FREE_CHAT else None),
+                capability_supported=action in context.available_capabilities,
+                fallback_used=action not in context.available_capabilities,
+            )
+        if mode == ConversationMode.PIECE_CHAT and "다음으로넘어가자" in compact:
+            action = ActionCode.GO_NEXT_PIECE.value
+            return TrackDecision(
+                action, "좋아. 다음 조각으로 이어가자.", None, False, False, None,
+                RequestState.SUCCESS, PieceChatUiState.READY_FOR_NEXT_PIECE.value,
+                PieceChatUiContract(PieceChatUiState.READY_FOR_NEXT_PIECE, next_piece_available=True),
+                capability_supported=action in context.available_capabilities,
+                fallback_used=action not in context.available_capabilities,
+            )
         if mode == ConversationMode.PIECE_CHAT:
             return self._piece(query, decision, context, piece_follow_up_count, return_target)
         return self._free(decision)
@@ -80,7 +109,7 @@ class ChatTrackPolicy:
             supported = ActionCode.CONTINUE_WITH_SHORT_MODE.value in context.available_capabilities
             return TrackDecision(
                 ActionCode.CONTINUE_WITH_SHORT_MODE.value,
-                "현재 세션에서는 한두 문장으로 짧게 답하겠습니다.", None,
+                "앞으로는 한두 문장으로 짧게 말할게.", None,
                 False, False, None, RequestState.SUCCESS,
                 PieceChatUiState.RESPONDING.value,
                 PieceChatUiContract(PieceChatUiState.RESPONDING),
@@ -89,7 +118,7 @@ class ChatTrackPolicy:
         if situation == S.LOW_ENGAGEMENT:
             return TrackDecision(
                 ActionCode.SKIP_REFLECTION.value,
-                "괜찮아요. 감상은 건너뛰고 다음 단계로 넘어갈 수 있어요.",
+                "특별히 남는 게 없을 수도 있지. 감상은 건너뛰고 넘어가자.",
                 None, False, False, None, RequestState.SUCCESS,
                 PieceChatUiState.SKIPPED.value,
                 PieceChatUiContract(PieceChatUiState.SKIPPED, reflection_input_enabled=False),
@@ -97,7 +126,7 @@ class ChatTrackPolicy:
         if "current_fatigue" in decision.classification.personalization_tag_candidates or "current_fatigue" in decision.context_state:
             return TrackDecision(
                 ActionCode.PAUSE_JOURNEY.value,
-                "잠시 쉬어도 괜찮아요. 멈추거나 짧은 설명으로 이어갈 수 있어요.",
+                "잠시 쉬어도 괜찮아. 멈추거나 짧은 설명으로 이어갈 수 있어.",
                 None, False, False, None, RequestState.SUCCESS,
                 PieceChatUiState.PAUSED.value,
                 PieceChatUiContract(PieceChatUiState.PAUSED, reflection_input_enabled=False),
@@ -112,7 +141,7 @@ class ChatTrackPolicy:
             )
             return TrackDecision(
                 ActionCode.OPEN_FREE_CHAT.value,
-                "이 질문은 근거와 배경을 함께 보는 편이 좋아요. 자유대화에서 이어서 확인할까요?",
+                "이 질문은 근거와 배경을 함께 보는 편이 좋아. 자유대화에서 이어서 확인해보자.",
                 None, False, False, transition, RequestState.CAPABILITY_UNAVAILABLE,
                 PieceChatUiState.RESPONDING.value,
                 PieceChatUiContract(PieceChatUiState.RESPONDING, free_chat_available=True),
@@ -123,7 +152,7 @@ class ChatTrackPolicy:
         answer = decision.answer
         if follow_up_count > 0 and answer:
             answer = answer.split(". ", 1)[0].strip()
-            if answer and not answer.endswith((".", "요")):
+            if answer and not answer.endswith("."):
                 answer += "."
         return TrackDecision(
             decision.next_action_code, answer or None, follow_up,

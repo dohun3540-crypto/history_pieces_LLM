@@ -59,7 +59,7 @@ def test_missing_evidence_never_calls_grounded_generation(tmp_path, monkeypatch)
 
     monkeypatch.setattr(chat.llm, "generate_grounded", forbidden)
     response = chat.ask("서울 궁궐의 왕은 누구야?")
-    assert response.answer == "확인 가능한 자료가 부족합니다."
+    assert response.answer == "지금 확인할 수 있는 자료가 부족해. 추측해서 말하지 않을게."
     assert response.status == "insufficient_evidence"
     assert response.sources == ()
     assert response.used_chunks == 0

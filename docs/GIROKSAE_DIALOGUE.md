@@ -1,5 +1,10 @@
 # 기록새 상황 대화 연결
 
+> **문서 역할:** 이 문서는 상황·seed·RAG·safety/action 계약을 설명한다. Persona와
+> 런타임 말투에 관한 기존 내용은 superseded이며 최종 기준이 아니다. 정체성·말투·출력
+> 영역·생성 prompt의 유일한 기준은
+> [GIROKSAE_CHARACTER_PRINCIPLES_V11.md](GIROKSAE_CHARACTER_PRINCIPLES_V11.md)다.
+
 ## 기준 데이터
 
 사람이 작성한 원본은 `docs/giroksae_situation_seed.md`이며 실제 구성은 17개 상황과
@@ -15,11 +20,11 @@ Markdown 원문을 보존한다. 런타임 필드인 `requires_rag`, `requires_c
 
 ## 말투 결정
 
-서비스 기본값은 자연스러운 한국어 존댓말(`polite`)이다. 기존 UI 설정의 기본 언어가
-한국어이고 기존 챗봇 답변도 존댓말인 점, 조각 대화와 자유대화 사이에서 한 세션의
-말투가 섞이지 않아야 한다는 점을 근거로 선택했다. 원본 `response_draft`의 반말은
-수정하지 않고 기준 데이터로 보존한다. 향후 세션 설정으로 부드러운 반말 모드를
-추가할 수 있지만 현재 런타임 응답은 존댓말로 일관된다.
+이 절의 과거 “기본 존댓말” 결정은 superseded됐다. 현재 runtime은 최종 승인 문서에
+따라 `character_dialogue=banmal`, `system_ui=polite_ui`,
+`historical_docent=formal_docent`, `journey_film_caption=neutral_caption`으로 분리한다.
+원본 `response_draft`와 `response_draft_original`은 말투 source가 아니라 provenance
+보존 데이터이며 수정하지 않는다.
 
 `zh-CN`은 locale로 허용하며 `configs/giroksae_zh_cn_terms.json`에 검수된 용어 사전의
 연결 지점만 마련했다. 전체 중국어 번역은 생성하지 않았다.
@@ -83,9 +88,9 @@ loader가 런타임에서 두 bundle을 합쳐 20개 상황·63개 사례로 제
 읽어야 할 때는 `SituationSeedLoader(additions_path=None)`을 사용한다.
 
 기존 `response_draft`는 `response_draft_original`로 그대로 노출하고 제거하지 않는다.
-신규 bundle의 `response_template`은 존댓말 서비스 문구로 별도 저장한다. 기존 seed에
-런타임 템플릿이 없으면 빈 값이 안전한 기본값이며, 서비스 응답은 원문을 직접 출력하지
-않고 response policy의 존댓말 응답을 사용한다.
+신규 bundle의 기존 `response_template`은 제안 당시 문구로 보존하며 최종 persona
+source로 사용하지 않는다. 서비스는 원문을 직접 출력하지 않고 output domain별
+canonical persona와 response policy를 사용한다.
 
 세 신규 상황은 `piece_chat`과 `free_chat` 모두에서 허용되며 역사 RAG와 citation을
 사용하지 않는다. action code, required context, missing context, provider capability,
