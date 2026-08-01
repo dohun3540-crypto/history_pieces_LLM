@@ -6,7 +6,17 @@ import json
 import os
 from dataclasses import asdict
 from pathlib import Path
-import re
+
+from history_chatbot.chat.api_models import (
+    FreeChatRequest,
+    GenericChatRequest,
+    JourneyActionRequest,
+    PieceChatRequest,
+    SessionCreateRequest,
+    TrackChatRequest,
+    TransitionRequest,
+    validate_session_id,
+)
 
 from history_chatbot.chat.demo_journey import (
     InMemoryDemoJourneyProvider, JourneyProvider, JourneyProviderError,
@@ -20,8 +30,6 @@ from history_chatbot.dialogue.track_models import FreeChatUiState, PieceChatUiSt
 from history_chatbot.runtime import RuntimeMode
 
 
-SESSION_PATTERN = re.compile(r"^[a-f0-9]{32}$")
-MAX_MESSAGE_LENGTH = 2000
 STATIC_DIR = Path(__file__).resolve().parent.parent / "web" / "static"
 ASSET_DIR = Path(__file__).resolve().parent / "static" / "assets"
 
@@ -86,11 +94,8 @@ def create_app(
         }
 
     @app.post("/api/session")
-    def create_session(payload: dict[str, object] | None = None):
-        value = payload or {}
-        locale = str(value.get("locale", "ko"))
-        if not re.fullmatch(r"[A-Za-z]{2}(?:-[A-Za-z]{2})?", locale):
-            raise ValueError("locale 형식이 올바르지 않습니다.")
+    def create_session(payload: SessionCreateRequest | None = None):
+        locale = (payload or SessionCreateRequest()).resolved_locale()
         session = resolved.orchestrator.sessions.create(locale)
         return journeys.create(session.session_id, locale).to_dict()
 
@@ -100,19 +105,19 @@ def create_app(
         return journeys.get(session_id).to_dict()
 
     @app.post("/api/chat/piece")
-    def piece_chat(payload: dict[str, object]):
+    def piece_chat(payload: PieceChatRequest):
         return _chat(resolved, journeys, payload, ConversationMode.PIECE_CHAT)
 
     @app.post("/api/chat/free")
-    def free_chat(payload: dict[str, object]):
+    def free_chat(payload: FreeChatRequest):
         return _chat(resolved, journeys, payload, ConversationMode.FREE_CHAT)
 
     @app.post("/api/chat/transition")
-    def transition(payload: dict[str, object]):
-        session_id = _session_id(str(payload.get("session_id", "")))
+    def transition(payload: TransitionRequest):
+        session_id = payload.resolved_session_id()
         state = journeys.get(session_id)
-        from_mode = ConversationMode(str(payload.get("from_mode", state.chat_mode)))
-        to_value = str(payload.get("to_mode", ""))
+        from_mode = ConversationMode(payload.from_mode or state.chat_mode)
+        to_value = payload.to_mode or ""
         if to_value == "game":
             to_mode = ConversationMode.PIECE_CHAT
         else:
@@ -123,21 +128,21 @@ def create_app(
             action = "RETURN_TO_GAME"
         else:
             raise JourneyProviderError("invalid_transition", "지원하지 않는 mode transition입니다.", status_code=409)
-        updated = journeys.apply_action(session_id, action, payload)
+        updated = journeys.apply_action(session_id, action, payload.model_dump())
         return {
             "request_state": "success", "action_code": action,
-            "game_state_mutation": False, "transition": payload.get("mode_transition"),
+            "game_state_mutation": False, "transition": payload.mode_transition,
             "session": updated.to_dict(),
         }
 
     @app.post("/api/journey/action")
-    def journey_action(payload: dict[str, object]):
-        session_id = _session_id(str(payload.get("session_id", "")))
-        action_code = str(payload.get("action_code", ""))
+    def journey_action(payload: JourneyActionRequest):
+        session_id = payload.resolved_session_id()
+        action_code = payload.action_code or ""
         if not action_code:
             raise ValueError("action_code가 필요합니다.")
         before = journeys.get(session_id).to_dict()
-        state = journeys.apply_action(session_id, action_code, payload)
+        state = journeys.apply_action(session_id, action_code, payload.model_dump())
         changed = (
             before["current_piece_id"] != state.current_piece_id
             or before["completed_piece_ids"] != tuple(state.completed_piece_ids)
@@ -149,14 +154,15 @@ def create_app(
 
     # Backward-compatible generic API.
     @app.post("/api/chat")
-    def chat(payload: dict[str, object]):
-        return resolved.chat(payload)
+    def chat(payload: GenericChatRequest):
+        return resolved.chat(payload.service_payload())
 
     @app.post("/api/chat/stream")
-    def stream(payload: dict[str, object]):
+    def stream(payload: GenericChatRequest):
         def events():
             try:
-                for event in resolved.stream(payload):
+                value = payload.service_payload()
+                for event in resolved.stream(value):
                     yield f"event: {event.event}\ndata: {json.dumps(asdict(event)['data'], ensure_ascii=False)}\n\n"
             except ValueError as error:
                 yield f"event: error\ndata: {json.dumps(_error('invalid_request', str(error), retryable=False), ensure_ascii=False)}\n\n"
@@ -185,28 +191,24 @@ def _default_service() -> ChatApplicationService:
 
 def _chat(
     service: ChatApplicationService, journeys: JourneyProvider,
-    payload: dict[str, object], mode: ConversationMode,
+    payload: TrackChatRequest, mode: ConversationMode,
 ) -> dict[str, object]:
-    session_id = _session_id(str(payload.get("session_id", "")))
+    session_id = payload.resolved_session_id()
     state = journeys.get(session_id)
-    message = payload.get("user_message", payload.get("pending_user_question", ""))
-    if type(message) is not str or not message.strip():
-        raise ValueError("user_message 또는 pending_user_question이 필요합니다.")
-    if len(message) > MAX_MESSAGE_LENGTH:
-        raise ValueError(f"사용자 메시지는 {MAX_MESSAGE_LENGTH:,}자 이하여야 합니다.")
-    ui_state = payload.get("ui_state")
+    message = payload.resolved_message()
+    ui_state = payload.ui_state
     if ui_state is not None:
         (PieceChatUiState if mode == ConversationMode.PIECE_CHAT else FreeChatUiState)(str(ui_state))
     response = service.chat({
-        "user_query": message.strip(), "session_id": session_id,
-        "locale": str(payload.get("locale", state.locale)),
+        "user_query": message, "session_id": session_id,
+        "locale": payload.resolved_locale(state.locale),
         "conversation_mode": mode.value, "screen_type": mode.value,
         "current_place_id": state.current_place_id,
         "current_piece_id": state.current_piece_id,
         "visited_piece_ids": tuple(state.completed_piece_ids),
         "current_journey_step": state.current_journey_step,
         "available_capabilities": state.available_capabilities,
-        "return_target": str(payload.get("return_target", "journey")),
+        "return_target": payload.return_target,
     })
     state.temporary_context_state = list(dict.fromkeys(
         state.temporary_context_state + list(response.get("context_state", ()))
@@ -217,9 +219,7 @@ def _chat(
 
 
 def _session_id(value: str) -> str:
-    if not SESSION_PATTERN.fullmatch(value):
-        raise ValueError("session_id 형식이 올바르지 않습니다.")
-    return value
+    return validate_session_id(value)
 
 
 def _error(error_code: str, message: str, *, retryable: bool) -> dict[str, object]:
