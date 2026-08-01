@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import time
 import uuid
 from collections import Counter
 from dataclasses import asdict, dataclass
@@ -16,6 +17,8 @@ from history_chatbot.chat.prompt_builder import (
     build_prompt,
 )
 from history_chatbot.chat.session import ChatSession, SessionStore
+from history_chatbot.dialogue.response_policy import GiroksaeDialogueEngine
+from history_chatbot.dialogue.situation_models import ClassificationInput, ScreenType
 from history_chatbot.models.context_budget import ContextBudgetManager
 from history_chatbot.models.contract import ChatCompletionBackend, LLMMessage, LLMRequest
 from history_chatbot.models.remote import RemoteLLMError
@@ -39,6 +42,25 @@ class ChatResponse:
     rights_notice: str = ""
     usage_scope: str = ""
     source_ids: tuple[str, ...] = ()
+    conversation_mode: str = "free_chat"
+    screen_type: str = "free_chat"
+    primary_situation_id: str = "HISTORY_FACT_QUESTION"
+    secondary_situation_ids: tuple[str, ...] = ()
+    next_action: str = "respond"
+    follow_up_question: str | None = None
+    personalization_tag_candidates: tuple[dict[str, object], ...] = ()
+    citations: tuple[dict[str, object], ...] = ()
+    evidence: tuple[str, ...] = ()
+    grounded: bool = False
+    confidence: float = 0.0
+    refusal_reason: str | None = None
+    response_length_mode: str = "default"
+    retrieved_chunk_ids: tuple[str, ...] = ()
+    retrieved_source_ids: tuple[str, ...] = ()
+    model_backend: str = ""
+    embedding_backend: str = ""
+    latency_ms: int = 0
+    warnings: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         value = asdict(self)
@@ -63,6 +85,7 @@ class ConversationalRagOrchestrator:
         max_chunks_per_document: int = 2,
         context_window: int = 8192,
         max_new_tokens: int = 512,
+        dialogue: GiroksaeDialogueEngine | None = None,
     ) -> None:
         if mode == RuntimeMode.PRODUCTION and llm.backend_name == "mock":
             raise ValueError("production 모드에서는 MockLLM 기반 오케스트레이터를 사용할 수 없습니다.")
@@ -76,6 +99,7 @@ class ConversationalRagOrchestrator:
         self.budget = ContextBudgetManager(
             getattr(backend_config, "context_window", context_window)
         )
+        self.dialogue = dialogue or GiroksaeDialogueEngine()
 
     def ask(
         self,
@@ -84,9 +108,55 @@ class ConversationalRagOrchestrator:
         session_id: str | None = None,
         locale: str = "ko",
         top_k: int = 3,
+        conversation_mode: str = "free_chat",
+        screen_type: str | None = None,
+        current_piece_id: str | None = None,
+        current_place_id: str | None = None,
+        visited_piece_ids: tuple[str, ...] = (),
+        existing_style_preferences: tuple[str, ...] = (),
     ) -> ChatResponse:
+        started = time.perf_counter()
         query = self._validate(user_query, locale, top_k)
         session = self.sessions.get_or_create(session_id, locale)
+        resolved_screen = screen_type or conversation_mode
+        classification_input = ClassificationInput(
+            query,
+            conversation_mode=conversation_mode,
+            screen_type=ScreenType(resolved_screen),
+            locale=locale,
+            current_piece_id=current_piece_id,
+            current_place_id=current_place_id,
+            recent_turns=tuple(turn.user for turn in session.turns[-3:]),
+            visited_piece_ids=visited_piece_ids,
+            existing_style_preferences=existing_style_preferences,
+        )
+        decision = self.dialogue.decide(classification_input)
+        classification = decision.classification
+        common = {
+            "conversation_mode": conversation_mode,
+            "screen_type": resolved_screen,
+            "primary_situation_id": classification.primary_situation_id.value,
+            "secondary_situation_ids": tuple(x.value for x in classification.secondary_situation_ids),
+            "next_action": classification.next_action,
+            "follow_up_question": decision.follow_up_question,
+            "personalization_tag_candidates": tuple(
+                self.dialogue.tag_candidates(classification, turn_id=uuid.uuid4().hex, user_message=query)
+            ),
+            "confidence": classification.confidence,
+            "response_length_mode": classification.response_length_mode.value,
+            "model_backend": self.llm.backend_name,
+            "embedding_backend": self.retrieval.encoder.model_id,
+            "warnings": decision.warnings,
+        }
+        if not decision.should_retrieve:
+            response = ChatResponse(
+                decision.answer, "ok", (), 0, session.session_id, locale, PROMPT_VERSION,
+                grounded=False,
+                latency_ms=round((time.perf_counter() - started) * 1000),
+                **common,
+            )
+            self.sessions.add_turn(session.session_id, query, response.answer)
+            return response
         previous = session.turns[-1].user if session.turns else ""
         search_query = self._rewrite_followup(query, previous)
         chunks = self._select(self.retrieval.search(search_query), top_k)
@@ -101,7 +171,7 @@ class ConversationalRagOrchestrator:
         )
         chunks = chunks[: len(budget.evidence)]
         prompt = build_prompt(
-            user_query=query,
+            user_query=self._journey_scoped_query(query, classification.primary_situation_id.value, visited_piece_ids),
             conversation_summary="\n".join(budget.conversation),
             chunks=chunks,
             locale=locale,
@@ -119,6 +189,9 @@ class ConversationalRagOrchestrator:
                     "trimmed_evidence": budget.trimmed_evidence,
                     "trimmed_conversation": budget.trimmed_conversation,
                 },
+                refusal_reason="insufficient_evidence",
+                latency_ms=round((time.perf_counter() - started) * 1000),
+                **common,
             )
         else:
             is_fixture = all(
@@ -143,6 +216,13 @@ class ConversationalRagOrchestrator:
                     locale,
                     PROMPT_VERSION,
                     context_metadata=request.metadata.get("context_budget"),  # type: ignore[arg-type]
+                    citations=tuple(asdict(item) for item in citations),
+                    evidence=tuple(item.chunk.text for item in chunks),
+                    grounded=True,
+                    retrieved_chunk_ids=tuple(item.chunk.chunk_id for item in chunks),
+                    retrieved_source_ids=tuple(dict.fromkeys(str(item.chunk.payload.get("source_id", item.chunk.document_id)) for item in chunks)),
+                    latency_ms=round((time.perf_counter() - started) * 1000),
+                    **common,
                     **self._provisional_metadata(chunks),
                 )
             except RemoteLLMError as error:
@@ -156,6 +236,9 @@ class ConversationalRagOrchestrator:
                     PROMPT_VERSION,
                     error=error.to_dict(),
                     context_metadata=request.metadata.get("context_budget"),  # type: ignore[arg-type]
+                    refusal_reason="llm_error",
+                    latency_ms=round((time.perf_counter() - started) * 1000),
+                    **common,
                 )
         self.sessions.add_turn(session.session_id, query, response.answer)
         return response
@@ -280,6 +363,16 @@ class ConversationalRagOrchestrator:
         if previous_query and re.search(r"(그곳|그 건물|그때|그와|그 과정|그 자료)", query):
             return f"{previous_query} {query}"
         return query
+
+    @staticmethod
+    def _journey_scoped_query(query: str, situation_id: str, visited_piece_ids: tuple[str, ...]) -> str:
+        if situation_id != "JOURNEY_CONTEXT_QUESTION":
+            return query
+        completed = ", ".join(visited_piece_ids) if visited_piece_ids else "없음"
+        return (
+            f"{query}\n[게임 메타데이터] 실제 완료 조각 ID: {completed}. "
+            "이 목록 밖의 조각을 완료했다고 말하지 마세요. 역사 관계는 검색 근거와 구분하세요."
+        )
 
     def _select(self, results: list[RankedChunk], top_k: int) -> list[RankedChunk]:
         selected: list[RankedChunk] = []

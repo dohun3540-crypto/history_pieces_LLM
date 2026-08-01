@@ -84,6 +84,12 @@ class ChatApplicationService:
             session_id=str(payload["session_id"]) if payload.get("session_id") else None,
             locale=str(payload.get("locale", "ko")),
             top_k=int(payload.get("top_k", 3)),
+            conversation_mode=str(payload.get("conversation_mode", "free_chat")),
+            screen_type=str(payload["screen_type"]) if payload.get("screen_type") else None,
+            current_piece_id=str(payload["current_piece_id"]) if payload.get("current_piece_id") else None,
+            current_place_id=str(payload["current_place_id"]) if payload.get("current_place_id") else None,
+            visited_piece_ids=tuple(str(x) for x in payload.get("visited_piece_ids", ())),
+            existing_style_preferences=tuple(str(x) for x in payload.get("existing_style_preferences", ())),
         )
         return response.to_dict()
 

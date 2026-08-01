@@ -166,3 +166,26 @@ def test_application_service_readiness_and_reset(tmp_path) -> None:
     assert app_service.readiness()["status"] == "development_ready"
     reset = app_service.reset(str(response["session_id"]))
     assert reset["reset"] is True
+
+
+def test_non_rag_greeting_returns_dialogue_contract_without_llm_or_sources(tmp_path) -> None:
+    response = orchestrator(tmp_path).ask("안녕하세요", conversation_mode="free_chat")
+    payload = response.to_dict()
+    assert payload["primary_situation_id"] == "FREE_CHAT_GREETING"
+    assert payload["conversation_mode"] == "free_chat"
+    assert payload["grounded"] is False
+    assert payload["retrieved_chunk_ids"] == ()
+    assert payload["citations"] == ()
+    assert payload["model_backend"] == "mock"
+    assert payload["embedding_backend"] == "hashing-v1"
+
+
+def test_journey_prompt_contains_only_completed_piece_ids(tmp_path) -> None:
+    chat = orchestrator(tmp_path)
+    response = chat.ask(
+        "방금 본 조각이랑 이전 조각은 무슨 관계예요?",
+        conversation_mode="piece_chat",
+        screen_type="piece_chat",
+        visited_piece_ids=("piece-1", "piece-2"),
+    )
+    assert "piece-3" not in response.answer

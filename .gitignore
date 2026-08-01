@@ -12,6 +12,7 @@ env/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.pytest-*/
 .test-tmp/
 .pytest-temp/
 .mypy_cache/

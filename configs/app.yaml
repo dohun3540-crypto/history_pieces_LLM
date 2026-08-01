@@ -4,3 +4,5 @@ app:
   default_language: "ko"
   fallback_message: "제공된 목포 근대역사 자료에서 확인할 수 없습니다."
   memory_max_turns: 20
+  giroksae_speech_level: "polite"
+  supported_conversation_modes: "piece_chat,free_chat"

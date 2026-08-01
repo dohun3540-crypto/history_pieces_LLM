@@ -9,7 +9,7 @@ from typing import Any
 
 from history_chatbot.indexing.snapshot import stable_json_hash
 from history_chatbot.retrieval.base import DenseEncoder, RankedChunk, RetrievalChunk
-from history_chatbot.retrieval.dense import DenseSearcher, HashingDenseEncoder
+from history_chatbot.retrieval.dense import DenseSearcher, HashingDenseEncoder, SentenceTransformerEncoder
 from history_chatbot.retrieval.fusion import reciprocal_rank_fusion
 from history_chatbot.retrieval.qdrant_store import LocalJsonVectorStore
 from history_chatbot.retrieval.query_normalizer import normalize_query
@@ -58,10 +58,8 @@ class RetrievalConfig:
             raise ValueError("hackathon 모드에는 개발 fixture를 사용할 수 없습니다.")
         if self.backend != "local_json":
             raise ValueError("현재 다운로드 없는 기본 백엔드는 local_json만 지원합니다.")
-        if self.embedding_model != "hashing-v1":
-            raise ValueError(
-                "실제 임베딩 모델은 아직 설치되지 않았습니다. 모델 승인 후 연결하세요."
-            )
+        if self.embedding_model != "hashing-v1" and not self.embedding_model.startswith("intfloat/"):
+            raise ValueError("허용되지 않은 임베딩 모델입니다.")
         for name in (
             "dense_top_k",
             "sparse_top_k",
@@ -245,7 +243,11 @@ class HybridRetrievalService:
     ) -> None:
         config.validate()
         self.config = config
-        self.encoder = encoder or HashingDenseEncoder()
+        self.encoder = encoder or (
+            HashingDenseEncoder()
+            if config.embedding_model == "hashing-v1"
+            else SentenceTransformerEncoder(config.embedding_model, revision=config.embedding_revision)
+        )
         self.store = LocalJsonVectorStore(
             config.local_storage_path / self.index_filename
         )
@@ -343,6 +345,10 @@ class HybridRetrievalService:
             errors.append("임베딩 모델 ID가 검색 인덱스와 일치하지 않습니다.")
         if metadata.get("revision") != self.encoder.revision:
             errors.append("임베딩 모델 revision이 검색 인덱스와 일치하지 않습니다.")
+        if metadata.get("dimension") != self.encoder.dimension:
+            errors.append("임베딩 차원이 검색 인덱스와 일치하지 않습니다.")
+        if metadata.get("normalization") != bool(getattr(self.encoder, "normalize_embeddings", True)):
+            errors.append("임베딩 정규화 정책이 검색 인덱스와 일치하지 않습니다.")
         try:
             _, current_snapshot = self._reader().load()
         except (ValueError, ProductionNotReadyError) as error:
@@ -387,8 +393,14 @@ class HybridRetrievalService:
         self.store.rollback(source_snapshot)
 
     def _index_metadata(self, chunks: list[RetrievalChunk]) -> dict[str, Any]:
+        embedding = {
+            "dimension": self.encoder.dimension,
+            "normalization": bool(getattr(self.encoder, "normalize_embeddings", True)),
+            "query_prefix": str(getattr(self.encoder, "query_prefix", "")),
+            "passage_prefix": str(getattr(self.encoder, "passage_prefix", "")),
+        }
         if self.runtime_mode != RuntimeMode.HACKATHON:
-            return {"mode": self.runtime_mode.value}
+            return {"mode": self.runtime_mode.value, **embedding}
         source_ids = sorted(
             {
                 str(chunk.payload.get("source_id", chunk.document_id))
@@ -401,4 +413,5 @@ class HybridRetrievalService:
             "provisional_chunk_count": len(chunks),
             "rights_scope": "unconfirmed_noncommercial_demo",
             "removable_source_ids": source_ids,
+            **embedding,
         }

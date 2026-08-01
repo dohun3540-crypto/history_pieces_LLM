@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "giroksae_situations.schema.json",
+  "title": "Giroksae human-authored situation seeds",
+  "type": "object",
+  "required": ["schema_version", "source_document", "source_type", "review_status", "situations", "examples"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "source_type": {"const": "human_authored_seed"},
+    "review_status": {"const": "reviewed_seed"},
+    "situations": {"type": "array", "minItems": 17, "maxItems": 17},
+    "examples": {
+      "type": "array",
+      "minItems": 54,
+      "maxItems": 54,
+      "items": {
+        "type": "object",
+        "required": [
+          "example_id", "situation_id", "screen_type", "user_input",
+          "response_goal", "response_draft", "next_action",
+          "personalization_tags", "requires_rag", "requires_clarification",
+          "allows_follow_up", "response_length_mode", "next_action_code",
+          "locale", "source_type", "review_status", "source_fields"
+        ],
+        "properties": {
+          "example_id": {"type": "string", "minLength": 1},
+          "situation_id": {"type": "string", "minLength": 1},
+          "screen_type": {"enum": ["intro", "piece_chat", "free_chat", "piece_chat_or_free_chat"]},
+          "user_input": {"type": "string", "minLength": 1},
+          "response_goal": {"type": "string", "minLength": 1},
+          "response_draft": {"type": "string", "minLength": 1},
+          "next_action": {"type": "string", "minLength": 1},
+          "personalization_tags": {"type": "array", "items": {"type": "string"}},
+          "source_type": {"const": "human_authored_seed"},
+          "review_status": {"const": "reviewed_seed"}
+        }
+      }
+    }
+  }
+}
