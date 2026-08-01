@@ -34,6 +34,19 @@ python -m pip install -e ".[api]"
 uvicorn history_chatbot.chat.api:create_app --factory
 ```
 
+같은 서버가 offline reference web UI도 제공한다. 로컬 loopback으로 실행한 뒤
+`http://127.0.0.1:8000/`을 연다.
+
+```powershell
+$env:APP_MODE = "development"
+python -m uvicorn history_chatbot.chat.api:create_app --factory --host 127.0.0.1 --port 8000
+```
+
+UI는 in-memory demo journey와 중립적인 조각 label을 사용하며 서버 재시작 시 상태가
+사라진다. 실제 사진·기록새 이미지·게임 DB·저장·지도·시설 provider는 연결되어 있지
+않다. [Web UI](docs/WEB_UI.md)와 [Chat API](docs/CHAT_API.md)를 참고한다. 새 기록새
+persona 문구는 이번 reference UI에 반영되지 않았다.
+
 자세한 흐름과 응답 형식은 [E2E RAG](docs/END_TO_END_RAG.md),
 [Chat API](docs/CHAT_API.md), [세션 관리](docs/SESSION_MANAGEMENT.md)를
 참고하세요.

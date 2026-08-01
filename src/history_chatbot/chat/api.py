@@ -1,73 +1,227 @@
-"""선택적 FastAPI 어댑터. 핵심 서비스는 FastAPI에 의존하지 않는다."""
+"""FastAPI adapter and offline reference UI for the integrated chat demo."""
 
 from __future__ import annotations
 
 import json
 import os
 from dataclasses import asdict
+from pathlib import Path
+import re
 
+from history_chatbot.chat.demo_journey import (
+    InMemoryDemoJourneyProvider, JourneyProvider, JourneyProviderError,
+)
 from history_chatbot.chat.service import (
-    ChatApplicationService,
-    create_development_orchestrator,
+    ChatApplicationService, create_development_orchestrator,
     create_hackathon_orchestrator,
 )
+from history_chatbot.dialogue.modes import ConversationMode
+from history_chatbot.dialogue.track_models import FreeChatUiState, PieceChatUiState
 from history_chatbot.runtime import RuntimeMode
 
 
-def create_app(service: ChatApplicationService | None = None):
+SESSION_PATTERN = re.compile(r"^[a-f0-9]{32}$")
+MAX_MESSAGE_LENGTH = 2000
+STATIC_DIR = Path(__file__).resolve().parent.parent / "web" / "static"
+
+
+def create_app(
+    service: ChatApplicationService | None = None,
+    journey_provider: JourneyProvider | None = None,
+):
     try:
-        from fastapi import FastAPI, HTTPException
-        from fastapi.responses import StreamingResponse
-    except ImportError as error:  # pragma: no cover - 선택 의존성
-        raise RuntimeError(
-            "HTTP API 실행에는 선택 의존성 fastapi와 ASGI 서버가 필요합니다."
-        ) from error
+        from fastapi import FastAPI, Request
+        from fastapi.exceptions import RequestValidationError
+        from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+        from fastapi.staticfiles import StaticFiles
+    except ImportError as error:  # pragma: no cover - optional dependency
+        raise RuntimeError("HTTP API 실행에는 선택 의존성 fastapi와 ASGI 서버가 필요합니다.") from error
 
-    if service is not None:
-        resolved = service
-    else:
-        mode = RuntimeMode.parse(os.getenv("APP_MODE", "development"))
-        if mode == RuntimeMode.HACKATHON:
-            resolved = ChatApplicationService(create_hackathon_orchestrator())
-        elif mode in {RuntimeMode.DEVELOPMENT, RuntimeMode.TEST}:
-            resolved = ChatApplicationService(create_development_orchestrator())
+    resolved = service or _default_service()
+    journeys = journey_provider or InMemoryDemoJourneyProvider()
+    app = FastAPI(title="History Pieces Reference Web Demo", debug=False)
+
+    @app.exception_handler(JourneyProviderError)
+    async def journey_error(_request: Request, error: JourneyProviderError):
+        return JSONResponse(
+            status_code=error.status_code,
+            content=_error(error.error_code, error.message, retryable=error.retryable),
+        )
+
+    @app.exception_handler(ValueError)
+    async def invalid_request(_request: Request, error: ValueError):
+        return JSONResponse(
+            status_code=400,
+            content=_error("invalid_request", str(error), retryable=False),
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(_request: Request, _error_value: RequestValidationError):
+        return JSONResponse(
+            status_code=422,
+            content=_error("invalid_payload", "요청 payload 형식이 올바르지 않습니다.", retryable=False),
+        )
+
+    @app.exception_handler(Exception)
+    async def internal_error(_request: Request, _error_value: Exception):
+        return JSONResponse(
+            status_code=500,
+            content=_error("internal_error", "요청을 처리하는 중 내부 오류가 발생했습니다.", retryable=True),
+        )
+
+    @app.get("/")
+    def index():
+        return FileResponse(STATIC_DIR / "index.html", media_type="text/html")
+
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+    @app.get("/health")
+    @app.get("/api/health")
+    def health():
+        return {
+            "status": "ok", "service": "history-pieces",
+            "chat_modes": [mode.value for mode in ConversationMode],
+        }
+
+    @app.post("/api/session")
+    def create_session(payload: dict[str, object] | None = None):
+        value = payload or {}
+        locale = str(value.get("locale", "ko"))
+        if not re.fullmatch(r"[A-Za-z]{2}(?:-[A-Za-z]{2})?", locale):
+            raise ValueError("locale 형식이 올바르지 않습니다.")
+        session = resolved.orchestrator.sessions.create(locale)
+        return journeys.create(session.session_id, locale).to_dict()
+
+    @app.get("/api/session/{session_id}")
+    def get_session(session_id: str):
+        _session_id(session_id)
+        return journeys.get(session_id).to_dict()
+
+    @app.post("/api/chat/piece")
+    def piece_chat(payload: dict[str, object]):
+        return _chat(resolved, journeys, payload, ConversationMode.PIECE_CHAT)
+
+    @app.post("/api/chat/free")
+    def free_chat(payload: dict[str, object]):
+        return _chat(resolved, journeys, payload, ConversationMode.FREE_CHAT)
+
+    @app.post("/api/chat/transition")
+    def transition(payload: dict[str, object]):
+        session_id = _session_id(str(payload.get("session_id", "")))
+        state = journeys.get(session_id)
+        from_mode = ConversationMode(str(payload.get("from_mode", state.chat_mode)))
+        to_value = str(payload.get("to_mode", ""))
+        if to_value == "game":
+            to_mode = ConversationMode.PIECE_CHAT
         else:
-            raise RuntimeError(
-                "production API는 실제 원격 LLM과 approved_for_rag 인덱스를 명시적으로 주입해야 합니다."
-            )
-    app = FastAPI(title="Mokpo History Development RAG")
+            to_mode = ConversationMode(to_value)
+        if from_mode == ConversationMode.PIECE_CHAT and to_mode == ConversationMode.FREE_CHAT:
+            action = "OPEN_FREE_CHAT"
+        elif from_mode == ConversationMode.FREE_CHAT and to_mode == ConversationMode.PIECE_CHAT:
+            action = "RETURN_TO_GAME"
+        else:
+            raise JourneyProviderError("invalid_transition", "지원하지 않는 mode transition입니다.", status_code=409)
+        updated = journeys.apply_action(session_id, action, payload)
+        return {
+            "request_state": "success", "action_code": action,
+            "game_state_mutation": False, "transition": payload.get("mode_transition"),
+            "session": updated.to_dict(),
+        }
 
+    @app.post("/api/journey/action")
+    def journey_action(payload: dict[str, object]):
+        session_id = _session_id(str(payload.get("session_id", "")))
+        action_code = str(payload.get("action_code", ""))
+        if not action_code:
+            raise ValueError("action_code가 필요합니다.")
+        before = journeys.get(session_id).to_dict()
+        state = journeys.apply_action(session_id, action_code, payload)
+        changed = (
+            before["current_piece_id"] != state.current_piece_id
+            or before["completed_piece_ids"] != tuple(state.completed_piece_ids)
+        )
+        return {
+            "request_state": "success", "action_code": action_code,
+            "game_state_mutation": changed, "session": state.to_dict(),
+        }
+
+    # Backward-compatible generic API.
     @app.post("/api/chat")
     def chat(payload: dict[str, object]):
-        try:
-            return resolved.chat(payload)
-        except ValueError as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
+        return resolved.chat(payload)
 
     @app.post("/api/chat/stream")
     def stream(payload: dict[str, object]):
         def events():
             try:
                 for event in resolved.stream(payload):
-                    yield (
-                        f"event: {event.event}\n"
-                        f"data: {json.dumps(asdict(event)['data'], ensure_ascii=False)}\n\n"
-                    )
+                    yield f"event: {event.event}\ndata: {json.dumps(asdict(event)['data'], ensure_ascii=False)}\n\n"
             except ValueError as error:
-                yield f"event: error\ndata: {json.dumps({'message': str(error)}, ensure_ascii=False)}\n\n"
-
+                yield f"event: error\ndata: {json.dumps(_error('invalid_request', str(error), retryable=False), ensure_ascii=False)}\n\n"
         return StreamingResponse(events(), media_type="text/event-stream")
 
     @app.delete("/api/sessions/{session_id}")
     def reset(session_id: str):
+        _session_id(session_id)
         return resolved.reset(session_id)
-
-    @app.get("/api/health")
-    def health():
-        return resolved.health()
 
     @app.get("/api/readiness")
     def readiness():
         return resolved.readiness()
 
     return app
+
+
+def _default_service() -> ChatApplicationService:
+    mode = RuntimeMode.parse(os.getenv("APP_MODE", "development"))
+    if mode == RuntimeMode.HACKATHON:
+        return ChatApplicationService(create_hackathon_orchestrator())
+    if mode in {RuntimeMode.DEVELOPMENT, RuntimeMode.TEST}:
+        return ChatApplicationService(create_development_orchestrator())
+    raise RuntimeError("production API는 실제 원격 LLM과 approved_for_rag 인덱스를 명시적으로 주입해야 합니다.")
+
+
+def _chat(
+    service: ChatApplicationService, journeys: JourneyProvider,
+    payload: dict[str, object], mode: ConversationMode,
+) -> dict[str, object]:
+    session_id = _session_id(str(payload.get("session_id", "")))
+    state = journeys.get(session_id)
+    message = payload.get("user_message", payload.get("pending_user_question", ""))
+    if type(message) is not str or not message.strip():
+        raise ValueError("user_message 또는 pending_user_question이 필요합니다.")
+    if len(message) > MAX_MESSAGE_LENGTH:
+        raise ValueError(f"사용자 메시지는 {MAX_MESSAGE_LENGTH:,}자 이하여야 합니다.")
+    ui_state = payload.get("ui_state")
+    if ui_state is not None:
+        (PieceChatUiState if mode == ConversationMode.PIECE_CHAT else FreeChatUiState)(str(ui_state))
+    response = service.chat({
+        "user_query": message.strip(), "session_id": session_id,
+        "locale": str(payload.get("locale", state.locale)),
+        "conversation_mode": mode.value, "screen_type": mode.value,
+        "current_place_id": state.current_place_id,
+        "current_piece_id": state.current_piece_id,
+        "visited_piece_ids": tuple(state.completed_piece_ids),
+        "current_journey_step": state.current_journey_step,
+        "available_capabilities": state.available_capabilities,
+        "return_target": str(payload.get("return_target", "journey")),
+    })
+    state.temporary_context_state = list(dict.fromkeys(
+        state.temporary_context_state + list(response.get("context_state", ()))
+    ))
+    response["situation_id"] = response["primary_situation_id"]
+    response["piece_ui_state" if mode == ConversationMode.PIECE_CHAT else "free_ui_state"] = response["ui_state"]
+    return response
+
+
+def _session_id(value: str) -> str:
+    if not SESSION_PATTERN.fullmatch(value):
+        raise ValueError("session_id 형식이 올바르지 않습니다.")
+    return value
+
+
+def _error(error_code: str, message: str, *, retryable: bool) -> dict[str, object]:
+    return {
+        "error_code": error_code, "message": message,
+        "request_state": "error", "retryable": retryable, "details": {},
+    }

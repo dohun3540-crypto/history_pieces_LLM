@@ -13,6 +13,32 @@
 `suggested_questions`를 반환한다. 실제 provider가 없는 action은 실행 완료가 아니라
 capability 미지원 fallback이다.
 
+## Reference web demo endpoints
+
+- `GET /health`: 서비스 상태와 허용 chat mode
+- `POST /api/session`: ephemeral demo journey 생성
+- `GET /api/session/{session_id}`: 현재 demo 상태 조회
+- `POST /api/chat/piece`: provider 문맥으로 piece-chat 호출
+- `POST /api/chat/free`: provider 문맥으로 free-chat 호출
+- `POST /api/chat/transition`: `piece_chat → free_chat`, `free_chat → game` 전환
+- `POST /api/journey/action`: 명시적인 demo 여정 action 적용
+- `GET /`: offline reference UI
+- `GET /static/styles.css`, `GET /static/app.js`: package 정적 자산
+
+```json
+{"session_id":"<SESSION_ID>","user_message":"조금 피곤해요.","ui_state":"awaiting_reflection"}
+```
+
+```json
+{"session_id":"<SESSION_ID>","action_code":"GO_NEXT_PIECE"}
+```
+
+Client가 보낸 place/piece/completed 목록은 chat 근거로 신뢰하지 않고 demo provider의
+현재 상태를 service DTO로 전달한다. Chat 응답만으로는 상태를 변경하지 않는다.
+오류는 `error_code`, `message`, `request_state`, `retryable`, `details`를 반환하며,
+근거 부족은 HTTP 오류가 아닌 정상 `insufficient_evidence` 응답이다. 자세한 실행과 UI
+제약은 [WEB_UI.md](WEB_UI.md)를 참고한다.
+
 핵심 `ChatApplicationService`는 웹 프레임워크에 의존하지 않는다. FastAPI와
 uvicorn은 선택 의존성이다.
 

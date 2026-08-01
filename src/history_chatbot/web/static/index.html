@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>History Pieces — 기록새 대화 데모</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#piece-input">대화 입력으로 건너뛰기</a>
+  <header class="topbar">
+    <div><span class="eyebrow">MOKPO HISTORY DEMO</span><h1>History Pieces</h1></div>
+    <dl class="status-grid">
+      <div><dt>장소</dt><dd id="current-place">—</dd></div>
+      <div><dt>현재 조각</dt><dd id="current-piece">—</dd></div>
+      <div><dt>완료</dt><dd id="completed-count">0</dd></div>
+      <div><dt>서버</dt><dd id="server-status">연결 중</dd></div>
+      <div><dt>대화 모드</dt><dd id="chat-mode">piece_chat</dd></div>
+    </dl>
+  </header>
+
+  <main class="layout">
+    <section class="piece-card" aria-labelledby="piece-title">
+      <div class="piece-heading"><span>DEMO JOURNEY</span><span id="journey-step">초기화 중</span></div>
+      <h2 id="piece-title">현재 조각</h2>
+      <div class="image-placeholder" role="img" aria-label="옛 사진 오버레이 이미지 자리 표시자">
+        <span>IMAGE ASSET PLACEHOLDER</span>
+        <small>검증된 이미지 자산이 연결되지 않았습니다.</small>
+      </div>
+      <div class="journey-actions" aria-label="여정 동작">
+        <button type="button" data-action="SKIP_REFLECTION">감상 건너뛰기</button>
+        <button type="button" data-action="PAUSE_JOURNEY">잠시 쉬기</button>
+        <button type="button" data-action="GO_NEXT_PIECE" class="primary">다음 조각</button>
+      </div>
+    </section>
+
+    <section class="piece-chat" aria-labelledby="piece-chat-title">
+      <div class="chat-heading">
+        <div class="avatar-placeholder" role="img" aria-label="기록새 이미지 자리 표시자">기록새</div>
+        <div><span class="eyebrow">PIECE CHAT</span><h2 id="piece-chat-title">짧은 감상 대화</h2></div>
+      </div>
+      <div id="piece-response" class="bird-bubble" aria-live="polite">조각을 보고 어떤 느낌이 들었나요?</div>
+      <div class="quick-actions" aria-label="빠른 감상 선택">
+        <button type="button" data-quick="인상 깊었어요.">인상 깊었어</button>
+        <button type="button" data-quick="잘 모르겠어요.">잘 모르겠어</button>
+        <button type="button" data-quick="조금 피곤해요.">조금 피곤해</button>
+        <button type="button" data-quick="이 장소의 역사를 자세히 알려주세요.">더 자세히 알고 싶어</button>
+      </div>
+      <form id="piece-form" class="composer">
+        <label for="piece-input">감상 또는 질문</label>
+        <div><input id="piece-input" maxlength="2000" autocomplete="off"><button class="primary" type="submit">전송</button></div>
+      </form>
+      <button type="button" id="open-free-chat" class="text-button">기록새에게 자세히 물어보기</button>
+    </section>
+  </main>
+
+  <button type="button" id="floating-chat" class="floating-chat" aria-haspopup="dialog">기록새 자유대화 열기</button>
+
+  <div id="free-chat-backdrop" class="backdrop" hidden>
+    <section id="free-chat-panel" class="free-panel" role="dialog" aria-modal="true" aria-labelledby="free-chat-title" tabindex="-1">
+      <header>
+        <div><span class="eyebrow">FREE CHAT</span><h2 id="free-chat-title">기록새 자유대화</h2></div>
+        <button type="button" id="close-free-chat" aria-label="자유대화를 닫고 게임으로 돌아가기">닫기</button>
+      </header>
+      <p id="free-context" class="context-line"></p>
+      <div id="free-messages" class="messages" aria-live="polite"></div>
+      <div id="suggestions" class="quick-actions" aria-label="추천 질문"></div>
+      <form id="free-form" class="composer">
+        <label for="free-input">역사 질문 또는 자유대화</label>
+        <div><input id="free-input" maxlength="2000" autocomplete="off"><button class="primary" type="submit">전송</button></div>
+      </form>
+      <button type="button" id="citation-toggle" hidden aria-expanded="false" aria-controls="citation-panel">출처 보기</button>
+      <section id="citation-panel" class="citations" hidden aria-label="검색 출처"></section>
+    </section>
+  </div>
+
+  <div id="app-status" class="sr-status" aria-live="assertive"></div>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

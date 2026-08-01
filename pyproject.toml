@@ -21,6 +21,9 @@ history-chatbot = "history_chatbot.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+history_chatbot = ["web/static/*"]
+
 [tool.pytest.ini_options]
 addopts = "-q -p no:cacheprovider"
 testpaths = ["tests"]
