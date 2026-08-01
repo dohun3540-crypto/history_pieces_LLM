@@ -10,7 +10,7 @@ from history_chatbot.chat.session import SessionStore
 from history_chatbot.models.contract import ChatCompletionBackend
 from history_chatbot.models.factory import build_llm_from_environment
 from history_chatbot.retrieval.service import HybridRetrievalService, RetrievalConfig
-from history_chatbot.runtime import RuntimeMode
+from history_chatbot.runtime import ProductionNotReadyError, RuntimeMode
 
 
 def create_development_orchestrator(
@@ -204,3 +204,34 @@ class ChatApplicationService:
                 else ""
             ),
         }
+
+
+def create_production_service(
+    *,
+    retrieval_config_path: Path = Path("configs/retrieval.yaml"),
+    session_path: Path | None = Path(".runtime/production/sessions.json"),
+    environ: Mapping[str, str] | None = None,
+) -> ChatApplicationService:
+    """Assemble production dependencies without building indexes or probing the LLM."""
+
+    mode = RuntimeMode.PRODUCTION
+    config = RetrievalConfig.load(retrieval_config_path)
+    if RuntimeMode.parse(config.runtime_mode) != mode:
+        raise ValueError("production service에는 production retrieval 설정이 필요합니다.")
+    retrieval = HybridRetrievalService(config)
+    index_errors = retrieval.validate_index()
+    if index_errors:
+        raise ProductionNotReadyError(
+            "production retrieval index가 준비되지 않았습니다: "
+            + "; ".join(index_errors)
+        )
+    llm = build_llm_from_environment(mode, environ=environ)
+    sessions = SessionStore(mode, path=session_path)
+    orchestrator = ConversationalRagOrchestrator(
+        retrieval,
+        llm,
+        sessions,
+        mode=mode,
+        max_chunks_per_document=config.max_chunks_per_document,
+    )
+    return ChatApplicationService(orchestrator)

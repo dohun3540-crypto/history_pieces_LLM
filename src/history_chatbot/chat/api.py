@@ -24,6 +24,7 @@ from history_chatbot.chat.demo_journey import (
 from history_chatbot.chat.service import (
     ChatApplicationService, create_development_orchestrator,
     create_hackathon_orchestrator,
+    create_production_service,
 )
 from history_chatbot.dialogue.modes import ConversationMode
 from history_chatbot.dialogue.track_models import FreeChatUiState, PieceChatUiState
@@ -186,7 +187,7 @@ def _default_service() -> ChatApplicationService:
         return ChatApplicationService(create_hackathon_orchestrator())
     if mode in {RuntimeMode.DEVELOPMENT, RuntimeMode.TEST}:
         return ChatApplicationService(create_development_orchestrator())
-    raise RuntimeError("production API는 실제 원격 LLM과 approved_for_rag 인덱스를 명시적으로 주입해야 합니다.")
+    return create_production_service()
 
 
 def _chat(
