@@ -30,6 +30,9 @@ class RetrievalConfig:
     backend: str = "local_json"
     embedding_model: str = "hashing-v1"
     embedding_revision: str = "builtin"
+    normalize_embeddings: bool = True
+    query_prefix: str = ""
+    passage_prefix: str = ""
     sparse_model: str = "bm25"
     reranker_model: str = "none"
     dense_top_k: int = 12
@@ -38,6 +41,7 @@ class RetrievalConfig:
     minimum_score: float = 0.20
     minimum_dense_score: float = 0.72
     max_chunks_per_document: int = 2
+    rrf_k: int = 10
     local_storage_path: Path = Path("data/retrieval_index")
     index_ready_path: Path = Path("data/index_ready")
     runtime_mode: str = "production"
@@ -65,6 +69,7 @@ class RetrievalConfig:
             "sparse_top_k",
             "final_top_k",
             "max_chunks_per_document",
+            "rrf_k",
         ):
             if getattr(self, name) <= 0:
                 raise ValueError(f"{name}은 양수여야 합니다.")
@@ -84,8 +89,10 @@ class RetrievalConfig:
                 continue
             key, raw_value = (part.strip() for part in line.split(":", 1))
             value = raw_value.strip('"')
-            if key in {"dense_top_k", "sparse_top_k", "final_top_k", "max_chunks_per_document"}:
+            if key in {"dense_top_k", "sparse_top_k", "final_top_k", "max_chunks_per_document", "rrf_k"}:
                 values[key] = int(value)
+            elif key == "normalize_embeddings":
+                values[key] = value.lower() == "true"
             elif key in {"minimum_score", "minimum_dense_score"}:
                 values[key] = float(value)
             elif key in {"local_storage_path", "index_ready_path"}:
@@ -345,9 +352,13 @@ class HybridRetrievalService:
             errors.append("임베딩 모델 ID가 검색 인덱스와 일치하지 않습니다.")
         if metadata.get("revision") != self.encoder.revision:
             errors.append("임베딩 모델 revision이 검색 인덱스와 일치하지 않습니다.")
-        if metadata.get("dimension") != self.encoder.dimension:
+        if "dimension" not in metadata and self.encoder.model_id != "hashing-v1":
+            errors.append("임베딩 차원 metadata가 없어 실제 모델 인덱스를 거부합니다.")
+        elif "dimension" in metadata and metadata.get("dimension") != self.encoder.dimension:
             errors.append("임베딩 차원이 검색 인덱스와 일치하지 않습니다.")
-        if metadata.get("normalization") != bool(getattr(self.encoder, "normalize_embeddings", True)):
+        if "normalization" not in metadata and self.encoder.model_id != "hashing-v1":
+            errors.append("임베딩 정규화 metadata가 없어 실제 모델 인덱스를 거부합니다.")
+        elif "normalization" in metadata and metadata.get("normalization") != bool(getattr(self.encoder, "normalize_embeddings", True)):
             errors.append("임베딩 정규화 정책이 검색 인덱스와 일치하지 않습니다.")
         try:
             _, current_snapshot = self._reader().load()
@@ -368,7 +379,7 @@ class HybridRetrievalService:
         sparse = BM25Searcher(self.store.chunks()).search(
             query.normalized, self.config.sparse_top_k
         )
-        fused = reciprocal_rank_fusion(dense, sparse)
+        fused = reciprocal_rank_fusion(dense, sparse, rank_constant=self.config.rrf_k)
         reranked = self.reranker.rerank(query.normalized, fused)
         return apply_thresholds(
             query,
@@ -394,10 +405,25 @@ class HybridRetrievalService:
 
     def _index_metadata(self, chunks: list[RetrievalChunk]) -> dict[str, Any]:
         embedding = {
+            "schema_version": 1,
+            "embedding_backend": (
+                "hashing" if self.encoder.model_id == "hashing-v1" else "sentence-transformers"
+            ),
+            "model_name": self.encoder.model_id,
+            "model_revision": self.encoder.revision,
             "dimension": self.encoder.dimension,
+            "embedding_dimension": self.encoder.dimension,
             "normalization": bool(getattr(self.encoder, "normalize_embeddings", True)),
+            "normalized": bool(getattr(self.encoder, "normalize_embeddings", True)),
             "query_prefix": str(getattr(self.encoder, "query_prefix", "")),
             "passage_prefix": str(getattr(self.encoder, "passage_prefix", "")),
+            "chunk_count": len(chunks),
+            "document_count": len({chunk.document_id for chunk in chunks}),
+            "data_lane": (
+                "provisional_hackathon"
+                if self.runtime_mode == RuntimeMode.HACKATHON
+                else self.runtime_mode.value
+            ),
         }
         if self.runtime_mode != RuntimeMode.HACKATHON:
             return {"mode": self.runtime_mode.value, **embedding}
@@ -411,6 +437,7 @@ class HybridRetrievalService:
             "mode": "hackathon",
             "provisional_document_count": len(source_ids),
             "provisional_chunk_count": len(chunks),
+            "corpus_fingerprint": self._reader().load()[1],
             "rights_scope": "unconfirmed_noncommercial_demo",
             "removable_source_ids": source_ids,
             **embedding,

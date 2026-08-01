@@ -83,7 +83,10 @@ class SentenceTransformerEncoder(DenseEncoder):
                     "임베딩 모델이 로컬 캐시에 없습니다. 자동 다운로드하지 않습니다."
                 ) from error
         self.model = model
-        self.dimension = int(model.get_sentence_embedding_dimension())
+        dimension_getter = getattr(model, "get_embedding_dimension", None)
+        self.dimension = int(
+            dimension_getter() if dimension_getter else model.get_sentence_embedding_dimension()
+        )
 
     def encode(self, texts: Sequence[str], *, is_query: bool) -> list[list[float]]:
         prefix = self.query_prefix if is_query else self.passage_prefix

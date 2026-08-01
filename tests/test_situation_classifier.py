@@ -67,3 +67,9 @@ def test_screen_context_selects_intro() -> None:
 def test_journey_summary_is_not_misclassified_as_style_only() -> None:
     result = classify("지금까지 본 거 정리해 줘.")
     assert result.primary_situation_id == SituationId.JOURNEY_CONTEXT_QUESTION
+
+
+def test_chinese_question_punctuation_routes_to_fact_rag() -> None:
+    result = classify("木浦港是哪一年开放的？", locale="zh-CN")
+    assert result.primary_situation_id == SituationId.HISTORY_FACT_QUESTION
+    assert result.requires_rag

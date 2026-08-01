@@ -1,0 +1,4032 @@
+{
+  "generated_at": "2026-08-01T16:37:59+0900",
+  "environment": {
+    "python": "3.13.9",
+    "torch": "2.13.0+cpu",
+    "sentence_transformers": "5.6.1",
+    "transformers": "5.14.1",
+    "huggingface_hub": "1.26.0",
+    "device": "cpu",
+    "cuda_available": false,
+    "cpu_count": 16
+  },
+  "model": {
+    "name": "intfloat/multilingual-e5-small",
+    "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+    "dimension": 384,
+    "normalized": true,
+    "query_prefix": "query: ",
+    "passage_prefix": "passage: ",
+    "cache_path": "C:\\projects\\history_pieces_LLM\\.runtime\\model_cache\\huggingface",
+    "cache_bytes": 493385465,
+    "cache_file_count": 14
+  },
+  "indexing": {
+    "model_load_seconds": 4.0078,
+    "total_build_seconds": 17.8062,
+    "embedding_seconds": 17.6951,
+    "average_embedding_ms_per_chunk": 133.0455,
+    "index_save_seconds_estimate": 0.1112,
+    "index_path": "C:\\projects\\history_pieces_LLM\\.runtime\\indexes\\hackathon\\e5\\intfloat--multilingual-e5-small--614241f622f53c4eeff9890bdc4f31cfecc418b3.json",
+    "index_bytes": 1964474,
+    "source_snapshot": "f72eeb7abfa3f51cfe0d4a3fef73a89a953b9783201f72bd7dbf03798d8c75af",
+    "corpus_sha256": "9a2c644b1138521ffa43b60e032cde7e64f864cc3f3508979c229e390a73b535",
+    "integrity": {
+      "vector_count": 133,
+      "dimension": 384,
+      "nan_or_inf": 0,
+      "empty_vectors": 0,
+      "duplicate_chunk_ids": 0,
+      "missing_source_ids": 0,
+      "document_count": 48,
+      "data_lanes": [
+        "provisional_hackathon"
+      ],
+      "source_snapshot_matches": true
+    },
+    "metadata": {
+      "format_version": 1,
+      "model_id": "intfloat/multilingual-e5-small",
+      "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+      "source_snapshot": "f72eeb7abfa3f51cfe0d4a3fef73a89a953b9783201f72bd7dbf03798d8c75af",
+      "chunk_count": 133,
+      "index_version": 4,
+      "created_at": "2026-08-01T07:37:21.483398+00:00",
+      "mode": "hackathon",
+      "provisional_document_count": 48,
+      "provisional_chunk_count": 133,
+      "corpus_fingerprint": "f72eeb7abfa3f51cfe0d4a3fef73a89a953b9783201f72bd7dbf03798d8c75af",
+      "rights_scope": "unconfirmed_noncommercial_demo",
+      "removable_source_ids": [
+        "mokpo-0153d5872f6e7641",
+        "mokpo-1750a1cfa79fab5a",
+        "mokpo-18d96912fc28a3db",
+        "mokpo-20db4fc2c2312e14",
+        "mokpo-22d77ef3c4b2ba67",
+        "mokpo-2526b988706c03a0",
+        "mokpo-35348ffad10c1e7e",
+        "mokpo-38b34c3919f62dca",
+        "mokpo-51d42bd7a801d43e",
+        "mokpo-5229c02607df2eb7",
+        "mokpo-5c3f20e281a8ba2e",
+        "mokpo-5f94d78e5c1dee83",
+        "mokpo-6db453b44e5542e8",
+        "mokpo-734d3600faeb5b6f",
+        "mokpo-74abf5b9e7926710",
+        "mokpo-769ddbe4e396c295",
+        "mokpo-7d40b14bc5bcf402",
+        "mokpo-7d91c9299f4a0a5e",
+        "mokpo-7e74b49138e96a23",
+        "mokpo-892e377f1b386bc3",
+        "mokpo-8968fb476d00af54",
+        "mokpo-8b05432001f808e3",
+        "mokpo-8fb91a85a5d424e0",
+        "mokpo-96c136dd1a1646f6",
+        "mokpo-986674eb2bd1c7f5",
+        "mokpo-9f4738c00aa939d3",
+        "mokpo-a0bf638bbff6150f",
+        "mokpo-a2902242a8ddd255",
+        "mokpo-a50452bd9b1092c3",
+        "mokpo-a8239c7aff510fb6",
+        "mokpo-b03f5c51698a91a1",
+        "mokpo-b7b7ff7f8f595f4f",
+        "mokpo-bb622fcc32f9cbc6",
+        "mokpo-bc9c4b22a73fbe18",
+        "mokpo-c2649df7ecb6e519",
+        "mokpo-d0874b62634939fc",
+        "mokpo-d0cbcd39dd5857a1",
+        "mokpo-daa4dbb46b5a852b",
+        "mokpo-daa68d43d5a6e033",
+        "mokpo-ddc83264e2374af8",
+        "mokpo-e57c652e21032af1",
+        "mokpo-e6af4186c355bbf8",
+        "mokpo-e868f61e15971e27",
+        "mokpo-e99d0df6973f0c4d",
+        "mokpo-efcab37ddf9a442b",
+        "mokpo-fe255cf642165ba2",
+        "mokpo-fe824fed5263b296",
+        "mokpo-ff314916d24c0cb5"
+      ],
+      "schema_version": 1,
+      "embedding_backend": "sentence-transformers",
+      "model_name": "intfloat/multilingual-e5-small",
+      "model_revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+      "dimension": 384,
+      "embedding_dimension": 384,
+      "normalization": true,
+      "normalized": true,
+      "query_prefix": "query: ",
+      "passage_prefix": "passage: ",
+      "document_count": 48,
+      "data_lane": "provisional_hackathon"
+    },
+    "hashing_index_path": "C:\\projects\\history_pieces_LLM\\.runtime\\indexes\\hackathon\\hashing-v1--builtin.json",
+    "hashing_index_bytes": 1780424
+  },
+  "evaluation_fixture": "tests\\fixtures\\retrieval\\multilingual_e5_evaluation.json",
+  "evaluation_case_count": 30,
+  "evaluations": [
+    {
+      "backend": "bm25_only",
+      "metrics": {
+        "recall_at_1": 0.35,
+        "recall_at_3": 0.5,
+        "recall_at_5": 0.55,
+        "source_recall_at_1": 0.45,
+        "source_recall_at_3": 0.5,
+        "source_recall_at_5": 0.55,
+        "mrr": 0.4267,
+        "no_evidence_precision": 0.3,
+        "unrelated_rejection_rate": 0.4,
+        "insufficient_rejection_rate": 0.2,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.7,
+        "ko_recall_at_3": 0.9,
+        "ko_recall_at_5": 1.0,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.1,
+        "average_latency_ms": 10.951,
+        "p95_latency_ms": 22.183,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      },
+      "cases": [
+        {
+          "case_id": "ko_open_port",
+          "locale": "ko",
+          "query": "목포는 언제 개항했나요?",
+          "returned_chunk_ids": [
+            "mokpo-e6af4186c355bbf8::provisional-0003",
+            "mokpo-986674eb2bd1c7f5::provisional-0002",
+            "mokpo-c2649df7ecb6e519::provisional-0001",
+            "mokpo-1750a1cfa79fab5a::provisional-0002",
+            "mokpo-1750a1cfa79fab5a::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-e6af4186c355bbf8",
+            "mokpo-986674eb2bd1c7f5",
+            "mokpo-c2649df7ecb6e519",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-1750a1cfa79fab5a"
+          ],
+          "scores": [
+            8.341393,
+            5.029296,
+            3.022346,
+            2.996721,
+            2.979877
+          ],
+          "first_relevant_rank": 5,
+          "refused": false,
+          "latency_ms": 21.827
+        },
+        {
+          "case_id": "ko_railway",
+          "locale": "ko",
+          "query": "호남선 철도는 목포에서 언제 개통했나요?",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0005",
+            "mokpo-1750a1cfa79fab5a::provisional-0002",
+            "mokpo-e6af4186c355bbf8::provisional-0001",
+            "mokpo-e57c652e21032af1::provisional-0000",
+            "mokpo-bc9c4b22a73fbe18::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-e6af4186c355bbf8",
+            "mokpo-e57c652e21032af1",
+            "mokpo-bc9c4b22a73fbe18"
+          ],
+          "scores": [
+            17.695173,
+            16.191393,
+            15.832435,
+            11.149779,
+            10.866569
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 18.538
+        },
+        {
+          "case_id": "ko_kim_oksil",
+          "locale": "ko",
+          "query": "김옥실은 어떤 독립운동에 참여했나요?",
+          "returned_chunk_ids": [
+            "mokpo-a50452bd9b1092c3::provisional-0000",
+            "mokpo-a50452bd9b1092c3::provisional-0001",
+            "mokpo-9f4738c00aa939d3::provisional-0000",
+            "mokpo-a8239c7aff510fb6::provisional-0000",
+            "mokpo-7d40b14bc5bcf402::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-a50452bd9b1092c3",
+            "mokpo-a50452bd9b1092c3",
+            "mokpo-9f4738c00aa939d3",
+            "mokpo-a8239c7aff510fb6",
+            "mokpo-7d40b14bc5bcf402"
+          ],
+          "scores": [
+            20.468212,
+            13.15929,
+            13.158592,
+            10.90378,
+            9.944675
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 14.579
+        },
+        {
+          "case_id": "ko_park_aesun",
+          "locale": "ko",
+          "query": "박애순의 출신지와 운동계열은 무엇인가요?",
+          "returned_chunk_ids": [
+            "mokpo-7e74b49138e96a23::provisional-0000",
+            "mokpo-d0cbcd39dd5857a1::provisional-0000",
+            "mokpo-7e74b49138e96a23::provisional-0001",
+            "mokpo-986674eb2bd1c7f5::provisional-0000",
+            "mokpo-e99d0df6973f0c4d::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-7e74b49138e96a23",
+            "mokpo-d0cbcd39dd5857a1",
+            "mokpo-7e74b49138e96a23",
+            "mokpo-986674eb2bd1c7f5",
+            "mokpo-e99d0df6973f0c4d"
+          ],
+          "scores": [
+            21.311884,
+            13.762941,
+            10.454113,
+            9.738183,
+            9.628008
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 17.647
+        },
+        {
+          "case_id": "ko_bunker",
+          "locale": "ko",
+          "query": "구 목포부청 서고와 방공호는 어떤 문화유산인가요?",
+          "returned_chunk_ids": [
+            "mokpo-892e377f1b386bc3::provisional-0000",
+            "mokpo-892e377f1b386bc3::provisional-0001",
+            "mokpo-ff314916d24c0cb5::provisional-0003",
+            "mokpo-fe255cf642165ba2::provisional-0003",
+            "mokpo-b03f5c51698a91a1::provisional-0003"
+          ],
+          "returned_source_ids": [
+            "mokpo-892e377f1b386bc3",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-fe255cf642165ba2",
+            "mokpo-b03f5c51698a91a1"
+          ],
+          "scores": [
+            36.875409,
+            36.473056,
+            9.565204,
+            9.425565,
+            9.228658
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 19.802
+        },
+        {
+          "case_id": "ko_house",
+          "locale": "ko",
+          "query": "목포 번화로 일본식 가옥의 층수와 면적은 얼마인가요?",
+          "returned_chunk_ids": [
+            "mokpo-fe255cf642165ba2::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000",
+            "mokpo-e868f61e15971e27::provisional-0000",
+            "mokpo-1750a1cfa79fab5a::provisional-0002",
+            "mokpo-e6af4186c355bbf8::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-fe255cf642165ba2",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-e868f61e15971e27",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-e6af4186c355bbf8"
+          ],
+          "scores": [
+            24.547082,
+            24.294668,
+            12.995526,
+            9.815426,
+            8.930858
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 18.356
+        },
+        {
+          "case_id": "ko_customs",
+          "locale": "ko",
+          "query": "구 목포세관 본관 터와 창고에 관한 자료는 어디에 있나요?",
+          "returned_chunk_ids": [
+            "mokpo-b03f5c51698a91a1::provisional-0002",
+            "mokpo-b03f5c51698a91a1::provisional-0000",
+            "mokpo-e868f61e15971e27::provisional-0000",
+            "mokpo-e6af4186c355bbf8::provisional-0003",
+            "mokpo-a0bf638bbff6150f::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-e868f61e15971e27",
+            "mokpo-e6af4186c355bbf8",
+            "mokpo-a0bf638bbff6150f"
+          ],
+          "scores": [
+            26.579035,
+            26.499077,
+            4.548386,
+            4.291488,
+            4.211853
+          ],
+          "first_relevant_rank": 2,
+          "refused": false,
+          "latency_ms": 20.008
+        },
+        {
+          "case_id": "ko_hwashin",
+          "locale": "ko",
+          "query": "구 목포화신 연쇄점은 어떤 등록문화유산인가요?",
+          "returned_chunk_ids": [
+            "mokpo-e868f61e15971e27::provisional-0000",
+            "mokpo-892e377f1b386bc3::provisional-0000",
+            "mokpo-892e377f1b386bc3::provisional-0001",
+            "mokpo-ff314916d24c0cb5::provisional-0001",
+            "mokpo-2526b988706c03a0::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-e868f61e15971e27",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-2526b988706c03a0"
+          ],
+          "scores": [
+            51.507639,
+            19.217547,
+            19.007861,
+            18.742015,
+            18.681719
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 18.639
+        },
+        {
+          "case_id": "ko_name_origin",
+          "locale": "ko",
+          "query": "목포라는 지명은 어디에서 유래했다는 설이 있나요?",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-1750a1cfa79fab5a::provisional-0004",
+            "mokpo-e6af4186c355bbf8::provisional-0001",
+            "mokpo-ddc83264e2374af8::provisional-0000",
+            "mokpo-986674eb2bd1c7f5::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-e6af4186c355bbf8",
+            "mokpo-ddc83264e2374af8",
+            "mokpo-986674eb2bd1c7f5"
+          ],
+          "scores": [
+            20.993889,
+            18.460652,
+            9.419658,
+            7.925604,
+            6.729993
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 22.183
+        },
+        {
+          "case_id": "ko_city_1932",
+          "locale": "ko",
+          "query": "1932년 목포의 행정구역과 도시 규모는 어떻게 변했나요?",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-1750a1cfa79fab5a::provisional-0002",
+            "mokpo-5f94d78e5c1dee83::provisional-0000",
+            "mokpo-0153d5872f6e7641::provisional-0002",
+            "mokpo-7d91c9299f4a0a5e::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-5f94d78e5c1dee83",
+            "mokpo-0153d5872f6e7641",
+            "mokpo-7d91c9299f4a0a5e"
+          ],
+          "scores": [
+            20.771424,
+            13.741236,
+            6.354023,
+            5.871273,
+            5.755994
+          ],
+          "first_relevant_rank": 2,
+          "refused": false,
+          "latency_ms": 17.947
+        },
+        {
+          "case_id": "zh_open_port",
+          "locale": "zh-CN",
+          "query": "木浦港是哪一年开放的？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 0.036
+        },
+        {
+          "case_id": "zh_railway",
+          "locale": "zh-CN",
+          "query": "湖南线铁路什么时候通到木浦？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 0.019
+        },
+        {
+          "case_id": "zh_kim_oksil",
+          "locale": "zh-CN",
+          "query": "金玉实参加了什么独立运动？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 0.014
+        },
+        {
+          "case_id": "zh_park_aesun",
+          "locale": "zh-CN",
+          "query": "朴爱顺的出生地和独立运动类别是什么？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 0.014
+        },
+        {
+          "case_id": "zh_bunker",
+          "locale": "zh-CN",
+          "query": "旧木浦府厅书库和防空洞是什么文化遗产？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 0.014
+        },
+        {
+          "case_id": "zh_house",
+          "locale": "zh-CN",
+          "query": "木浦繁华路日本式住宅有几层，面积多大？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 0.013
+        },
+        {
+          "case_id": "zh_customs",
+          "locale": "zh-CN",
+          "query": "哪里有关于旧木浦海关本馆遗址和仓库的资料？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 0.015
+        },
+        {
+          "case_id": "zh_hwashin",
+          "locale": "zh-CN",
+          "query": "旧木浦和信连锁店是什么登记文化遗产？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 0.013
+        },
+        {
+          "case_id": "zh_name_origin",
+          "locale": "zh-CN",
+          "query": "木浦这个地名据说来源于哪里？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 0.013
+        },
+        {
+          "case_id": "zh_city_1932",
+          "locale": "zh-CN",
+          "query": "1932年木浦的行政区域和城市规模发生了什么变化？",
+          "returned_chunk_ids": [
+            "mokpo-0153d5872f6e7641::provisional-0003",
+            "mokpo-38b34c3919f62dca::provisional-0002",
+            "mokpo-1750a1cfa79fab5a::provisional-0005"
+          ],
+          "returned_source_ids": [
+            "mokpo-0153d5872f6e7641",
+            "mokpo-38b34c3919f62dca",
+            "mokpo-1750a1cfa79fab5a"
+          ],
+          "scores": [
+            5.095283,
+            3.207409,
+            3.132434
+          ],
+          "first_relevant_rank": 3,
+          "refused": false,
+          "latency_ms": 15.266
+        },
+        {
+          "case_id": "unrelated_astronaut",
+          "locale": "ko",
+          "query": "목포 출신 최초의 우주비행사는 누구인가요?",
+          "returned_chunk_ids": [
+            "mokpo-20db4fc2c2312e14::provisional-0000",
+            "mokpo-bc9c4b22a73fbe18::provisional-0002",
+            "mokpo-e6af4186c355bbf8::provisional-0000",
+            "mokpo-bc9c4b22a73fbe18::provisional-0001",
+            "mokpo-a2902242a8ddd255::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-20db4fc2c2312e14",
+            "mokpo-bc9c4b22a73fbe18",
+            "mokpo-e6af4186c355bbf8",
+            "mokpo-bc9c4b22a73fbe18",
+            "mokpo-a2902242a8ddd255"
+          ],
+          "scores": [
+            14.456939,
+            10.249628,
+            7.473954,
+            4.428531,
+            4.193667
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 16.576
+        },
+        {
+          "case_id": "unrelated_quantum",
+          "locale": "ko",
+          "query": "양자컴퓨터의 큐비트 오류 정정 방법은?",
+          "returned_chunk_ids": [
+            "mokpo-a8239c7aff510fb6::provisional-0001",
+            "mokpo-e57c652e21032af1::provisional-0001",
+            "mokpo-20db4fc2c2312e14::provisional-0002",
+            "mokpo-0153d5872f6e7641::provisional-0003",
+            "mokpo-51d42bd7a801d43e::provisional-0002"
+          ],
+          "returned_source_ids": [
+            "mokpo-a8239c7aff510fb6",
+            "mokpo-e57c652e21032af1",
+            "mokpo-20db4fc2c2312e14",
+            "mokpo-0153d5872f6e7641",
+            "mokpo-51d42bd7a801d43e"
+          ],
+          "scores": [
+            5.465123,
+            4.474847,
+            1.4293,
+            1.420605,
+            1.344921
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 15.857
+        },
+        {
+          "case_id": "unrelated_paris",
+          "locale": "zh-CN",
+          "query": "巴黎埃菲尔铁塔有多高？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 0.038
+        },
+        {
+          "case_id": "unrelated_dinosaur",
+          "locale": "zh-CN",
+          "query": "霸王龙生活在什么年代？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 0.017
+        },
+        {
+          "case_id": "unrelated_recipe",
+          "locale": "ko",
+          "query": "파스타 카르보나라 조리법을 알려줘",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0000",
+            "mokpo-74abf5b9e7926710::provisional-0000",
+            "mokpo-5229c02607df2eb7::provisional-0000",
+            "mokpo-734d3600faeb5b6f::provisional-0000",
+            "mokpo-a8239c7aff510fb6::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-74abf5b9e7926710",
+            "mokpo-5229c02607df2eb7",
+            "mokpo-734d3600faeb5b6f",
+            "mokpo-a8239c7aff510fb6"
+          ],
+          "scores": [
+            4.00279,
+            3.888731,
+            3.841876,
+            3.732748,
+            3.647404
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 16.838
+        },
+        {
+          "case_id": "insufficient_house_architect",
+          "locale": "ko",
+          "query": "목포 번화로 일본식 가옥을 설계한 건축가는 누구인가요?",
+          "returned_chunk_ids": [
+            "mokpo-fe255cf642165ba2::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000",
+            "mokpo-e868f61e15971e27::provisional-0000",
+            "mokpo-fe255cf642165ba2::provisional-0001",
+            "mokpo-892e377f1b386bc3::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-fe255cf642165ba2",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-e868f61e15971e27",
+            "mokpo-fe255cf642165ba2",
+            "mokpo-892e377f1b386bc3"
+          ],
+          "scores": [
+            22.019907,
+            21.79348,
+            10.512213,
+            6.583437,
+            5.476401
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 24.721
+        },
+        {
+          "case_id": "insufficient_bunker_depth",
+          "locale": "ko",
+          "query": "구 목포부청 방공호의 정확한 지하 깊이는 몇 미터인가요?",
+          "returned_chunk_ids": [
+            "mokpo-892e377f1b386bc3::provisional-0000",
+            "mokpo-892e377f1b386bc3::provisional-0001",
+            "mokpo-5f94d78e5c1dee83::provisional-0000",
+            "mokpo-9f4738c00aa939d3::provisional-0000",
+            "mokpo-e6af4186c355bbf8::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-892e377f1b386bc3",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-5f94d78e5c1dee83",
+            "mokpo-9f4738c00aa939d3",
+            "mokpo-e6af4186c355bbf8"
+          ],
+          "scores": [
+            24.447023,
+            24.180278,
+            6.470074,
+            6.456658,
+            6.337291
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 21.582
+        },
+        {
+          "case_id": "insufficient_customs_architect",
+          "locale": "zh-CN",
+          "query": "旧木浦海关仓库的建筑师是谁？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 0.096
+        },
+        {
+          "case_id": "insufficient_rail_passengers",
+          "locale": "zh-CN",
+          "query": "1914年木浦站每天有多少乘客？",
+          "returned_chunk_ids": [
+            "mokpo-38b34c3919f62dca::provisional-0000",
+            "mokpo-8fb91a85a5d424e0::provisional-0000",
+            "mokpo-1750a1cfa79fab5a::provisional-0005"
+          ],
+          "returned_source_ids": [
+            "mokpo-38b34c3919f62dca",
+            "mokpo-8fb91a85a5d424e0",
+            "mokpo-1750a1cfa79fab5a"
+          ],
+          "scores": [
+            3.888731,
+            3.612011,
+            3.132434
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 13.827
+        },
+        {
+          "case_id": "insufficient_kim_oksil_quote",
+          "locale": "ko",
+          "query": "김옥실이 재판에서 직접 한 말을 정확히 인용해 주세요.",
+          "returned_chunk_ids": [
+            "mokpo-7d40b14bc5bcf402::provisional-0001",
+            "mokpo-74abf5b9e7926710::provisional-0001",
+            "mokpo-5c3f20e281a8ba2e::provisional-0002",
+            "mokpo-a50452bd9b1092c3::provisional-0001",
+            "mokpo-892e377f1b386bc3::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-7d40b14bc5bcf402",
+            "mokpo-74abf5b9e7926710",
+            "mokpo-5c3f20e281a8ba2e",
+            "mokpo-a50452bd9b1092c3",
+            "mokpo-892e377f1b386bc3"
+          ],
+          "scores": [
+            17.412214,
+            15.062718,
+            12.655497,
+            11.664676,
+            9.20416
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 14.026
+        }
+      ]
+    },
+    {
+      "backend": "hashing_dense_only",
+      "metrics": {
+        "recall_at_1": 0.05,
+        "recall_at_3": 0.05,
+        "recall_at_5": 0.05,
+        "source_recall_at_1": 0.05,
+        "source_recall_at_3": 0.05,
+        "source_recall_at_5": 0.05,
+        "mrr": 0.05,
+        "no_evidence_precision": 1.0,
+        "unrelated_rejection_rate": 1.0,
+        "insufficient_rejection_rate": 1.0,
+        "zh_cross_language_success_at_3": 0.0,
+        "zh_source_success_at_3": 0.0,
+        "ko_recall_at_1": 0.1,
+        "ko_recall_at_3": 0.1,
+        "ko_recall_at_5": 0.1,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.0,
+        "zh_recall_at_5": 0.0,
+        "average_latency_ms": 37.985,
+        "p95_latency_ms": 50.386,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      },
+      "cases": [
+        {
+          "case_id": "ko_open_port",
+          "locale": "ko",
+          "query": "목포는 언제 개항했나요?",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 45.87
+        },
+        {
+          "case_id": "ko_railway",
+          "locale": "ko",
+          "query": "호남선 철도는 목포에서 언제 개통했나요?",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 39.969
+        },
+        {
+          "case_id": "ko_kim_oksil",
+          "locale": "ko",
+          "query": "김옥실은 어떤 독립운동에 참여했나요?",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 37.863
+        },
+        {
+          "case_id": "ko_park_aesun",
+          "locale": "ko",
+          "query": "박애순의 출신지와 운동계열은 무엇인가요?",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 38.198
+        },
+        {
+          "case_id": "ko_bunker",
+          "locale": "ko",
+          "query": "구 목포부청 서고와 방공호는 어떤 문화유산인가요?",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 38.353
+        },
+        {
+          "case_id": "ko_house",
+          "locale": "ko",
+          "query": "목포 번화로 일본식 가옥의 층수와 면적은 얼마인가요?",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 43.933
+        },
+        {
+          "case_id": "ko_customs",
+          "locale": "ko",
+          "query": "구 목포세관 본관 터와 창고에 관한 자료는 어디에 있나요?",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 39.186
+        },
+        {
+          "case_id": "ko_hwashin",
+          "locale": "ko",
+          "query": "구 목포화신 연쇄점은 어떤 등록문화유산인가요?",
+          "returned_chunk_ids": [
+            "mokpo-e868f61e15971e27::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000",
+            "mokpo-fe255cf642165ba2::provisional-0000",
+            "mokpo-b03f5c51698a91a1::provisional-0000",
+            "mokpo-892e377f1b386bc3::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-e868f61e15971e27",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-fe255cf642165ba2",
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-892e377f1b386bc3"
+          ],
+          "scores": [
+            0.325506,
+            0.256159,
+            0.255362,
+            0.227237,
+            0.217626
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 35.741
+        },
+        {
+          "case_id": "ko_name_origin",
+          "locale": "ko",
+          "query": "목포라는 지명은 어디에서 유래했다는 설이 있나요?",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 39.716
+        },
+        {
+          "case_id": "ko_city_1932",
+          "locale": "ko",
+          "query": "1932년 목포의 행정구역과 도시 규모는 어떻게 변했나요?",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 39.499
+        },
+        {
+          "case_id": "zh_open_port",
+          "locale": "zh-CN",
+          "query": "木浦港是哪一年开放的？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 29.672
+        },
+        {
+          "case_id": "zh_railway",
+          "locale": "zh-CN",
+          "query": "湖南线铁路什么时候通到木浦？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 28.477
+        },
+        {
+          "case_id": "zh_kim_oksil",
+          "locale": "zh-CN",
+          "query": "金玉实参加了什么独立运动？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 26.98
+        },
+        {
+          "case_id": "zh_park_aesun",
+          "locale": "zh-CN",
+          "query": "朴爱顺的出生地和独立运动类别是什么？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 27.971
+        },
+        {
+          "case_id": "zh_bunker",
+          "locale": "zh-CN",
+          "query": "旧木浦府厅书库和防空洞是什么文化遗产？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 27.145
+        },
+        {
+          "case_id": "zh_house",
+          "locale": "zh-CN",
+          "query": "木浦繁华路日本式住宅有几层，面积多大？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 30.142
+        },
+        {
+          "case_id": "zh_customs",
+          "locale": "zh-CN",
+          "query": "哪里有关于旧木浦海关本馆遗址和仓库的资料？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 32.735
+        },
+        {
+          "case_id": "zh_hwashin",
+          "locale": "zh-CN",
+          "query": "旧木浦和信连锁店是什么登记文化遗产？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 33.354
+        },
+        {
+          "case_id": "zh_name_origin",
+          "locale": "zh-CN",
+          "query": "木浦这个地名据说来源于哪里？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 31.47
+        },
+        {
+          "case_id": "zh_city_1932",
+          "locale": "zh-CN",
+          "query": "1932年木浦的行政区域和城市规模发生了什么变化？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 41.819
+        },
+        {
+          "case_id": "unrelated_astronaut",
+          "locale": "ko",
+          "query": "목포 출신 최초의 우주비행사는 누구인가요?",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 46.49
+        },
+        {
+          "case_id": "unrelated_quantum",
+          "locale": "ko",
+          "query": "양자컴퓨터의 큐비트 오류 정정 방법은?",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 53.516
+        },
+        {
+          "case_id": "unrelated_paris",
+          "locale": "zh-CN",
+          "query": "巴黎埃菲尔铁塔有多高？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 30.149
+        },
+        {
+          "case_id": "unrelated_dinosaur",
+          "locale": "zh-CN",
+          "query": "霸王龙生活在什么年代？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 32.095
+        },
+        {
+          "case_id": "unrelated_recipe",
+          "locale": "ko",
+          "query": "파스타 카르보나라 조리법을 알려줘",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 45.836
+        },
+        {
+          "case_id": "insufficient_house_architect",
+          "locale": "ko",
+          "query": "목포 번화로 일본식 가옥을 설계한 건축가는 누구인가요?",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 50.386
+        },
+        {
+          "case_id": "insufficient_bunker_depth",
+          "locale": "ko",
+          "query": "구 목포부청 방공호의 정확한 지하 깊이는 몇 미터인가요?",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 43.766
+        },
+        {
+          "case_id": "insufficient_customs_architect",
+          "locale": "zh-CN",
+          "query": "旧木浦海关仓库的建筑师是谁？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 31.419
+        },
+        {
+          "case_id": "insufficient_rail_passengers",
+          "locale": "zh-CN",
+          "query": "1914年木浦站每天有多少乘客？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 49.908
+        },
+        {
+          "case_id": "insufficient_kim_oksil_quote",
+          "locale": "ko",
+          "query": "김옥실이 재판에서 직접 한 말을 정확히 인용해 주세요.",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 47.894
+        }
+      ]
+    },
+    {
+      "backend": "e5_dense_only",
+      "metrics": {
+        "recall_at_1": 0.45,
+        "recall_at_3": 0.5,
+        "recall_at_5": 0.6,
+        "source_recall_at_1": 0.5,
+        "source_recall_at_3": 0.55,
+        "source_recall_at_5": 0.7,
+        "mrr": 0.4892,
+        "no_evidence_precision": 0.0,
+        "unrelated_rejection_rate": 0.0,
+        "insufficient_rejection_rate": 0.0,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.9,
+        "ko_recall_at_3": 0.9,
+        "ko_recall_at_5": 0.9,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.3,
+        "average_latency_ms": 69.285,
+        "p95_latency_ms": 76.942,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      },
+      "cases": [
+        {
+          "case_id": "ko_open_port",
+          "locale": "ko",
+          "query": "목포는 언제 개항했나요?",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-1750a1cfa79fab5a::provisional-0002",
+            "mokpo-b03f5c51698a91a1::provisional-0000",
+            "mokpo-986674eb2bd1c7f5::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-986674eb2bd1c7f5",
+            "mokpo-ff314916d24c0cb5"
+          ],
+          "scores": [
+            0.868335,
+            0.85833,
+            0.844084,
+            0.838279,
+            0.835073
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 99.755
+        },
+        {
+          "case_id": "ko_railway",
+          "locale": "ko",
+          "query": "호남선 철도는 목포에서 언제 개통했나요?",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0002",
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-986674eb2bd1c7f5::provisional-0000",
+            "mokpo-b03f5c51698a91a1::provisional-0000",
+            "mokpo-daa68d43d5a6e033::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-986674eb2bd1c7f5",
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-daa68d43d5a6e033"
+          ],
+          "scores": [
+            0.894767,
+            0.856606,
+            0.851634,
+            0.846471,
+            0.840106
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 76.398
+        },
+        {
+          "case_id": "ko_kim_oksil",
+          "locale": "ko",
+          "query": "김옥실은 어떤 독립운동에 참여했나요?",
+          "returned_chunk_ids": [
+            "mokpo-a50452bd9b1092c3::provisional-0000",
+            "mokpo-a8239c7aff510fb6::provisional-0000",
+            "mokpo-ddc83264e2374af8::provisional-0000",
+            "mokpo-96c136dd1a1646f6::provisional-0000",
+            "mokpo-9f4738c00aa939d3::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-a50452bd9b1092c3",
+            "mokpo-a8239c7aff510fb6",
+            "mokpo-ddc83264e2374af8",
+            "mokpo-96c136dd1a1646f6",
+            "mokpo-9f4738c00aa939d3"
+          ],
+          "scores": [
+            0.871587,
+            0.853207,
+            0.85007,
+            0.849915,
+            0.849885
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 67.795
+        },
+        {
+          "case_id": "ko_park_aesun",
+          "locale": "ko",
+          "query": "박애순의 출신지와 운동계열은 무엇인가요?",
+          "returned_chunk_ids": [
+            "mokpo-7e74b49138e96a23::provisional-0000",
+            "mokpo-d0874b62634939fc::provisional-0000",
+            "mokpo-efcab37ddf9a442b::provisional-0000",
+            "mokpo-74abf5b9e7926710::provisional-0000",
+            "mokpo-b7b7ff7f8f595f4f::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-7e74b49138e96a23",
+            "mokpo-d0874b62634939fc",
+            "mokpo-efcab37ddf9a442b",
+            "mokpo-74abf5b9e7926710",
+            "mokpo-b7b7ff7f8f595f4f"
+          ],
+          "scores": [
+            0.86527,
+            0.857804,
+            0.853089,
+            0.851908,
+            0.849559
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 67.694
+        },
+        {
+          "case_id": "ko_bunker",
+          "locale": "ko",
+          "query": "구 목포부청 서고와 방공호는 어떤 문화유산인가요?",
+          "returned_chunk_ids": [
+            "mokpo-892e377f1b386bc3::provisional-0000",
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-1750a1cfa79fab5a::provisional-0005",
+            "mokpo-ff314916d24c0cb5::provisional-0000",
+            "mokpo-986674eb2bd1c7f5::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-892e377f1b386bc3",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-986674eb2bd1c7f5"
+          ],
+          "scores": [
+            0.88906,
+            0.85926,
+            0.853684,
+            0.849965,
+            0.847902
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 69.357
+        },
+        {
+          "case_id": "ko_house",
+          "locale": "ko",
+          "query": "목포 번화로 일본식 가옥의 층수와 면적은 얼마인가요?",
+          "returned_chunk_ids": [
+            "mokpo-fe255cf642165ba2::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000",
+            "mokpo-e868f61e15971e27::provisional-0000",
+            "mokpo-e6af4186c355bbf8::provisional-0001",
+            "mokpo-2526b988706c03a0::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-fe255cf642165ba2",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-e868f61e15971e27",
+            "mokpo-e6af4186c355bbf8",
+            "mokpo-2526b988706c03a0"
+          ],
+          "scores": [
+            0.898506,
+            0.886767,
+            0.855897,
+            0.843331,
+            0.839885
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 68.329
+        },
+        {
+          "case_id": "ko_customs",
+          "locale": "ko",
+          "query": "구 목포세관 본관 터와 창고에 관한 자료는 어디에 있나요?",
+          "returned_chunk_ids": [
+            "mokpo-b03f5c51698a91a1::provisional-0000",
+            "mokpo-986674eb2bd1c7f5::provisional-0000",
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-e868f61e15971e27::provisional-0000",
+            "mokpo-bb622fcc32f9cbc6::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-986674eb2bd1c7f5",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-e868f61e15971e27",
+            "mokpo-bb622fcc32f9cbc6"
+          ],
+          "scores": [
+            0.88118,
+            0.855861,
+            0.854823,
+            0.852885,
+            0.850173
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 69.662
+        },
+        {
+          "case_id": "ko_hwashin",
+          "locale": "ko",
+          "query": "구 목포화신 연쇄점은 어떤 등록문화유산인가요?",
+          "returned_chunk_ids": [
+            "mokpo-e868f61e15971e27::provisional-0000",
+            "mokpo-b03f5c51698a91a1::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000",
+            "mokpo-fe255cf642165ba2::provisional-0000",
+            "mokpo-1750a1cfa79fab5a::provisional-0005"
+          ],
+          "returned_source_ids": [
+            "mokpo-e868f61e15971e27",
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-fe255cf642165ba2",
+            "mokpo-1750a1cfa79fab5a"
+          ],
+          "scores": [
+            0.894993,
+            0.853425,
+            0.851919,
+            0.849941,
+            0.849114
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 68.948
+        },
+        {
+          "case_id": "ko_name_origin",
+          "locale": "ko",
+          "query": "목포라는 지명은 어디에서 유래했다는 설이 있나요?",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-1750a1cfa79fab5a::provisional-0000",
+            "mokpo-b03f5c51698a91a1::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000",
+            "mokpo-986674eb2bd1c7f5::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-986674eb2bd1c7f5"
+          ],
+          "scores": [
+            0.881515,
+            0.864255,
+            0.854325,
+            0.85112,
+            0.849611
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 68.976
+        },
+        {
+          "case_id": "ko_city_1932",
+          "locale": "ko",
+          "query": "1932년 목포의 행정구역과 도시 규모는 어떻게 변했나요?",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-1750a1cfa79fab5a::provisional-0004",
+            "mokpo-bb622fcc32f9cbc6::provisional-0001",
+            "mokpo-8b05432001f808e3::provisional-0001",
+            "mokpo-daa68d43d5a6e033::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-bb622fcc32f9cbc6",
+            "mokpo-8b05432001f808e3",
+            "mokpo-daa68d43d5a6e033"
+          ],
+          "scores": [
+            0.869264,
+            0.858545,
+            0.839961,
+            0.837137,
+            0.835352
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 69.822
+        },
+        {
+          "case_id": "zh_open_port",
+          "locale": "zh-CN",
+          "query": "木浦港是哪一年开放的？",
+          "returned_chunk_ids": [
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-bb622fcc32f9cbc6::provisional-0000",
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-22d77ef3c4b2ba67::provisional-0001",
+            "mokpo-5f94d78e5c1dee83::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-bb622fcc32f9cbc6",
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-22d77ef3c4b2ba67",
+            "mokpo-5f94d78e5c1dee83"
+          ],
+          "scores": [
+            0.781376,
+            0.768675,
+            0.767501,
+            0.763604,
+            0.763099
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 64.792
+        },
+        {
+          "case_id": "zh_railway",
+          "locale": "zh-CN",
+          "query": "湖南线铁路什么时候通到木浦？",
+          "returned_chunk_ids": [
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-bb622fcc32f9cbc6::provisional-0001",
+            "mokpo-22d77ef3c4b2ba67::provisional-0001",
+            "mokpo-a2902242a8ddd255::provisional-0001",
+            "mokpo-d0cbcd39dd5857a1::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-bb622fcc32f9cbc6",
+            "mokpo-22d77ef3c4b2ba67",
+            "mokpo-a2902242a8ddd255",
+            "mokpo-d0cbcd39dd5857a1"
+          ],
+          "scores": [
+            0.799244,
+            0.796509,
+            0.794104,
+            0.793665,
+            0.791717
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 62.593
+        },
+        {
+          "case_id": "zh_kim_oksil",
+          "locale": "zh-CN",
+          "query": "金玉实参加了什么独立运动？",
+          "returned_chunk_ids": [
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-96c136dd1a1646f6::provisional-0000",
+            "mokpo-e99d0df6973f0c4d::provisional-0002",
+            "mokpo-8968fb476d00af54::provisional-0000",
+            "mokpo-a50452bd9b1092c3::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-96c136dd1a1646f6",
+            "mokpo-e99d0df6973f0c4d",
+            "mokpo-8968fb476d00af54",
+            "mokpo-a50452bd9b1092c3"
+          ],
+          "scores": [
+            0.830367,
+            0.821765,
+            0.820562,
+            0.819316,
+            0.818018
+          ],
+          "first_relevant_rank": 5,
+          "refused": false,
+          "latency_ms": 64.753
+        },
+        {
+          "case_id": "zh_park_aesun",
+          "locale": "zh-CN",
+          "query": "朴爱顺的出生地和独立运动类别是什么？",
+          "returned_chunk_ids": [
+            "mokpo-efcab37ddf9a442b::provisional-0000",
+            "mokpo-b7b7ff7f8f595f4f::provisional-0000",
+            "mokpo-74abf5b9e7926710::provisional-0000",
+            "mokpo-7e74b49138e96a23::provisional-0000",
+            "mokpo-d0874b62634939fc::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-efcab37ddf9a442b",
+            "mokpo-b7b7ff7f8f595f4f",
+            "mokpo-74abf5b9e7926710",
+            "mokpo-7e74b49138e96a23",
+            "mokpo-d0874b62634939fc"
+          ],
+          "scores": [
+            0.83792,
+            0.836816,
+            0.831434,
+            0.826045,
+            0.825885
+          ],
+          "first_relevant_rank": 4,
+          "refused": false,
+          "latency_ms": 67.422
+        },
+        {
+          "case_id": "zh_bunker",
+          "locale": "zh-CN",
+          "query": "旧木浦府厅书库和防空洞是什么文化遗产？",
+          "returned_chunk_ids": [
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-892e377f1b386bc3::provisional-0000",
+            "mokpo-b7b7ff7f8f595f4f::provisional-0004",
+            "mokpo-fe255cf642165ba2::provisional-0003"
+          ],
+          "returned_source_ids": [
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-b7b7ff7f8f595f4f",
+            "mokpo-fe255cf642165ba2"
+          ],
+          "scores": [
+            0.808257,
+            0.80385,
+            0.802335,
+            0.797252,
+            0.79338
+          ],
+          "first_relevant_rank": 3,
+          "refused": false,
+          "latency_ms": 64.438
+        },
+        {
+          "case_id": "zh_house",
+          "locale": "zh-CN",
+          "query": "木浦繁华路日本式住宅有几层，面积多大？",
+          "returned_chunk_ids": [
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-7d91c9299f4a0a5e::provisional-0001",
+            "mokpo-22d77ef3c4b2ba67::provisional-0001",
+            "mokpo-5f94d78e5c1dee83::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-7d91c9299f4a0a5e",
+            "mokpo-22d77ef3c4b2ba67",
+            "mokpo-5f94d78e5c1dee83"
+          ],
+          "scores": [
+            0.800445,
+            0.78859,
+            0.776739,
+            0.776488,
+            0.775255
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 63.34
+        },
+        {
+          "case_id": "zh_customs",
+          "locale": "zh-CN",
+          "query": "哪里有关于旧木浦海关本馆遗址和仓库的资料？",
+          "returned_chunk_ids": [
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-e57c652e21032af1::provisional-0002",
+            "mokpo-b7b7ff7f8f595f4f::provisional-0004",
+            "mokpo-bb622fcc32f9cbc6::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-e57c652e21032af1",
+            "mokpo-b7b7ff7f8f595f4f",
+            "mokpo-bb622fcc32f9cbc6"
+          ],
+          "scores": [
+            0.820736,
+            0.819653,
+            0.801727,
+            0.798288,
+            0.795911
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 64.596
+        },
+        {
+          "case_id": "zh_hwashin",
+          "locale": "zh-CN",
+          "query": "旧木浦和信连锁店是什么登记文化遗产？",
+          "returned_chunk_ids": [
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-bb622fcc32f9cbc6::provisional-0000",
+            "mokpo-22d77ef3c4b2ba67::provisional-0001",
+            "mokpo-6db453b44e5542e8::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-bb622fcc32f9cbc6",
+            "mokpo-22d77ef3c4b2ba67",
+            "mokpo-6db453b44e5542e8"
+          ],
+          "scores": [
+            0.815055,
+            0.800715,
+            0.800423,
+            0.800121,
+            0.798011
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 64.874
+        },
+        {
+          "case_id": "zh_name_origin",
+          "locale": "zh-CN",
+          "query": "木浦这个地名据说来源于哪里？",
+          "returned_chunk_ids": [
+            "mokpo-74abf5b9e7926710::provisional-0000",
+            "mokpo-20db4fc2c2312e14::provisional-0000",
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-892e377f1b386bc3::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-74abf5b9e7926710",
+            "mokpo-20db4fc2c2312e14",
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-892e377f1b386bc3"
+          ],
+          "scores": [
+            0.781979,
+            0.781032,
+            0.77935,
+            0.777764,
+            0.776051
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 63.873
+        },
+        {
+          "case_id": "zh_city_1932",
+          "locale": "zh-CN",
+          "query": "1932年木浦的行政区域和城市规模发生了什么变化？",
+          "returned_chunk_ids": [
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-b7b7ff7f8f595f4f::provisional-0004",
+            "mokpo-bc9c4b22a73fbe18::provisional-0002",
+            "mokpo-1750a1cfa79fab5a::provisional-0004",
+            "mokpo-bb622fcc32f9cbc6::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-b7b7ff7f8f595f4f",
+            "mokpo-bc9c4b22a73fbe18",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-bb622fcc32f9cbc6"
+          ],
+          "scores": [
+            0.78458,
+            0.781464,
+            0.77648,
+            0.774035,
+            0.773796
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 66.893
+        },
+        {
+          "case_id": "unrelated_astronaut",
+          "locale": "ko",
+          "query": "목포 출신 최초의 우주비행사는 누구인가요?",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-bb622fcc32f9cbc6::provisional-0000",
+            "mokpo-986674eb2bd1c7f5::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000",
+            "mokpo-daa68d43d5a6e033::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-bb622fcc32f9cbc6",
+            "mokpo-986674eb2bd1c7f5",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-daa68d43d5a6e033"
+          ],
+          "scores": [
+            0.856269,
+            0.849153,
+            0.847831,
+            0.84028,
+            0.83864
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 70.667
+        },
+        {
+          "case_id": "unrelated_quantum",
+          "locale": "ko",
+          "query": "양자컴퓨터의 큐비트 오류 정정 방법은?",
+          "returned_chunk_ids": [
+            "mokpo-b03f5c51698a91a1::provisional-0003",
+            "mokpo-fe255cf642165ba2::provisional-0003",
+            "mokpo-a8239c7aff510fb6::provisional-0000",
+            "mokpo-ddc83264e2374af8::provisional-0001",
+            "mokpo-ff314916d24c0cb5::provisional-0003"
+          ],
+          "returned_source_ids": [
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-fe255cf642165ba2",
+            "mokpo-a8239c7aff510fb6",
+            "mokpo-ddc83264e2374af8",
+            "mokpo-ff314916d24c0cb5"
+          ],
+          "scores": [
+            0.802792,
+            0.802355,
+            0.800851,
+            0.800825,
+            0.799358
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 70.422
+        },
+        {
+          "case_id": "unrelated_paris",
+          "locale": "zh-CN",
+          "query": "巴黎埃菲尔铁塔有多高？",
+          "returned_chunk_ids": [
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-a8239c7aff510fb6::provisional-0001",
+            "mokpo-ff314916d24c0cb5::provisional-0003",
+            "mokpo-fe255cf642165ba2::provisional-0003"
+          ],
+          "returned_source_ids": [
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-a8239c7aff510fb6",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-fe255cf642165ba2"
+          ],
+          "scores": [
+            0.760049,
+            0.757837,
+            0.752634,
+            0.747463,
+            0.746762
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 67.118
+        },
+        {
+          "case_id": "unrelated_dinosaur",
+          "locale": "zh-CN",
+          "query": "霸王龙生活在什么年代？",
+          "returned_chunk_ids": [
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-daa4dbb46b5a852b::provisional-0001",
+            "mokpo-b7b7ff7f8f595f4f::provisional-0002",
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-734d3600faeb5b6f::provisional-0002"
+          ],
+          "returned_source_ids": [
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-b7b7ff7f8f595f4f",
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-734d3600faeb5b6f"
+          ],
+          "scores": [
+            0.787327,
+            0.784647,
+            0.783841,
+            0.783354,
+            0.782336
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 64.111
+        },
+        {
+          "case_id": "unrelated_recipe",
+          "locale": "ko",
+          "query": "파스타 카르보나라 조리법을 알려줘",
+          "returned_chunk_ids": [
+            "mokpo-892e377f1b386bc3::provisional-0002",
+            "mokpo-2526b988706c03a0::provisional-0002",
+            "mokpo-ff314916d24c0cb5::provisional-0002",
+            "mokpo-fe255cf642165ba2::provisional-0002",
+            "mokpo-b03f5c51698a91a1::provisional-0002"
+          ],
+          "returned_source_ids": [
+            "mokpo-892e377f1b386bc3",
+            "mokpo-2526b988706c03a0",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-fe255cf642165ba2",
+            "mokpo-b03f5c51698a91a1"
+          ],
+          "scores": [
+            0.821269,
+            0.819029,
+            0.818067,
+            0.817783,
+            0.815073
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 71.696
+        },
+        {
+          "case_id": "insufficient_house_architect",
+          "locale": "ko",
+          "query": "목포 번화로 일본식 가옥을 설계한 건축가는 누구인가요?",
+          "returned_chunk_ids": [
+            "mokpo-fe255cf642165ba2::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000",
+            "mokpo-e6af4186c355bbf8::provisional-0001",
+            "mokpo-a0bf638bbff6150f::provisional-0001",
+            "mokpo-7d91c9299f4a0a5e::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-fe255cf642165ba2",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-e6af4186c355bbf8",
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-7d91c9299f4a0a5e"
+          ],
+          "scores": [
+            0.883926,
+            0.87491,
+            0.844469,
+            0.842015,
+            0.841343
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 71.203
+        },
+        {
+          "case_id": "insufficient_bunker_depth",
+          "locale": "ko",
+          "query": "구 목포부청 방공호의 정확한 지하 깊이는 몇 미터인가요?",
+          "returned_chunk_ids": [
+            "mokpo-892e377f1b386bc3::provisional-0000",
+            "mokpo-1750a1cfa79fab5a::provisional-0004",
+            "mokpo-b03f5c51698a91a1::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000",
+            "mokpo-1750a1cfa79fab5a::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-892e377f1b386bc3",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-1750a1cfa79fab5a"
+          ],
+          "scores": [
+            0.861366,
+            0.844191,
+            0.838168,
+            0.837589,
+            0.834136
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 76.942
+        },
+        {
+          "case_id": "insufficient_customs_architect",
+          "locale": "zh-CN",
+          "query": "旧木浦海关仓库的建筑师是谁？",
+          "returned_chunk_ids": [
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-bb622fcc32f9cbc6::provisional-0000",
+            "mokpo-6db453b44e5542e8::provisional-0000",
+            "mokpo-efcab37ddf9a442b::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-bb622fcc32f9cbc6",
+            "mokpo-6db453b44e5542e8",
+            "mokpo-efcab37ddf9a442b"
+          ],
+          "scores": [
+            0.815972,
+            0.800597,
+            0.793119,
+            0.791768,
+            0.791323
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 70.842
+        },
+        {
+          "case_id": "insufficient_rail_passengers",
+          "locale": "zh-CN",
+          "query": "1914年木浦站每天有多少乘客？",
+          "returned_chunk_ids": [
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-5f94d78e5c1dee83::provisional-0001",
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-fe824fed5263b296::provisional-0000",
+            "mokpo-20db4fc2c2312e14::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-5f94d78e5c1dee83",
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-fe824fed5263b296",
+            "mokpo-20db4fc2c2312e14"
+          ],
+          "scores": [
+            0.796947,
+            0.788271,
+            0.784209,
+            0.781377,
+            0.780478
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 67.788
+        },
+        {
+          "case_id": "insufficient_kim_oksil_quote",
+          "locale": "ko",
+          "query": "김옥실이 재판에서 직접 한 말을 정확히 인용해 주세요.",
+          "returned_chunk_ids": [
+            "mokpo-a50452bd9b1092c3::provisional-0000",
+            "mokpo-35348ffad10c1e7e::provisional-0000",
+            "mokpo-e6af4186c355bbf8::provisional-0004",
+            "mokpo-8b05432001f808e3::provisional-0001",
+            "mokpo-18d96912fc28a3db::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-a50452bd9b1092c3",
+            "mokpo-35348ffad10c1e7e",
+            "mokpo-e6af4186c355bbf8",
+            "mokpo-8b05432001f808e3",
+            "mokpo-18d96912fc28a3db"
+          ],
+          "scores": [
+            0.86964,
+            0.861531,
+            0.85971,
+            0.858454,
+            0.858086
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 73.44
+        }
+      ]
+    },
+    {
+      "backend": "bm25_hashing_hybrid",
+      "metrics": {
+        "recall_at_1": 0.3,
+        "recall_at_3": 0.4,
+        "recall_at_5": 0.5,
+        "source_recall_at_1": 0.35,
+        "source_recall_at_3": 0.4,
+        "source_recall_at_5": 0.5,
+        "mrr": 0.3617,
+        "no_evidence_precision": 0.3,
+        "unrelated_rejection_rate": 0.4,
+        "insufficient_rejection_rate": 0.2,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.6,
+        "ko_recall_at_3": 0.7,
+        "ko_recall_at_5": 0.9,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.1,
+        "average_latency_ms": 43.082,
+        "p95_latency_ms": 60.266,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      },
+      "cases": [
+        {
+          "case_id": "ko_open_port",
+          "locale": "ko",
+          "query": "목포는 언제 개항했나요?",
+          "returned_chunk_ids": [
+            "mokpo-e6af4186c355bbf8::provisional-0003",
+            "mokpo-986674eb2bd1c7f5::provisional-0002",
+            "mokpo-c2649df7ecb6e519::provisional-0001",
+            "mokpo-1750a1cfa79fab5a::provisional-0002",
+            "mokpo-1750a1cfa79fab5a::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-e6af4186c355bbf8",
+            "mokpo-986674eb2bd1c7f5",
+            "mokpo-c2649df7ecb6e519",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-1750a1cfa79fab5a"
+          ],
+          "scores": [
+            0.5,
+            0.458333,
+            0.423077,
+            0.392857,
+            0.366667
+          ],
+          "first_relevant_rank": 5,
+          "refused": false,
+          "latency_ms": 59.079
+        },
+        {
+          "case_id": "ko_railway",
+          "locale": "ko",
+          "query": "호남선 철도는 목포에서 언제 개통했나요?",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0005",
+            "mokpo-1750a1cfa79fab5a::provisional-0002",
+            "mokpo-e6af4186c355bbf8::provisional-0001",
+            "mokpo-e57c652e21032af1::provisional-0000",
+            "mokpo-bc9c4b22a73fbe18::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-e6af4186c355bbf8",
+            "mokpo-e57c652e21032af1",
+            "mokpo-bc9c4b22a73fbe18"
+          ],
+          "scores": [
+            0.5,
+            0.458333,
+            0.423077,
+            0.392857,
+            0.366667
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 60.284
+        },
+        {
+          "case_id": "ko_kim_oksil",
+          "locale": "ko",
+          "query": "김옥실은 어떤 독립운동에 참여했나요?",
+          "returned_chunk_ids": [
+            "mokpo-e6af4186c355bbf8::provisional-0000",
+            "mokpo-5c3f20e281a8ba2e::provisional-0000",
+            "mokpo-734d3600faeb5b6f::provisional-0000",
+            "mokpo-7d40b14bc5bcf402::provisional-0002",
+            "mokpo-a50452bd9b1092c3::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-e6af4186c355bbf8",
+            "mokpo-5c3f20e281a8ba2e",
+            "mokpo-734d3600faeb5b6f",
+            "mokpo-7d40b14bc5bcf402",
+            "mokpo-a50452bd9b1092c3"
+          ],
+          "scores": [
+            0.763889,
+            0.716387,
+            0.564474,
+            0.5,
+            0.5
+          ],
+          "first_relevant_rank": 5,
+          "refused": false,
+          "latency_ms": 49.371
+        },
+        {
+          "case_id": "ko_park_aesun",
+          "locale": "ko",
+          "query": "박애순의 출신지와 운동계열은 무엇인가요?",
+          "returned_chunk_ids": [
+            "mokpo-b7b7ff7f8f595f4f::provisional-0000",
+            "mokpo-e99d0df6973f0c4d::provisional-0000",
+            "mokpo-986674eb2bd1c7f5::provisional-0000",
+            "mokpo-d0cbcd39dd5857a1::provisional-0000",
+            "mokpo-d0874b62634939fc::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-b7b7ff7f8f595f4f",
+            "mokpo-e99d0df6973f0c4d",
+            "mokpo-986674eb2bd1c7f5",
+            "mokpo-d0cbcd39dd5857a1",
+            "mokpo-d0874b62634939fc"
+          ],
+          "scores": [
+            0.84375,
+            0.789744,
+            0.785714,
+            0.747807,
+            0.720238
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 57.167
+        },
+        {
+          "case_id": "ko_bunker",
+          "locale": "ko",
+          "query": "구 목포부청 서고와 방공호는 어떤 문화유산인가요?",
+          "returned_chunk_ids": [
+            "mokpo-892e377f1b386bc3::provisional-0000",
+            "mokpo-892e377f1b386bc3::provisional-0001",
+            "mokpo-ff314916d24c0cb5::provisional-0001",
+            "mokpo-fe255cf642165ba2::provisional-0001",
+            "mokpo-1750a1cfa79fab5a::provisional-0005"
+          ],
+          "returned_source_ids": [
+            "mokpo-892e377f1b386bc3",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-fe255cf642165ba2",
+            "mokpo-1750a1cfa79fab5a"
+          ],
+          "scores": [
+            1.0,
+            0.88141,
+            0.555556,
+            0.52381,
+            0.458333
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 60.266
+        },
+        {
+          "case_id": "ko_house",
+          "locale": "ko",
+          "query": "목포 번화로 일본식 가옥의 층수와 면적은 얼마인가요?",
+          "returned_chunk_ids": [
+            "mokpo-fe255cf642165ba2::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000",
+            "mokpo-a0bf638bbff6150f::provisional-0000",
+            "mokpo-a2902242a8ddd255::provisional-0001",
+            "mokpo-fe255cf642165ba2::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-fe255cf642165ba2",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-a2902242a8ddd255",
+            "mokpo-fe255cf642165ba2"
+          ],
+          "scores": [
+            0.805556,
+            0.802083,
+            0.747807,
+            0.690196,
+            0.5
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 59.585
+        },
+        {
+          "case_id": "ko_customs",
+          "locale": "ko",
+          "query": "구 목포세관 본관 터와 창고에 관한 자료는 어디에 있나요?",
+          "returned_chunk_ids": [
+            "mokpo-b03f5c51698a91a1::provisional-0000",
+            "mokpo-b03f5c51698a91a1::provisional-0002",
+            "mokpo-c2649df7ecb6e519::provisional-0000",
+            "mokpo-22d77ef3c4b2ba67::provisional-0000",
+            "mokpo-e868f61e15971e27::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-c2649df7ecb6e519",
+            "mokpo-22d77ef3c4b2ba67",
+            "mokpo-e868f61e15971e27"
+          ],
+          "scores": [
+            0.958333,
+            0.5,
+            0.458333,
+            0.366667,
+            0.366667
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 53.458
+        },
+        {
+          "case_id": "ko_hwashin",
+          "locale": "ko",
+          "query": "구 목포화신 연쇄점은 어떤 등록문화유산인가요?",
+          "returned_chunk_ids": [
+            "mokpo-e868f61e15971e27::provisional-0000",
+            "mokpo-892e377f1b386bc3::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000",
+            "mokpo-892e377f1b386bc3::provisional-0001",
+            "mokpo-fe255cf642165ba2::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-e868f61e15971e27",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-fe255cf642165ba2"
+          ],
+          "scores": [
+            1.0,
+            0.825,
+            0.733333,
+            0.728632,
+            0.712551
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 44.345
+        },
+        {
+          "case_id": "ko_name_origin",
+          "locale": "ko",
+          "query": "목포라는 지명은 어디에서 유래했다는 설이 있나요?",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-ddc83264e2374af8::provisional-0000",
+            "mokpo-1750a1cfa79fab5a::provisional-0004",
+            "mokpo-efcab37ddf9a442b::provisional-0000",
+            "mokpo-e6af4186c355bbf8::provisional-0003"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-ddc83264e2374af8",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-efcab37ddf9a442b",
+            "mokpo-e6af4186c355bbf8"
+          ],
+          "scores": [
+            0.892857,
+            0.789744,
+            0.733333,
+            0.708333,
+            0.5
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 45.364
+        },
+        {
+          "case_id": "ko_city_1932",
+          "locale": "ko",
+          "query": "1932년 목포의 행정구역과 도시 규모는 어떻게 변했나요?",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-1750a1cfa79fab5a::provisional-0002",
+            "mokpo-5f94d78e5c1dee83::provisional-0000",
+            "mokpo-fe255cf642165ba2::provisional-0001",
+            "mokpo-0153d5872f6e7641::provisional-0002"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-5f94d78e5c1dee83",
+            "mokpo-fe255cf642165ba2",
+            "mokpo-0153d5872f6e7641"
+          ],
+          "scores": [
+            0.866667,
+            0.747807,
+            0.698413,
+            0.423077,
+            0.366667
+          ],
+          "first_relevant_rank": 2,
+          "refused": false,
+          "latency_ms": 55.533
+        },
+        {
+          "case_id": "zh_open_port",
+          "locale": "zh-CN",
+          "query": "木浦港是哪一年开放的？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 31.158
+        },
+        {
+          "case_id": "zh_railway",
+          "locale": "zh-CN",
+          "query": "湖南线铁路什么时候通到木浦？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 27.442
+        },
+        {
+          "case_id": "zh_kim_oksil",
+          "locale": "zh-CN",
+          "query": "金玉实参加了什么独立运动？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 30.162
+        },
+        {
+          "case_id": "zh_park_aesun",
+          "locale": "zh-CN",
+          "query": "朴爱顺的出生地和独立运动类别是什么？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 29.932
+        },
+        {
+          "case_id": "zh_bunker",
+          "locale": "zh-CN",
+          "query": "旧木浦府厅书库和防空洞是什么文化遗产？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 28.419
+        },
+        {
+          "case_id": "zh_house",
+          "locale": "zh-CN",
+          "query": "木浦繁华路日本式住宅有几层，面积多大？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 29.454
+        },
+        {
+          "case_id": "zh_customs",
+          "locale": "zh-CN",
+          "query": "哪里有关于旧木浦海关本馆遗址和仓库的资料？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 30.467
+        },
+        {
+          "case_id": "zh_hwashin",
+          "locale": "zh-CN",
+          "query": "旧木浦和信连锁店是什么登记文化遗产？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 28.519
+        },
+        {
+          "case_id": "zh_name_origin",
+          "locale": "zh-CN",
+          "query": "木浦这个地名据说来源于哪里？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 28.911
+        },
+        {
+          "case_id": "zh_city_1932",
+          "locale": "zh-CN",
+          "query": "1932年木浦的行政区域和城市规模发生了什么变化？",
+          "returned_chunk_ids": [
+            "mokpo-0153d5872f6e7641::provisional-0003",
+            "mokpo-38b34c3919f62dca::provisional-0002",
+            "mokpo-1750a1cfa79fab5a::provisional-0005"
+          ],
+          "returned_source_ids": [
+            "mokpo-0153d5872f6e7641",
+            "mokpo-38b34c3919f62dca",
+            "mokpo-1750a1cfa79fab5a"
+          ],
+          "scores": [
+            0.5,
+            0.458333,
+            0.423077
+          ],
+          "first_relevant_rank": 3,
+          "refused": false,
+          "latency_ms": 54.21
+        },
+        {
+          "case_id": "unrelated_astronaut",
+          "locale": "ko",
+          "query": "목포 출신 최초의 우주비행사는 누구인가요?",
+          "returned_chunk_ids": [
+            "mokpo-fe255cf642165ba2::provisional-0002",
+            "mokpo-2526b988706c03a0::provisional-0002",
+            "mokpo-892e377f1b386bc3::provisional-0002",
+            "mokpo-b03f5c51698a91a1::provisional-0002",
+            "mokpo-ff314916d24c0cb5::provisional-0002"
+          ],
+          "returned_source_ids": [
+            "mokpo-fe255cf642165ba2",
+            "mokpo-2526b988706c03a0",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-ff314916d24c0cb5"
+          ],
+          "scores": [
+            0.75,
+            0.733333,
+            0.712551,
+            0.698413,
+            0.628571
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 47.91
+        },
+        {
+          "case_id": "unrelated_quantum",
+          "locale": "ko",
+          "query": "양자컴퓨터의 큐비트 오류 정정 방법은?",
+          "returned_chunk_ids": [
+            "mokpo-8968fb476d00af54::provisional-0001",
+            "mokpo-a8239c7aff510fb6::provisional-0001",
+            "mokpo-bc9c4b22a73fbe18::provisional-0002",
+            "mokpo-e57c652e21032af1::provisional-0001",
+            "mokpo-e99d0df6973f0c4d::provisional-0002"
+          ],
+          "returned_source_ids": [
+            "mokpo-8968fb476d00af54",
+            "mokpo-a8239c7aff510fb6",
+            "mokpo-bc9c4b22a73fbe18",
+            "mokpo-e57c652e21032af1",
+            "mokpo-e99d0df6973f0c4d"
+          ],
+          "scores": [
+            0.52381,
+            0.5,
+            0.5,
+            0.458333,
+            0.458333
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 45.776
+        },
+        {
+          "case_id": "unrelated_paris",
+          "locale": "zh-CN",
+          "query": "巴黎埃菲尔铁塔有多高？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 28.831
+        },
+        {
+          "case_id": "unrelated_dinosaur",
+          "locale": "zh-CN",
+          "query": "霸王龙生活在什么年代？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 28.482
+        },
+        {
+          "case_id": "unrelated_recipe",
+          "locale": "ko",
+          "query": "파스타 카르보나라 조리법을 알려줘",
+          "returned_chunk_ids": [
+            "mokpo-daa4dbb46b5a852b::provisional-0000",
+            "mokpo-734d3600faeb5b6f::provisional-0000",
+            "mokpo-e6af4186c355bbf8::provisional-0003",
+            "mokpo-1750a1cfa79fab5a::provisional-0000",
+            "mokpo-74abf5b9e7926710::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-734d3600faeb5b6f",
+            "mokpo-e6af4186c355bbf8",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-74abf5b9e7926710"
+          ],
+          "scores": [
+            0.690196,
+            0.667857,
+            0.649306,
+            0.5,
+            0.458333
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 48.566
+        },
+        {
+          "case_id": "insufficient_house_architect",
+          "locale": "ko",
+          "query": "목포 번화로 일본식 가옥을 설계한 건축가는 누구인가요?",
+          "returned_chunk_ids": [
+            "mokpo-fe255cf642165ba2::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000",
+            "mokpo-e868f61e15971e27::provisional-0000",
+            "mokpo-892e377f1b386bc3::provisional-0001",
+            "mokpo-fe255cf642165ba2::provisional-0003"
+          ],
+          "returned_source_ids": [
+            "mokpo-fe255cf642165ba2",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-e868f61e15971e27",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-fe255cf642165ba2"
+          ],
+          "scores": [
+            0.958333,
+            0.958333,
+            0.815934,
+            0.59375,
+            0.585434
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 47.608
+        },
+        {
+          "case_id": "insufficient_bunker_depth",
+          "locale": "ko",
+          "query": "구 목포부청 방공호의 정확한 지하 깊이는 몇 미터인가요?",
+          "returned_chunk_ids": [
+            "mokpo-b7b7ff7f8f595f4f::provisional-0000",
+            "mokpo-892e377f1b386bc3::provisional-0000",
+            "mokpo-892e377f1b386bc3::provisional-0001",
+            "mokpo-5f94d78e5c1dee83::provisional-0000",
+            "mokpo-9f4738c00aa939d3::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-b7b7ff7f8f595f4f",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-5f94d78e5c1dee83",
+            "mokpo-9f4738c00aa939d3"
+          ],
+          "scores": [
+            0.720238,
+            0.5,
+            0.458333,
+            0.366667,
+            0.34375
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 57.208
+        },
+        {
+          "case_id": "insufficient_customs_architect",
+          "locale": "zh-CN",
+          "query": "旧木浦海关仓库的建筑师是谁？",
+          "returned_chunk_ids": [],
+          "returned_source_ids": [],
+          "scores": [],
+          "first_relevant_rank": null,
+          "refused": true,
+          "latency_ms": 28.213
+        },
+        {
+          "case_id": "insufficient_rail_passengers",
+          "locale": "zh-CN",
+          "query": "1914年木浦站每天有多少乘客？",
+          "returned_chunk_ids": [
+            "mokpo-38b34c3919f62dca::provisional-0000",
+            "mokpo-8fb91a85a5d424e0::provisional-0000",
+            "mokpo-1750a1cfa79fab5a::provisional-0005"
+          ],
+          "returned_source_ids": [
+            "mokpo-38b34c3919f62dca",
+            "mokpo-8fb91a85a5d424e0",
+            "mokpo-1750a1cfa79fab5a"
+          ],
+          "scores": [
+            0.958333,
+            0.458333,
+            0.423077
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 51.394
+        },
+        {
+          "case_id": "insufficient_kim_oksil_quote",
+          "locale": "ko",
+          "query": "김옥실이 재판에서 직접 한 말을 정확히 인용해 주세요.",
+          "returned_chunk_ids": [
+            "mokpo-734d3600faeb5b6f::provisional-0002",
+            "mokpo-7d40b14bc5bcf402::provisional-0001",
+            "mokpo-74abf5b9e7926710::provisional-0001",
+            "mokpo-daa68d43d5a6e033::provisional-0001",
+            "mokpo-5229c02607df2eb7::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-734d3600faeb5b6f",
+            "mokpo-7d40b14bc5bcf402",
+            "mokpo-74abf5b9e7926710",
+            "mokpo-daa68d43d5a6e033",
+            "mokpo-5229c02607df2eb7"
+          ],
+          "scores": [
+            0.5,
+            0.5,
+            0.458333,
+            0.458333,
+            0.423077
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 45.339
+        }
+      ]
+    },
+    {
+      "backend": "bm25_e5_hybrid",
+      "metrics": {
+        "recall_at_1": 0.45,
+        "recall_at_3": 0.55,
+        "recall_at_5": 0.7,
+        "source_recall_at_1": 0.5,
+        "source_recall_at_3": 0.55,
+        "source_recall_at_5": 0.7,
+        "mrr": 0.5242,
+        "no_evidence_precision": 0.0,
+        "unrelated_rejection_rate": 0.0,
+        "insufficient_rejection_rate": 0.0,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.9,
+        "ko_recall_at_3": 1.0,
+        "ko_recall_at_5": 1.0,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.4,
+        "average_latency_ms": 75.519,
+        "p95_latency_ms": 93.511,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      },
+      "cases": [
+        {
+          "case_id": "ko_open_port",
+          "locale": "ko",
+          "query": "목포는 언제 개항했나요?",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-1750a1cfa79fab5a::provisional-0002",
+            "mokpo-e6af4186c355bbf8::provisional-0003",
+            "mokpo-986674eb2bd1c7f5::provisional-0002",
+            "mokpo-b03f5c51698a91a1::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-e6af4186c355bbf8",
+            "mokpo-986674eb2bd1c7f5",
+            "mokpo-b03f5c51698a91a1"
+          ],
+          "scores": [
+            0.866667,
+            0.85119,
+            0.5,
+            0.458333,
+            0.423077
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 109.523
+        },
+        {
+          "case_id": "ko_railway",
+          "locale": "ko",
+          "query": "호남선 철도는 목포에서 언제 개통했나요?",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0002",
+            "mokpo-1750a1cfa79fab5a::provisional-0005",
+            "mokpo-986674eb2bd1c7f5::provisional-0000",
+            "mokpo-5f94d78e5c1dee83::provisional-0000",
+            "mokpo-e6af4186c355bbf8::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-986674eb2bd1c7f5",
+            "mokpo-5f94d78e5c1dee83",
+            "mokpo-e6af4186c355bbf8"
+          ],
+          "scores": [
+            0.958333,
+            0.866667,
+            0.728632,
+            0.52381,
+            0.423077
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 93.511
+        },
+        {
+          "case_id": "ko_kim_oksil",
+          "locale": "ko",
+          "query": "김옥실은 어떤 독립운동에 참여했나요?",
+          "returned_chunk_ids": [
+            "mokpo-a50452bd9b1092c3::provisional-0000",
+            "mokpo-a8239c7aff510fb6::provisional-0000",
+            "mokpo-9f4738c00aa939d3::provisional-0000",
+            "mokpo-74abf5b9e7926710::provisional-0001",
+            "mokpo-a50452bd9b1092c3::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-a50452bd9b1092c3",
+            "mokpo-a8239c7aff510fb6",
+            "mokpo-9f4738c00aa939d3",
+            "mokpo-74abf5b9e7926710",
+            "mokpo-a50452bd9b1092c3"
+          ],
+          "scores": [
+            1.0,
+            0.85119,
+            0.789744,
+            0.667279,
+            0.458333
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 90.151
+        },
+        {
+          "case_id": "ko_park_aesun",
+          "locale": "ko",
+          "query": "박애순의 출신지와 운동계열은 무엇인가요?",
+          "returned_chunk_ids": [
+            "mokpo-7e74b49138e96a23::provisional-0000",
+            "mokpo-d0cbcd39dd5857a1::provisional-0000",
+            "mokpo-d0874b62634939fc::provisional-0000",
+            "mokpo-b7b7ff7f8f595f4f::provisional-0000",
+            "mokpo-74abf5b9e7926710::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-7e74b49138e96a23",
+            "mokpo-d0cbcd39dd5857a1",
+            "mokpo-d0874b62634939fc",
+            "mokpo-b7b7ff7f8f595f4f",
+            "mokpo-74abf5b9e7926710"
+          ],
+          "scores": [
+            1.0,
+            0.763889,
+            0.720238,
+            0.710417,
+            0.667857
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 79.939
+        },
+        {
+          "case_id": "ko_bunker",
+          "locale": "ko",
+          "query": "구 목포부청 서고와 방공호는 어떤 문화유산인가요?",
+          "returned_chunk_ids": [
+            "mokpo-892e377f1b386bc3::provisional-0000",
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-892e377f1b386bc3::provisional-0001",
+            "mokpo-1750a1cfa79fab5a::provisional-0005",
+            "mokpo-ff314916d24c0cb5::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-892e377f1b386bc3",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-ff314916d24c0cb5"
+          ],
+          "scores": [
+            1.0,
+            0.458333,
+            0.458333,
+            0.423077,
+            0.392857
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 80.543
+        },
+        {
+          "case_id": "ko_house",
+          "locale": "ko",
+          "query": "목포 번화로 일본식 가옥의 층수와 면적은 얼마인가요?",
+          "returned_chunk_ids": [
+            "mokpo-fe255cf642165ba2::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000",
+            "mokpo-e868f61e15971e27::provisional-0000",
+            "mokpo-e6af4186c355bbf8::provisional-0001",
+            "mokpo-1750a1cfa79fab5a::provisional-0004"
+          ],
+          "returned_source_ids": [
+            "mokpo-fe255cf642165ba2",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-e868f61e15971e27",
+            "mokpo-e6af4186c355bbf8",
+            "mokpo-1750a1cfa79fab5a"
+          ],
+          "scores": [
+            1.0,
+            0.916667,
+            0.846154,
+            0.759524,
+            0.6875
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 80.587
+        },
+        {
+          "case_id": "ko_customs",
+          "locale": "ko",
+          "query": "구 목포세관 본관 터와 창고에 관한 자료는 어디에 있나요?",
+          "returned_chunk_ids": [
+            "mokpo-b03f5c51698a91a1::provisional-0000",
+            "mokpo-e868f61e15971e27::provisional-0000",
+            "mokpo-a0bf638bbff6150f::provisional-0000",
+            "mokpo-b03f5c51698a91a1::provisional-0002",
+            "mokpo-986674eb2bd1c7f5::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-e868f61e15971e27",
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-986674eb2bd1c7f5"
+          ],
+          "scores": [
+            0.958333,
+            0.759524,
+            0.667279,
+            0.5,
+            0.458333
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 83.539
+        },
+        {
+          "case_id": "ko_hwashin",
+          "locale": "ko",
+          "query": "구 목포화신 연쇄점은 어떤 등록문화유산인가요?",
+          "returned_chunk_ids": [
+            "mokpo-e868f61e15971e27::provisional-0000",
+            "mokpo-892e377f1b386bc3::provisional-0000",
+            "mokpo-b03f5c51698a91a1::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000",
+            "mokpo-fe255cf642165ba2::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-e868f61e15971e27",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-fe255cf642165ba2"
+          ],
+          "scores": [
+            1.0,
+            0.763889,
+            0.763889,
+            0.698077,
+            0.682331
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 75.858
+        },
+        {
+          "case_id": "ko_name_origin",
+          "locale": "ko",
+          "query": "목포라는 지명은 어디에서 유래했다는 설이 있나요?",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-1750a1cfa79fab5a::provisional-0004",
+            "mokpo-986674eb2bd1c7f5::provisional-0000",
+            "mokpo-b03f5c51698a91a1::provisional-0000",
+            "mokpo-e6af4186c355bbf8::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-986674eb2bd1c7f5",
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-e6af4186c355bbf8"
+          ],
+          "scores": [
+            1.0,
+            0.763889,
+            0.690196,
+            0.423077,
+            0.392857
+          ],
+          "first_relevant_rank": 1,
+          "refused": false,
+          "latency_ms": 84.416
+        },
+        {
+          "case_id": "ko_city_1932",
+          "locale": "ko",
+          "query": "1932년 목포의 행정구역과 도시 규모는 어떻게 변했나요?",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-1750a1cfa79fab5a::provisional-0002",
+            "mokpo-5f94d78e5c1dee83::provisional-0000",
+            "mokpo-0153d5872f6e7641::provisional-0002",
+            "mokpo-7d91c9299f4a0a5e::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-5f94d78e5c1dee83",
+            "mokpo-0153d5872f6e7641",
+            "mokpo-7d91c9299f4a0a5e"
+          ],
+          "scores": [
+            1.0,
+            0.825,
+            0.392857,
+            0.366667,
+            0.34375
+          ],
+          "first_relevant_rank": 2,
+          "refused": false,
+          "latency_ms": 82.936
+        },
+        {
+          "case_id": "zh_open_port",
+          "locale": "zh-CN",
+          "query": "木浦港是哪一年开放的？",
+          "returned_chunk_ids": [
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-bb622fcc32f9cbc6::provisional-0000",
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-22d77ef3c4b2ba67::provisional-0001",
+            "mokpo-5f94d78e5c1dee83::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-bb622fcc32f9cbc6",
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-22d77ef3c4b2ba67",
+            "mokpo-5f94d78e5c1dee83"
+          ],
+          "scores": [
+            0.5,
+            0.458333,
+            0.423077,
+            0.392857,
+            0.366667
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 67.364
+        },
+        {
+          "case_id": "zh_railway",
+          "locale": "zh-CN",
+          "query": "湖南线铁路什么时候通到木浦？",
+          "returned_chunk_ids": [
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-bb622fcc32f9cbc6::provisional-0001",
+            "mokpo-22d77ef3c4b2ba67::provisional-0001",
+            "mokpo-a2902242a8ddd255::provisional-0001",
+            "mokpo-d0cbcd39dd5857a1::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-bb622fcc32f9cbc6",
+            "mokpo-22d77ef3c4b2ba67",
+            "mokpo-a2902242a8ddd255",
+            "mokpo-d0cbcd39dd5857a1"
+          ],
+          "scores": [
+            0.5,
+            0.458333,
+            0.423077,
+            0.392857,
+            0.366667
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 70.95
+        },
+        {
+          "case_id": "zh_kim_oksil",
+          "locale": "zh-CN",
+          "query": "金玉实参加了什么独立运动？",
+          "returned_chunk_ids": [
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-96c136dd1a1646f6::provisional-0000",
+            "mokpo-e99d0df6973f0c4d::provisional-0002",
+            "mokpo-8968fb476d00af54::provisional-0000",
+            "mokpo-a50452bd9b1092c3::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-96c136dd1a1646f6",
+            "mokpo-e99d0df6973f0c4d",
+            "mokpo-8968fb476d00af54",
+            "mokpo-a50452bd9b1092c3"
+          ],
+          "scores": [
+            0.5,
+            0.458333,
+            0.423077,
+            0.392857,
+            0.366667
+          ],
+          "first_relevant_rank": 5,
+          "refused": false,
+          "latency_ms": 67.552
+        },
+        {
+          "case_id": "zh_park_aesun",
+          "locale": "zh-CN",
+          "query": "朴爱顺的出生地和独立运动类别是什么？",
+          "returned_chunk_ids": [
+            "mokpo-efcab37ddf9a442b::provisional-0000",
+            "mokpo-b7b7ff7f8f595f4f::provisional-0000",
+            "mokpo-74abf5b9e7926710::provisional-0000",
+            "mokpo-7e74b49138e96a23::provisional-0000",
+            "mokpo-d0874b62634939fc::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-efcab37ddf9a442b",
+            "mokpo-b7b7ff7f8f595f4f",
+            "mokpo-74abf5b9e7926710",
+            "mokpo-7e74b49138e96a23",
+            "mokpo-d0874b62634939fc"
+          ],
+          "scores": [
+            0.5,
+            0.458333,
+            0.423077,
+            0.392857,
+            0.366667
+          ],
+          "first_relevant_rank": 4,
+          "refused": false,
+          "latency_ms": 67.112
+        },
+        {
+          "case_id": "zh_bunker",
+          "locale": "zh-CN",
+          "query": "旧木浦府厅书库和防空洞是什么文化遗产？",
+          "returned_chunk_ids": [
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-892e377f1b386bc3::provisional-0000",
+            "mokpo-b7b7ff7f8f595f4f::provisional-0004",
+            "mokpo-fe255cf642165ba2::provisional-0003"
+          ],
+          "returned_source_ids": [
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-b7b7ff7f8f595f4f",
+            "mokpo-fe255cf642165ba2"
+          ],
+          "scores": [
+            0.5,
+            0.458333,
+            0.423077,
+            0.392857,
+            0.366667
+          ],
+          "first_relevant_rank": 3,
+          "refused": false,
+          "latency_ms": 67.402
+        },
+        {
+          "case_id": "zh_house",
+          "locale": "zh-CN",
+          "query": "木浦繁华路日本式住宅有几层，面积多大？",
+          "returned_chunk_ids": [
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-7d91c9299f4a0a5e::provisional-0001",
+            "mokpo-22d77ef3c4b2ba67::provisional-0001",
+            "mokpo-5f94d78e5c1dee83::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-7d91c9299f4a0a5e",
+            "mokpo-22d77ef3c4b2ba67",
+            "mokpo-5f94d78e5c1dee83"
+          ],
+          "scores": [
+            0.5,
+            0.458333,
+            0.423077,
+            0.392857,
+            0.366667
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 65.28
+        },
+        {
+          "case_id": "zh_customs",
+          "locale": "zh-CN",
+          "query": "哪里有关于旧木浦海关本馆遗址和仓库的资料？",
+          "returned_chunk_ids": [
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-e57c652e21032af1::provisional-0002",
+            "mokpo-b7b7ff7f8f595f4f::provisional-0004",
+            "mokpo-bb622fcc32f9cbc6::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-e57c652e21032af1",
+            "mokpo-b7b7ff7f8f595f4f",
+            "mokpo-bb622fcc32f9cbc6"
+          ],
+          "scores": [
+            0.5,
+            0.458333,
+            0.423077,
+            0.392857,
+            0.366667
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 66.701
+        },
+        {
+          "case_id": "zh_hwashin",
+          "locale": "zh-CN",
+          "query": "旧木浦和信连锁店是什么登记文化遗产？",
+          "returned_chunk_ids": [
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-bb622fcc32f9cbc6::provisional-0000",
+            "mokpo-22d77ef3c4b2ba67::provisional-0001",
+            "mokpo-6db453b44e5542e8::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-bb622fcc32f9cbc6",
+            "mokpo-22d77ef3c4b2ba67",
+            "mokpo-6db453b44e5542e8"
+          ],
+          "scores": [
+            0.5,
+            0.458333,
+            0.423077,
+            0.392857,
+            0.366667
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 60.335
+        },
+        {
+          "case_id": "zh_name_origin",
+          "locale": "zh-CN",
+          "query": "木浦这个地名据说来源于哪里？",
+          "returned_chunk_ids": [
+            "mokpo-74abf5b9e7926710::provisional-0000",
+            "mokpo-20db4fc2c2312e14::provisional-0000",
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-892e377f1b386bc3::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-74abf5b9e7926710",
+            "mokpo-20db4fc2c2312e14",
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-892e377f1b386bc3"
+          ],
+          "scores": [
+            0.5,
+            0.458333,
+            0.423077,
+            0.392857,
+            0.366667
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 59.156
+        },
+        {
+          "case_id": "zh_city_1932",
+          "locale": "zh-CN",
+          "query": "1932年木浦的行政区域和城市规模发生了什么变化？",
+          "returned_chunk_ids": [
+            "mokpo-38b34c3919f62dca::provisional-0002",
+            "mokpo-0153d5872f6e7641::provisional-0003",
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-b7b7ff7f8f595f4f::provisional-0004",
+            "mokpo-1750a1cfa79fab5a::provisional-0005"
+          ],
+          "returned_source_ids": [
+            "mokpo-38b34c3919f62dca",
+            "mokpo-0153d5872f6e7641",
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-b7b7ff7f8f595f4f",
+            "mokpo-1750a1cfa79fab5a"
+          ],
+          "scores": [
+            0.763889,
+            0.5,
+            0.5,
+            0.458333,
+            0.423077
+          ],
+          "first_relevant_rank": 5,
+          "refused": false,
+          "latency_ms": 70.921
+        },
+        {
+          "case_id": "unrelated_astronaut",
+          "locale": "ko",
+          "query": "목포 출신 최초의 우주비행사는 누구인가요?",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-20db4fc2c2312e14::provisional-0000",
+            "mokpo-bb622fcc32f9cbc6::provisional-0000",
+            "mokpo-bc9c4b22a73fbe18::provisional-0002",
+            "mokpo-986674eb2bd1c7f5::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-20db4fc2c2312e14",
+            "mokpo-bb622fcc32f9cbc6",
+            "mokpo-bc9c4b22a73fbe18",
+            "mokpo-986674eb2bd1c7f5"
+          ],
+          "scores": [
+            0.84375,
+            0.5,
+            0.458333,
+            0.458333,
+            0.423077
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 69.266
+        },
+        {
+          "case_id": "unrelated_quantum",
+          "locale": "ko",
+          "query": "양자컴퓨터의 큐비트 오류 정정 방법은?",
+          "returned_chunk_ids": [
+            "mokpo-a8239c7aff510fb6::provisional-0001",
+            "mokpo-b03f5c51698a91a1::provisional-0003",
+            "mokpo-e57c652e21032af1::provisional-0001",
+            "mokpo-fe255cf642165ba2::provisional-0003",
+            "mokpo-20db4fc2c2312e14::provisional-0002"
+          ],
+          "returned_source_ids": [
+            "mokpo-a8239c7aff510fb6",
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-e57c652e21032af1",
+            "mokpo-fe255cf642165ba2",
+            "mokpo-20db4fc2c2312e14"
+          ],
+          "scores": [
+            0.5,
+            0.5,
+            0.458333,
+            0.458333,
+            0.423077
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 77.224
+        },
+        {
+          "case_id": "unrelated_paris",
+          "locale": "zh-CN",
+          "query": "巴黎埃菲尔铁塔有多高？",
+          "returned_chunk_ids": [
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-a8239c7aff510fb6::provisional-0001",
+            "mokpo-ff314916d24c0cb5::provisional-0003",
+            "mokpo-fe255cf642165ba2::provisional-0003"
+          ],
+          "returned_source_ids": [
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-a8239c7aff510fb6",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-fe255cf642165ba2"
+          ],
+          "scores": [
+            0.5,
+            0.458333,
+            0.423077,
+            0.392857,
+            0.366667
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 64.935
+        },
+        {
+          "case_id": "unrelated_dinosaur",
+          "locale": "zh-CN",
+          "query": "霸王龙生活在什么年代？",
+          "returned_chunk_ids": [
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-daa4dbb46b5a852b::provisional-0001",
+            "mokpo-b7b7ff7f8f595f4f::provisional-0002",
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-734d3600faeb5b6f::provisional-0002"
+          ],
+          "returned_source_ids": [
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-b7b7ff7f8f595f4f",
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-734d3600faeb5b6f"
+          ],
+          "scores": [
+            0.5,
+            0.458333,
+            0.423077,
+            0.392857,
+            0.366667
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 61.234
+        },
+        {
+          "case_id": "unrelated_recipe",
+          "locale": "ko",
+          "query": "파스타 카르보나라 조리법을 알려줘",
+          "returned_chunk_ids": [
+            "mokpo-1750a1cfa79fab5a::provisional-0000",
+            "mokpo-892e377f1b386bc3::provisional-0002",
+            "mokpo-2526b988706c03a0::provisional-0002",
+            "mokpo-74abf5b9e7926710::provisional-0000",
+            "mokpo-5229c02607df2eb7::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-2526b988706c03a0",
+            "mokpo-74abf5b9e7926710",
+            "mokpo-5229c02607df2eb7"
+          ],
+          "scores": [
+            0.5,
+            0.5,
+            0.458333,
+            0.458333,
+            0.423077
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 70.807
+        },
+        {
+          "case_id": "insufficient_house_architect",
+          "locale": "ko",
+          "query": "목포 번화로 일본식 가옥을 설계한 건축가는 누구인가요?",
+          "returned_chunk_ids": [
+            "mokpo-fe255cf642165ba2::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000",
+            "mokpo-e868f61e15971e27::provisional-0000",
+            "mokpo-1750a1cfa79fab5a::provisional-0001",
+            "mokpo-e6af4186c355bbf8::provisional-0001"
+          ],
+          "returned_source_ids": [
+            "mokpo-fe255cf642165ba2",
+            "mokpo-ff314916d24c0cb5",
+            "mokpo-e868f61e15971e27",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-e6af4186c355bbf8"
+          ],
+          "scores": [
+            1.0,
+            0.916667,
+            0.766827,
+            0.55,
+            0.423077
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 89.31
+        },
+        {
+          "case_id": "insufficient_bunker_depth",
+          "locale": "ko",
+          "query": "구 목포부청 방공호의 정확한 지하 깊이는 몇 미터인가요?",
+          "returned_chunk_ids": [
+            "mokpo-892e377f1b386bc3::provisional-0000",
+            "mokpo-892e377f1b386bc3::provisional-0003",
+            "mokpo-1750a1cfa79fab5a::provisional-0004",
+            "mokpo-b03f5c51698a91a1::provisional-0000",
+            "mokpo-ff314916d24c0cb5::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-892e377f1b386bc3",
+            "mokpo-892e377f1b386bc3",
+            "mokpo-1750a1cfa79fab5a",
+            "mokpo-b03f5c51698a91a1",
+            "mokpo-ff314916d24c0cb5"
+          ],
+          "scores": [
+            1.0,
+            0.682331,
+            0.458333,
+            0.423077,
+            0.392857
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 90.59
+        },
+        {
+          "case_id": "insufficient_customs_architect",
+          "locale": "zh-CN",
+          "query": "旧木浦海关仓库的建筑师是谁？",
+          "returned_chunk_ids": [
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-a0bf638bbff6150f::provisional-0002",
+            "mokpo-bb622fcc32f9cbc6::provisional-0000",
+            "mokpo-6db453b44e5542e8::provisional-0000",
+            "mokpo-efcab37ddf9a442b::provisional-0000"
+          ],
+          "returned_source_ids": [
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-a0bf638bbff6150f",
+            "mokpo-bb622fcc32f9cbc6",
+            "mokpo-6db453b44e5542e8",
+            "mokpo-efcab37ddf9a442b"
+          ],
+          "scores": [
+            0.5,
+            0.458333,
+            0.423077,
+            0.392857,
+            0.366667
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 71.141
+        },
+        {
+          "case_id": "insufficient_rail_passengers",
+          "locale": "zh-CN",
+          "query": "1914年木浦站每天有多少乘客？",
+          "returned_chunk_ids": [
+            "mokpo-38b34c3919f62dca::provisional-0000",
+            "mokpo-daa4dbb46b5a852b::provisional-0004",
+            "mokpo-5f94d78e5c1dee83::provisional-0001",
+            "mokpo-8fb91a85a5d424e0::provisional-0000",
+            "mokpo-1750a1cfa79fab5a::provisional-0005"
+          ],
+          "returned_source_ids": [
+            "mokpo-38b34c3919f62dca",
+            "mokpo-daa4dbb46b5a852b",
+            "mokpo-5f94d78e5c1dee83",
+            "mokpo-8fb91a85a5d424e0",
+            "mokpo-1750a1cfa79fab5a"
+          ],
+          "scores": [
+            0.5,
+            0.5,
+            0.458333,
+            0.458333,
+            0.423077
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 74.278
+        },
+        {
+          "case_id": "insufficient_kim_oksil_quote",
+          "locale": "ko",
+          "query": "김옥실이 재판에서 직접 한 말을 정확히 인용해 주세요.",
+          "returned_chunk_ids": [
+            "mokpo-74abf5b9e7926710::provisional-0001",
+            "mokpo-7d40b14bc5bcf402::provisional-0001",
+            "mokpo-a50452bd9b1092c3::provisional-0000",
+            "mokpo-35348ffad10c1e7e::provisional-0000",
+            "mokpo-5c3f20e281a8ba2e::provisional-0002"
+          ],
+          "returned_source_ids": [
+            "mokpo-74abf5b9e7926710",
+            "mokpo-7d40b14bc5bcf402",
+            "mokpo-a50452bd9b1092c3",
+            "mokpo-35348ffad10c1e7e",
+            "mokpo-5c3f20e281a8ba2e"
+          ],
+          "scores": [
+            0.763889,
+            0.5,
+            0.5,
+            0.458333,
+            0.423077
+          ],
+          "first_relevant_rank": null,
+          "refused": false,
+          "latency_ms": 73.022
+        }
+      ]
+    }
+  ],
+  "tuning_candidates": [
+    {
+      "name": "rrf10_th0.72_d12_s12_f5_m2",
+      "metrics": {
+        "recall_at_1": 0.45,
+        "recall_at_3": 0.55,
+        "recall_at_5": 0.7,
+        "source_recall_at_1": 0.5,
+        "source_recall_at_3": 0.55,
+        "source_recall_at_5": 0.7,
+        "mrr": 0.5242,
+        "no_evidence_precision": 0.0,
+        "unrelated_rejection_rate": 0.0,
+        "insufficient_rejection_rate": 0.0,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.9,
+        "ko_recall_at_3": 1.0,
+        "ko_recall_at_5": 1.0,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.4,
+        "average_latency_ms": 73.429,
+        "p95_latency_ms": 82.122,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      }
+    },
+    {
+      "name": "rrf30_th0.72_d12_s12_f5_m2",
+      "metrics": {
+        "recall_at_1": 0.45,
+        "recall_at_3": 0.55,
+        "recall_at_5": 0.7,
+        "source_recall_at_1": 0.5,
+        "source_recall_at_3": 0.55,
+        "source_recall_at_5": 0.7,
+        "mrr": 0.5242,
+        "no_evidence_precision": 0.0,
+        "unrelated_rejection_rate": 0.0,
+        "insufficient_rejection_rate": 0.0,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.9,
+        "ko_recall_at_3": 1.0,
+        "ko_recall_at_5": 1.0,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.4,
+        "average_latency_ms": 75.146,
+        "p95_latency_ms": 87.87,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      }
+    },
+    {
+      "name": "rrf60_th0.72_d12_s12_f5_m2",
+      "metrics": {
+        "recall_at_1": 0.45,
+        "recall_at_3": 0.55,
+        "recall_at_5": 0.7,
+        "source_recall_at_1": 0.5,
+        "source_recall_at_3": 0.55,
+        "source_recall_at_5": 0.7,
+        "mrr": 0.5242,
+        "no_evidence_precision": 0.0,
+        "unrelated_rejection_rate": 0.0,
+        "insufficient_rejection_rate": 0.0,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.9,
+        "ko_recall_at_3": 1.0,
+        "ko_recall_at_5": 1.0,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.4,
+        "average_latency_ms": 73.414,
+        "p95_latency_ms": 89.845,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      }
+    },
+    {
+      "name": "rrf10_th0.76_d12_s12_f5_m2",
+      "metrics": {
+        "recall_at_1": 0.45,
+        "recall_at_3": 0.55,
+        "recall_at_5": 0.7,
+        "source_recall_at_1": 0.5,
+        "source_recall_at_3": 0.55,
+        "source_recall_at_5": 0.7,
+        "mrr": 0.5242,
+        "no_evidence_precision": 0.0,
+        "unrelated_rejection_rate": 0.0,
+        "insufficient_rejection_rate": 0.0,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.9,
+        "ko_recall_at_3": 1.0,
+        "ko_recall_at_5": 1.0,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.4,
+        "average_latency_ms": 75.255,
+        "p95_latency_ms": 87.952,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      }
+    },
+    {
+      "name": "rrf10_th0.8_d12_s12_f5_m2",
+      "metrics": {
+        "recall_at_1": 0.45,
+        "recall_at_3": 0.6,
+        "recall_at_5": 0.7,
+        "source_recall_at_1": 0.5,
+        "source_recall_at_3": 0.6,
+        "source_recall_at_5": 0.7,
+        "mrr": 0.5308,
+        "no_evidence_precision": 0.2,
+        "unrelated_rejection_rate": 0.4,
+        "insufficient_rejection_rate": 0.0,
+        "zh_cross_language_success_at_3": 0.2,
+        "zh_source_success_at_3": 0.2,
+        "ko_recall_at_1": 0.9,
+        "ko_recall_at_3": 1.0,
+        "ko_recall_at_5": 1.0,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.2,
+        "zh_recall_at_5": 0.4,
+        "average_latency_ms": 76.496,
+        "p95_latency_ms": 90.392,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      }
+    },
+    {
+      "name": "rrf10_th0.82_d12_s12_f5_m2",
+      "metrics": {
+        "recall_at_1": 0.45,
+        "recall_at_3": 0.55,
+        "recall_at_5": 0.6,
+        "source_recall_at_1": 0.5,
+        "source_recall_at_3": 0.55,
+        "source_recall_at_5": 0.6,
+        "mrr": 0.5042,
+        "no_evidence_precision": 0.3,
+        "unrelated_rejection_rate": 0.4,
+        "insufficient_rejection_rate": 0.2,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.9,
+        "ko_recall_at_3": 1.0,
+        "ko_recall_at_5": 1.0,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.2,
+        "average_latency_ms": 74.737,
+        "p95_latency_ms": 89.179,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      }
+    },
+    {
+      "name": "rrf10_th0.84_d12_s12_f5_m2",
+      "metrics": {
+        "recall_at_1": 0.45,
+        "recall_at_3": 0.55,
+        "recall_at_5": 0.55,
+        "source_recall_at_1": 0.5,
+        "source_recall_at_3": 0.55,
+        "source_recall_at_5": 0.55,
+        "mrr": 0.4917,
+        "no_evidence_precision": 0.3,
+        "unrelated_rejection_rate": 0.4,
+        "insufficient_rejection_rate": 0.2,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.9,
+        "ko_recall_at_3": 1.0,
+        "ko_recall_at_5": 1.0,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.1,
+        "average_latency_ms": 72.609,
+        "p95_latency_ms": 89.121,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      }
+    },
+    {
+      "name": "rrf10_th0.86_d12_s12_f5_m2",
+      "metrics": {
+        "recall_at_1": 0.45,
+        "recall_at_3": 0.55,
+        "recall_at_5": 0.55,
+        "source_recall_at_1": 0.5,
+        "source_recall_at_3": 0.55,
+        "source_recall_at_5": 0.55,
+        "mrr": 0.4917,
+        "no_evidence_precision": 0.3,
+        "unrelated_rejection_rate": 0.4,
+        "insufficient_rejection_rate": 0.2,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.9,
+        "ko_recall_at_3": 1.0,
+        "ko_recall_at_5": 1.0,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.1,
+        "average_latency_ms": 73.728,
+        "p95_latency_ms": 89.182,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      }
+    },
+    {
+      "name": "rrf10_th0.72_d8_s12_f5_m2",
+      "metrics": {
+        "recall_at_1": 0.45,
+        "recall_at_3": 0.55,
+        "recall_at_5": 0.7,
+        "source_recall_at_1": 0.5,
+        "source_recall_at_3": 0.55,
+        "source_recall_at_5": 0.7,
+        "mrr": 0.5242,
+        "no_evidence_precision": 0.0,
+        "unrelated_rejection_rate": 0.0,
+        "insufficient_rejection_rate": 0.0,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.9,
+        "ko_recall_at_3": 1.0,
+        "ko_recall_at_5": 1.0,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.4,
+        "average_latency_ms": 70.713,
+        "p95_latency_ms": 87.03,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      }
+    },
+    {
+      "name": "rrf10_th0.72_d16_s12_f5_m2",
+      "metrics": {
+        "recall_at_1": 0.45,
+        "recall_at_3": 0.55,
+        "recall_at_5": 0.7,
+        "source_recall_at_1": 0.5,
+        "source_recall_at_3": 0.55,
+        "source_recall_at_5": 0.7,
+        "mrr": 0.5242,
+        "no_evidence_precision": 0.0,
+        "unrelated_rejection_rate": 0.0,
+        "insufficient_rejection_rate": 0.0,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.9,
+        "ko_recall_at_3": 1.0,
+        "ko_recall_at_5": 1.0,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.4,
+        "average_latency_ms": 72.032,
+        "p95_latency_ms": 91.447,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      }
+    },
+    {
+      "name": "rrf10_th0.72_d12_s8_f5_m2",
+      "metrics": {
+        "recall_at_1": 0.45,
+        "recall_at_3": 0.55,
+        "recall_at_5": 0.7,
+        "source_recall_at_1": 0.5,
+        "source_recall_at_3": 0.55,
+        "source_recall_at_5": 0.7,
+        "mrr": 0.5242,
+        "no_evidence_precision": 0.0,
+        "unrelated_rejection_rate": 0.0,
+        "insufficient_rejection_rate": 0.0,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.9,
+        "ko_recall_at_3": 1.0,
+        "ko_recall_at_5": 1.0,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.4,
+        "average_latency_ms": 71.854,
+        "p95_latency_ms": 86.752,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      }
+    },
+    {
+      "name": "rrf10_th0.72_d12_s16_f5_m2",
+      "metrics": {
+        "recall_at_1": 0.45,
+        "recall_at_3": 0.55,
+        "recall_at_5": 0.7,
+        "source_recall_at_1": 0.5,
+        "source_recall_at_3": 0.55,
+        "source_recall_at_5": 0.7,
+        "mrr": 0.5242,
+        "no_evidence_precision": 0.0,
+        "unrelated_rejection_rate": 0.0,
+        "insufficient_rejection_rate": 0.0,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.9,
+        "ko_recall_at_3": 1.0,
+        "ko_recall_at_5": 1.0,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.4,
+        "average_latency_ms": 70.41,
+        "p95_latency_ms": 84.638,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      }
+    },
+    {
+      "name": "rrf10_th0.72_d12_s12_f3_m2",
+      "metrics": {
+        "recall_at_1": 0.45,
+        "recall_at_3": 0.55,
+        "recall_at_5": 0.55,
+        "source_recall_at_1": 0.5,
+        "source_recall_at_3": 0.55,
+        "source_recall_at_5": 0.55,
+        "mrr": 0.4917,
+        "no_evidence_precision": 0.0,
+        "unrelated_rejection_rate": 0.0,
+        "insufficient_rejection_rate": 0.0,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.9,
+        "ko_recall_at_3": 1.0,
+        "ko_recall_at_5": 1.0,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.1,
+        "average_latency_ms": 69.39,
+        "p95_latency_ms": 84.85,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      }
+    },
+    {
+      "name": "rrf10_th0.72_d12_s12_f5_m1",
+      "metrics": {
+        "recall_at_1": 0.45,
+        "recall_at_3": 0.5,
+        "recall_at_5": 0.65,
+        "source_recall_at_1": 0.5,
+        "source_recall_at_3": 0.55,
+        "source_recall_at_5": 0.7,
+        "mrr": 0.4992,
+        "no_evidence_precision": 0.0,
+        "unrelated_rejection_rate": 0.0,
+        "insufficient_rejection_rate": 0.0,
+        "zh_cross_language_success_at_3": 0.1,
+        "zh_source_success_at_3": 0.1,
+        "ko_recall_at_1": 0.9,
+        "ko_recall_at_3": 0.9,
+        "ko_recall_at_5": 0.9,
+        "zh_recall_at_1": 0.0,
+        "zh_recall_at_3": 0.1,
+        "zh_recall_at_5": 0.4,
+        "average_latency_ms": 67.835,
+        "p95_latency_ms": 80.603,
+        "answerable_cases": 20,
+        "refusal_cases": 10
+      }
+    }
+  ],
+  "limitations": [
+    "30개 소규모 수동 평가셋이므로 통계적으로 일반화할 수 없다.",
+    "중국어 질의는 평가용 번역이며 기록새 중국어 대사 데이터가 아니다.",
+    "provisional_hackathon corpus의 일부 웹 페이지 청크에는 탐색 UI 잡음이 많다."
+  ]
+}

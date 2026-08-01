@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "corpus_lane": "provisional_hackathon",
+  "corpus_path": "data/provisional_hackathon/processed/chunks.jsonl",
+  "notes": "정답 ID는 2026-08-01 현재 48개/133청크 corpus 본문을 직접 확인해 지정했다. 평가 fixture는 corpus에 포함하지 않는다.",
+  "cases": [
+    {"case_id":"ko_open_port","locale":"ko","query":"목포는 언제 개항했나요?","topic":"항만","expected_source_ids":["mokpo-1750a1cfa79fab5a"],"expected_chunk_ids":["mokpo-1750a1cfa79fab5a::provisional-0001","mokpo-1750a1cfa79fab5a::provisional-0005"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"1897년 10월 1일 개항"},
+    {"case_id":"ko_railway","locale":"ko","query":"호남선 철도는 목포에서 언제 개통했나요?","topic":"철도","expected_source_ids":["mokpo-1750a1cfa79fab5a"],"expected_chunk_ids":["mokpo-1750a1cfa79fab5a::provisional-0002","mokpo-1750a1cfa79fab5a::provisional-0005"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"1914년 1월 호남선 개통"},
+    {"case_id":"ko_kim_oksil","locale":"ko","query":"김옥실은 어떤 독립운동에 참여했나요?","topic":"독립운동·인물","expected_source_ids":["mokpo-a50452bd9b1092c3"],"expected_chunk_ids":["mokpo-a50452bd9b1092c3::provisional-0000"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"정명여학교 만세시위"},
+    {"case_id":"ko_park_aesun","locale":"ko","query":"박애순의 출신지와 운동계열은 무엇인가요?","topic":"독립운동·인물","expected_source_ids":["mokpo-7e74b49138e96a23"],"expected_chunk_ids":["mokpo-7e74b49138e96a23::provisional-0000"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"목포 출신, 3·1운동"},
+    {"case_id":"ko_bunker","locale":"ko","query":"구 목포부청 서고와 방공호는 어떤 문화유산인가요?","topic":"건축","expected_source_ids":["mokpo-892e377f1b386bc3"],"expected_chunk_ids":["mokpo-892e377f1b386bc3::provisional-0000"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"국가등록문화유산 제목 근거"},
+    {"case_id":"ko_house","locale":"ko","query":"목포 번화로 일본식 가옥의 층수와 면적은 얼마인가요?","topic":"건축","expected_source_ids":["mokpo-fe255cf642165ba2"],"expected_chunk_ids":["mokpo-fe255cf642165ba2::provisional-0000"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"지상 2층, 건축·연면적"},
+    {"case_id":"ko_customs","locale":"ko","query":"구 목포세관 본관 터와 창고에 관한 자료는 어디에 있나요?","topic":"항만·건축","expected_source_ids":["mokpo-b03f5c51698a91a1"],"expected_chunk_ids":["mokpo-b03f5c51698a91a1::provisional-0000"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"국가유산포털 자료"},
+    {"case_id":"ko_hwashin","locale":"ko","query":"구 목포화신 연쇄점은 어떤 등록문화유산인가요?","topic":"도시·상업","expected_source_ids":["mokpo-e868f61e15971e27"],"expected_chunk_ids":["mokpo-e868f61e15971e27::provisional-0000"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"문화유산 제목 근거"},
+    {"case_id":"ko_name_origin","locale":"ko","query":"목포라는 지명은 어디에서 유래했다는 설이 있나요?","topic":"도시 변화","expected_source_ids":["mokpo-1750a1cfa79fab5a"],"expected_chunk_ids":["mokpo-1750a1cfa79fab5a::provisional-0001"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"남포→맑포→목포 설"},
+    {"case_id":"ko_city_1932","locale":"ko","query":"1932년 목포의 행정구역과 도시 규모는 어떻게 변했나요?","topic":"도시 변화","expected_source_ids":["mokpo-1750a1cfa79fab5a"],"expected_chunk_ids":["mokpo-1750a1cfa79fab5a::provisional-0002","mokpo-1750a1cfa79fab5a::provisional-0005"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"죽교리·산정리 일부 병합, 전국 6대 도시"},
+
+    {"case_id":"zh_open_port","locale":"zh-CN","query":"木浦港是哪一年开放的？","topic":"항만","expected_source_ids":["mokpo-1750a1cfa79fab5a"],"expected_chunk_ids":["mokpo-1750a1cfa79fab5a::provisional-0001","mokpo-1750a1cfa79fab5a::provisional-0005"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"ko_open_port paired"},
+    {"case_id":"zh_railway","locale":"zh-CN","query":"湖南线铁路什么时候通到木浦？","topic":"철도","expected_source_ids":["mokpo-1750a1cfa79fab5a"],"expected_chunk_ids":["mokpo-1750a1cfa79fab5a::provisional-0002","mokpo-1750a1cfa79fab5a::provisional-0005"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"ko_railway paired"},
+    {"case_id":"zh_kim_oksil","locale":"zh-CN","query":"金玉实参加了什么独立运动？","topic":"독립운동·인물","expected_source_ids":["mokpo-a50452bd9b1092c3"],"expected_chunk_ids":["mokpo-a50452bd9b1092c3::provisional-0000"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"ko_kim_oksil paired"},
+    {"case_id":"zh_park_aesun","locale":"zh-CN","query":"朴爱顺的出生地和独立运动类别是什么？","topic":"독립운동·인물","expected_source_ids":["mokpo-7e74b49138e96a23"],"expected_chunk_ids":["mokpo-7e74b49138e96a23::provisional-0000"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"ko_park_aesun paired"},
+    {"case_id":"zh_bunker","locale":"zh-CN","query":"旧木浦府厅书库和防空洞是什么文化遗产？","topic":"건축","expected_source_ids":["mokpo-892e377f1b386bc3"],"expected_chunk_ids":["mokpo-892e377f1b386bc3::provisional-0000"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"ko_bunker paired"},
+    {"case_id":"zh_house","locale":"zh-CN","query":"木浦繁华路日本式住宅有几层，面积多大？","topic":"건축","expected_source_ids":["mokpo-fe255cf642165ba2"],"expected_chunk_ids":["mokpo-fe255cf642165ba2::provisional-0000"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"ko_house paired"},
+    {"case_id":"zh_customs","locale":"zh-CN","query":"哪里有关于旧木浦海关本馆遗址和仓库的资料？","topic":"항만·건축","expected_source_ids":["mokpo-b03f5c51698a91a1"],"expected_chunk_ids":["mokpo-b03f5c51698a91a1::provisional-0000"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"ko_customs paired"},
+    {"case_id":"zh_hwashin","locale":"zh-CN","query":"旧木浦和信连锁店是什么登记文化遗产？","topic":"도시·상업","expected_source_ids":["mokpo-e868f61e15971e27"],"expected_chunk_ids":["mokpo-e868f61e15971e27::provisional-0000"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"ko_hwashin paired"},
+    {"case_id":"zh_name_origin","locale":"zh-CN","query":"木浦这个地名据说来源于哪里？","topic":"도시 변화","expected_source_ids":["mokpo-1750a1cfa79fab5a"],"expected_chunk_ids":["mokpo-1750a1cfa79fab5a::provisional-0001"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"ko_name_origin paired"},
+    {"case_id":"zh_city_1932","locale":"zh-CN","query":"1932年木浦的行政区域和城市规模发生了什么变化？","topic":"도시 변화","expected_source_ids":["mokpo-1750a1cfa79fab5a"],"expected_chunk_ids":["mokpo-1750a1cfa79fab5a::provisional-0002","mokpo-1750a1cfa79fab5a::provisional-0005"],"expected_top_k":3,"should_answer":true,"should_refuse":false,"notes":"ko_city_1932 paired"},
+
+    {"case_id":"unrelated_astronaut","locale":"ko","query":"목포 출신 최초의 우주비행사는 누구인가요?","topic":"무관","expected_source_ids":[],"expected_chunk_ids":[],"expected_top_k":3,"should_answer":false,"should_refuse":true,"notes":"corpus에 우주비행사 없음"},
+    {"case_id":"unrelated_quantum","locale":"ko","query":"양자컴퓨터의 큐비트 오류 정정 방법은?","topic":"무관","expected_source_ids":[],"expected_chunk_ids":[],"expected_top_k":3,"should_answer":false,"should_refuse":true,"notes":"corpus 범위 밖"},
+    {"case_id":"unrelated_paris","locale":"zh-CN","query":"巴黎埃菲尔铁塔有多高？","topic":"무관","expected_source_ids":[],"expected_chunk_ids":[],"expected_top_k":3,"should_answer":false,"should_refuse":true,"notes":"corpus 범위 밖"},
+    {"case_id":"unrelated_dinosaur","locale":"zh-CN","query":"霸王龙生活在什么年代？","topic":"무관","expected_source_ids":[],"expected_chunk_ids":[],"expected_top_k":3,"should_answer":false,"should_refuse":true,"notes":"corpus 범위 밖"},
+    {"case_id":"unrelated_recipe","locale":"ko","query":"파스타 카르보나라 조리법을 알려줘","topic":"무관","expected_source_ids":[],"expected_chunk_ids":[],"expected_top_k":3,"should_answer":false,"should_refuse":true,"notes":"corpus 범위 밖"},
+
+    {"case_id":"insufficient_house_architect","locale":"ko","query":"목포 번화로 일본식 가옥을 설계한 건축가는 누구인가요?","topic":"근거 부족","expected_source_ids":[],"expected_chunk_ids":[],"expected_top_k":3,"should_answer":false,"should_refuse":true,"notes":"해당 설계자 정보 없음"},
+    {"case_id":"insufficient_bunker_depth","locale":"ko","query":"구 목포부청 방공호의 정확한 지하 깊이는 몇 미터인가요?","topic":"근거 부족","expected_source_ids":[],"expected_chunk_ids":[],"expected_top_k":3,"should_answer":false,"should_refuse":true,"notes":"정확한 깊이 정보 없음"},
+    {"case_id":"insufficient_customs_architect","locale":"zh-CN","query":"旧木浦海关仓库的建筑师是谁？","topic":"근거 부족","expected_source_ids":[],"expected_chunk_ids":[],"expected_top_k":3,"should_answer":false,"should_refuse":true,"notes":"설계자 정보 없음"},
+    {"case_id":"insufficient_rail_passengers","locale":"zh-CN","query":"1914年木浦站每天有多少乘客？","topic":"근거 부족","expected_source_ids":[],"expected_chunk_ids":[],"expected_top_k":3,"should_answer":false,"should_refuse":true,"notes":"일일 승객 수 없음"},
+    {"case_id":"insufficient_kim_oksil_quote","locale":"ko","query":"김옥실이 재판에서 직접 한 말을 정확히 인용해 주세요.","topic":"근거 부족","expected_source_ids":[],"expected_chunk_ids":[],"expected_top_k":3,"should_answer":false,"should_refuse":true,"notes":"직접 발언 원문 없음"}
+  ],
+  "paired_queries": [
+    ["ko_open_port","zh_open_port"], ["ko_railway","zh_railway"],
+    ["ko_kim_oksil","zh_kim_oksil"], ["ko_park_aesun","zh_park_aesun"],
+    ["ko_bunker","zh_bunker"], ["ko_house","zh_house"],
+    ["ko_customs","zh_customs"], ["ko_hwashin","zh_hwashin"],
+    ["ko_name_origin","zh_name_origin"], ["ko_city_1932","zh_city_1932"]
+  ]
+}

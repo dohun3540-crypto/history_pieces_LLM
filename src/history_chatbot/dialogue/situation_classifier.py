@@ -99,7 +99,10 @@ class SituationClassifier:
 
     @staticmethod
     def _is_fact_request(text: str) -> bool:
-        return text.endswith(("?", "요?")) or any(x in text for x in ("왜", "언제", "무엇", "어떤", "알려", "설명", "관계"))
+        return text.endswith(("?", "요?", "？")) or any(
+            x in text
+            for x in ("왜", "언제", "무엇", "어떤", "알려", "설명", "관계", "什么", "何时", "哪年", "哪里", "多少", "是谁", "为什么")
+        )
 
     def _requires_rag(self, situation: S, text: str, secondary: list[S]) -> bool:
         if situation in {S.INTEREST_PEOPLE, S.INTEREST_DAILY_CITY, S.HISTORY_FACT_QUESTION, S.EVIDENCE_AND_CORRECTION, S.CROSS_CULTURAL_COMPARISON}:

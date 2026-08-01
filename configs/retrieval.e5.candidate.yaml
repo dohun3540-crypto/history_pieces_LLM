@@ -1,0 +1,19 @@
+# 2026-08-01 소규모 평가 후보. production 기본값으로 승인된 설정이 아니다.
+retrieval:
+  backend: "local_json"
+  embedding_model: "intfloat/multilingual-e5-small"
+  embedding_revision: "614241f622f53c4eeff9890bdc4f31cfecc418b3"
+  normalize_embeddings: true
+  query_prefix: "query: "
+  passage_prefix: "passage: "
+  sparse_model: "bm25"
+  dense_top_k: 12
+  sparse_top_k: 12
+  final_top_k: 5
+  rrf_k: 10
+  minimum_score: 0.20
+  minimum_dense_score: 0.82
+  max_chunks_per_document: 2
+  local_storage_path: ".runtime/indexes/hackathon/e5"
+  provisional_chunks_path: "data/provisional_hackathon/processed/chunks.jsonl"
+  runtime_mode: "hackathon"

@@ -197,6 +197,9 @@ python -m history_chatbot.collectors.cli --query "목포 개항" --execute
 
 기록새의 17개 상황·54개 human-authored seed, 선택적 RAG, 대화 모드와
 개인화 후보 정책은 [기록새 상황 대화 연결](docs/GIROKSAE_DIALOGUE.md)을 참고하세요.
+실제 multilingual-e5-small 설치·색인 방식은
+[임베딩 backend](docs/EMBEDDING_BACKEND.md), 30개 한중 검색 실측과 제한은
+[다국어 검색 평가](docs/MULTILINGUAL_SEARCH_EVALUATION.md)를 참고하세요.
 
 8단계 `index_ready` 청크만 대상으로 dense 후보와 BM25 결과를 융합합니다.
 현재 dense 기본값 `hashing-v1`은 모델 다운로드 없는 개발·테스트 구현이며,

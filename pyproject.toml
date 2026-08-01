@@ -13,6 +13,7 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
 api = ["fastapi>=0.115", "uvicorn>=0.30"]
+embedding = ["sentence-transformers>=5.1,<6"]
 
 [project.scripts]
 history-chatbot = "history_chatbot.cli:main"
@@ -24,3 +25,6 @@ where = ["src"]
 addopts = "-q -p no:cacheprovider"
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+  "integration: requires locally cached external models or runtime data",
+]

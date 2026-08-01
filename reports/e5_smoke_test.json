@@ -1,0 +1,115 @@
+{
+  "model": "intfloat/multilingual-e5-small",
+  "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+  "metadata_validation_errors": [],
+  "hashing_fallback": "disabled; hashing-v1 requires explicit embedding_model",
+  "citation_returned": true,
+  "production_index_created": false,
+  "cases": [
+    {
+      "case_id": "ko_history",
+      "query": "목포는 언제 개항했나요?",
+      "status": "ok",
+      "situation": "HISTORY_FACT_QUESTION",
+      "grounded": true,
+      "citation_count": 2,
+      "retrieved_chunk_ids": [
+        "mokpo-1750a1cfa79fab5a::provisional-0001",
+        "mokpo-1750a1cfa79fab5a::provisional-0002",
+        "mokpo-e6af4186c355bbf8::provisional-0003"
+      ]
+    },
+    {
+      "case_id": "zh_history",
+      "query": "朴爱顺的出生地和独立运动类别是什么？",
+      "status": "ok",
+      "situation": "HISTORY_FACT_QUESTION",
+      "grounded": true,
+      "citation_count": 3,
+      "retrieved_chunk_ids": [
+        "mokpo-efcab37ddf9a442b::provisional-0000",
+        "mokpo-b7b7ff7f8f595f4f::provisional-0000",
+        "mokpo-74abf5b9e7926710::provisional-0000"
+      ]
+    },
+    {
+      "case_id": "paired_ko",
+      "query": "김옥실은 어떤 독립운동에 참여했나요?",
+      "status": "ok",
+      "situation": "HISTORY_FACT_QUESTION",
+      "grounded": true,
+      "citation_count": 3,
+      "retrieved_chunk_ids": [
+        "mokpo-a50452bd9b1092c3::provisional-0000",
+        "mokpo-a8239c7aff510fb6::provisional-0000",
+        "mokpo-9f4738c00aa939d3::provisional-0000"
+      ]
+    },
+    {
+      "case_id": "paired_zh",
+      "query": "金玉实参加了什么独立运动？",
+      "status": "ok",
+      "situation": "HISTORY_FACT_QUESTION",
+      "grounded": true,
+      "citation_count": 3,
+      "retrieved_chunk_ids": [
+        "mokpo-a0bf638bbff6150f::provisional-0002",
+        "mokpo-96c136dd1a1646f6::provisional-0000",
+        "mokpo-e99d0df6973f0c4d::provisional-0002"
+      ]
+    },
+    {
+      "case_id": "unrelated",
+      "query": "양자컴퓨터의 큐비트 오류 정정 방법은?",
+      "status": "ok",
+      "situation": "HISTORY_FACT_QUESTION",
+      "grounded": true,
+      "citation_count": 3,
+      "retrieved_chunk_ids": [
+        "mokpo-a8239c7aff510fb6::provisional-0001",
+        "mokpo-e57c652e21032af1::provisional-0001",
+        "mokpo-20db4fc2c2312e14::provisional-0002"
+      ]
+    },
+    {
+      "case_id": "insufficient",
+      "query": "목포 번화로 일본식 가옥을 설계한 건축가는 누구인가요?",
+      "status": "ok",
+      "situation": "INTEREST_ARCHITECTURE",
+      "grounded": true,
+      "citation_count": 3,
+      "retrieved_chunk_ids": [
+        "mokpo-fe255cf642165ba2::provisional-0000",
+        "mokpo-ff314916d24c0cb5::provisional-0000",
+        "mokpo-e868f61e15971e27::provisional-0000"
+      ]
+    },
+    {
+      "case_id": "piece_chat",
+      "query": "호남선 철도는 목포에서 언제 개통했나요?",
+      "status": "ok",
+      "situation": "HISTORY_FACT_QUESTION",
+      "grounded": true,
+      "citation_count": 2,
+      "retrieved_chunk_ids": [
+        "mokpo-1750a1cfa79fab5a::provisional-0002",
+        "mokpo-1750a1cfa79fab5a::provisional-0005",
+        "mokpo-986674eb2bd1c7f5::provisional-0000"
+      ]
+    },
+    {
+      "case_id": "free_chat",
+      "query": "박애순은 어떤 독립운동을 했나요?",
+      "status": "ok",
+      "situation": "HISTORY_FACT_QUESTION",
+      "grounded": true,
+      "citation_count": 2,
+      "retrieved_chunk_ids": [
+        "mokpo-7e74b49138e96a23::provisional-0000",
+        "mokpo-7e74b49138e96a23::provisional-0001",
+        "mokpo-d0874b62634939fc::provisional-0000"
+      ]
+    }
+  ],
+  "known_failure": "근거 부족 질문은 관련 장소 청크를 검색해 retrieval 단계만으로 거절하지 못할 수 있다."
+}
