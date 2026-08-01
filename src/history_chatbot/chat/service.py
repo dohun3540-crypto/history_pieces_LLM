@@ -19,6 +19,7 @@ def create_development_orchestrator(
     session_path: Path | None = None,
     environ: Mapping[str, str] | None = None,
     llm: ChatCompletionBackend | None = None,
+    in_memory_sessions: bool = False,
 ) -> ConversationalRagOrchestrator:
     mode = RuntimeMode.DEVELOPMENT
     config = RetrievalConfig(
@@ -36,13 +37,31 @@ def create_development_orchestrator(
         retrieval.build_index()
     sessions = SessionStore(
         mode,
-        path=session_path or runtime_dir / "sessions.json",
+        path=(None if in_memory_sessions else session_path or runtime_dir / "sessions.json"),
     )
     return ConversationalRagOrchestrator(
         retrieval,
         llm or build_llm_from_environment(mode, environ=environ),
         sessions,
         mode=mode,
+    )
+
+
+def create_development_integration_service(
+    *,
+    runtime_dir: Path = Path(".runtime/development-integration"),
+    environ: Mapping[str, str] | None = None,
+    llm: ChatCompletionBackend | None = None,
+) -> ChatApplicationService:
+    """Build the explicit fictional-fixture integration service with memory sessions."""
+
+    return ChatApplicationService(
+        create_development_orchestrator(
+            runtime_dir=runtime_dir,
+            environ=environ,
+            llm=llm,
+            in_memory_sessions=True,
+        )
     )
 
 
