@@ -138,9 +138,12 @@ img { max-width:100%; }
 .citations { max-height:200px; overflow:auto; margin-top:.45rem; padding:.5rem .75rem; background:#fffdf8; border:1px solid #d9c6a9; border-radius:10px; }
 .citation { padding:.65rem 0; border-bottom:1px solid #eadcc6; overflow-wrap:anywhere; }
 .citation:last-child { border-bottom:0; }
+.citation-header { display:flex; flex-wrap:wrap; align-items:center; gap:.35rem; }
+.citation-badge { display:inline-block; max-width:100%; padding:.1rem .4rem; color:#684416; background:#f1dfbd; border:1px solid #d5b784; border-radius:999px; font-size:.68rem; font-weight:800; overflow-wrap:anywhere; }
 .citation strong,.citation div { display:block; }
 .citation div { color:var(--muted); font-size:.78rem; }
 .citation p { margin:.4rem 0; font-size:.82rem; }
+.citation .citation-notice { padding:.4rem .5rem; color:#684416; background:#fbf2e2; border-left:3px solid #c99b57; border-radius:4px; font-size:.74rem; }
 .citation a { color:#174f78; font-weight:800; overflow-wrap:anywhere; }
 .free-composer { padding:.7rem 1rem .2rem; border-top:1px solid #dfccb0; }
 .return-button { margin:.5rem 1rem 1rem; min-height:42px; color:#4b321f; background:transparent; border:1px solid #ba9562; border-radius:10px; font-weight:800; }

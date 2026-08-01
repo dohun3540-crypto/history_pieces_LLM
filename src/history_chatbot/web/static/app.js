@@ -119,9 +119,18 @@ function renderCitations(citations) {
   valid.forEach((citation) => {
     const article = document.createElement("article");
     article.className = "citation";
+    const header = document.createElement("div");
+    header.className = "citation-header";
     const title = document.createElement("strong");
     title.textContent = citation.title || citation.source_id || "출처";
-    article.appendChild(title);
+    header.appendChild(title);
+    if (typeof citation.badge_label === "string" && citation.badge_label.trim()) {
+      const badge = document.createElement("span");
+      badge.className = "citation-badge";
+      badge.textContent = citation.badge_label.trim();
+      header.appendChild(badge);
+    }
+    article.appendChild(header);
     const institution = citation.institution || citation.publisher;
     if (institution) {
       const meta = document.createElement("div");
@@ -132,6 +141,12 @@ function renderCitations(citations) {
       const excerpt = document.createElement("p");
       excerpt.textContent = citation.excerpt;
       article.appendChild(excerpt);
+    }
+    if (typeof citation.usage_notice === "string" && citation.usage_notice.trim()) {
+      const notice = document.createElement("p");
+      notice.className = "citation-notice";
+      notice.textContent = citation.usage_notice.trim();
+      article.appendChild(notice);
     }
     const url = citation.source_url || citation.url;
     if (url) {

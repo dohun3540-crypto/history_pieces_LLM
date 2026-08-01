@@ -114,3 +114,17 @@ def test_missing_subject_returns_insufficient_without_citation() -> None:
     assert response["request_state"] == "insufficient_evidence"
     assert response["citations"] == ()
     assert response["retrieved_chunk_ids"] == ()
+
+
+def test_frontend_renders_optional_development_citation_notices_as_text() -> None:
+    script = Path("src/history_chatbot/web/static/app.js").read_text(encoding="utf-8")
+    styles = Path("src/history_chatbot/web/static/styles.css").read_text(encoding="utf-8")
+
+    assert 'typeof citation.badge_label === "string"' in script
+    assert "badge.textContent = citation.badge_label.trim()" in script
+    assert 'typeof citation.usage_notice === "string"' in script
+    assert "notice.textContent = citation.usage_notice.trim()" in script
+    assert "production_approved" not in script
+    assert "innerHTML" not in script
+    assert ".citation-badge" in styles
+    assert ".citation .citation-notice" in styles
