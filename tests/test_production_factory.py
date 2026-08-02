@@ -54,6 +54,15 @@ def test_production_factory_assembles_service_without_external_calls(monkeypatch
     assert application_service.orchestrator.mode == RuntimeMode.PRODUCTION
     assert isinstance(application_service.orchestrator.llm, RemoteLLMBackend)
     assert application_service.orchestrator.llm.readiness()["status"] == "remote_unverified"
+
+
+def test_production_app_assembles_when_api_dependencies_are_installed(monkeypatch) -> None:
+    pytest.importorskip("fastapi")
+    monkeypatch.setattr(service, "HybridRetrievalService", ReadyRetrieval)
+    application_service = service.create_production_service(
+        environ=remote_environment(), session_path=None
+    )
+
     assert create_app(service=application_service).title == "History Pieces Reference Web Demo"
 
 

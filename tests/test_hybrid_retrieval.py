@@ -185,6 +185,7 @@ def test_model_version_mismatch_blocks_search(tmp_path) -> None:
         embedding_revision="builtin",
         local_storage_path=service.config.local_storage_path,
         index_ready_path=service.config.index_ready_path,
+        runtime_mode=service.config.runtime_mode,
     )
     mismatched_encoder = FixtureEncoder()
     mismatched_encoder.revision = "test-2"
