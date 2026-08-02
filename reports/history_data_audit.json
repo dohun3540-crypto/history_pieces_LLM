@@ -1,0 +1,1180 @@
+{
+  "audit_version": 1,
+  "basis": {
+    "data_dir": "data",
+    "fixture_policy": "excluded_from_actual_historical_data",
+    "root": "C:/projects/history_pieces_LLM",
+    "topic_classification": "estimated; low confidence requires manual review"
+  },
+  "chunk_lane_counts": {
+    "development_real": 6,
+    "fixture": 2,
+    "provisional": 133
+  },
+  "collection_priority": [
+    {
+      "reason": "coverage/source diversity/approval gap",
+      "recommended_additional_count": 5,
+      "topic": "구 일본영사관"
+    },
+    {
+      "reason": "coverage/source diversity/approval gap",
+      "recommended_additional_count": 5,
+      "topic": "동양척식주식회사 목포지점"
+    },
+    {
+      "reason": "coverage/source diversity/approval gap",
+      "recommended_additional_count": 5,
+      "topic": "목포 해관"
+    },
+    {
+      "reason": "coverage/source diversity/approval gap",
+      "recommended_additional_count": 5,
+      "topic": "외국인 거류지·조계지"
+    },
+    {
+      "reason": "coverage/source diversity/approval gap",
+      "recommended_additional_count": 3,
+      "topic": "근대 항만과 철도"
+    },
+    {
+      "reason": "coverage/source diversity/approval gap",
+      "recommended_additional_count": 3,
+      "topic": "목포 개항"
+    },
+    {
+      "reason": "coverage/source diversity/approval gap",
+      "recommended_additional_count": 3,
+      "topic": "목포 근대역사문화공간"
+    },
+    {
+      "reason": "coverage/source diversity/approval gap",
+      "recommended_additional_count": 3,
+      "topic": "일제강점기 목포의 산업과 도시 변화"
+    }
+  ],
+  "counts": {
+    "actual_chunks_excluding_fixtures": 139,
+    "actual_documents_excluding_fixtures": 52,
+    "chunks_total": 141,
+    "extracted_text_files": 1,
+    "fixture_chunks": 2,
+    "fixture_documents": 2,
+    "indexed_chunks": 6,
+    "indexed_documents": 3,
+    "manifest_documents_total": 54,
+    "production_usable_documents": 0,
+    "raw_files": 49
+  },
+  "duplicates": {
+    "document_id": [],
+    "duplicate_chunk_id": [],
+    "identical_body_hash": [],
+    "identical_chunk_body": [],
+    "similar_body": [
+      {
+        "document_ids": [
+          "mokpo-ff314916d24c0cb5",
+          "mokpo-fe255cf642165ba2"
+        ],
+        "review_required": true,
+        "similarity": 0.961
+      },
+      {
+        "document_ids": [
+          "mokpo-ff314916d24c0cb5",
+          "mokpo-892e377f1b386bc3"
+        ],
+        "review_required": true,
+        "similarity": 0.948
+      },
+      {
+        "document_ids": [
+          "mokpo-ff314916d24c0cb5",
+          "mokpo-b03f5c51698a91a1"
+        ],
+        "review_required": true,
+        "similarity": 0.945
+      },
+      {
+        "document_ids": [
+          "mokpo-fe255cf642165ba2",
+          "mokpo-892e377f1b386bc3"
+        ],
+        "review_required": true,
+        "similarity": 0.941
+      },
+      {
+        "document_ids": [
+          "mokpo-fe255cf642165ba2",
+          "mokpo-b03f5c51698a91a1"
+        ],
+        "review_required": true,
+        "similarity": 0.941
+      },
+      {
+        "document_ids": [
+          "mokpo-892e377f1b386bc3",
+          "mokpo-b03f5c51698a91a1"
+        ],
+        "review_required": true,
+        "similarity": 0.942
+      }
+    ],
+    "similar_titles": [
+      {
+        "document_ids": [
+          "mokpo-a50452bd9b1092c3",
+          "mokpo-ddc83264e2374af8"
+        ],
+        "similarity": 0.929,
+        "titles": [
+          "김옥실 - 독립운동인명사전",
+          "김옥남 - 독립운동인명사전"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-20db4fc2c2312e14",
+          "mokpo-8fb91a85a5d424e0"
+        ],
+        "similarity": 0.903,
+        "titles": [
+          "독립운동인명사전 기록(ID 6313) - 독립운동인명사전",
+          "독립운동인명사전 기록(ID 4516) - 독립운동인명사전"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-20db4fc2c2312e14",
+          "mokpo-a8239c7aff510fb6"
+        ],
+        "similarity": 0.889,
+        "titles": [
+          "독립운동인명사전 기록(ID 6313) - 독립운동인명사전",
+          "독립운동인명사전 기록(ID 11087) - 독립운동인명사전"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-20db4fc2c2312e14",
+          "mokpo-e6af4186c355bbf8"
+        ],
+        "similarity": 0.935,
+        "titles": [
+          "독립운동인명사전 기록(ID 6313) - 독립운동인명사전",
+          "독립운동인명사전 기록(ID 7533) - 독립운동인명사전"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-8fb91a85a5d424e0",
+          "mokpo-a8239c7aff510fb6"
+        ],
+        "similarity": 0.889,
+        "titles": [
+          "독립운동인명사전 기록(ID 4516) - 독립운동인명사전",
+          "독립운동인명사전 기록(ID 11087) - 독립운동인명사전"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-8fb91a85a5d424e0",
+          "mokpo-e6af4186c355bbf8"
+        ],
+        "similarity": 0.903,
+        "titles": [
+          "독립운동인명사전 기록(ID 4516) - 독립운동인명사전",
+          "독립운동인명사전 기록(ID 7533) - 독립운동인명사전"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-b7b7ff7f8f595f4f",
+          "mokpo-74abf5b9e7926710"
+        ],
+        "similarity": 0.929,
+        "titles": [
+          "박복영 - 독립운동인명사전",
+          "박복술 - 독립운동인명사전"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-a8239c7aff510fb6",
+          "mokpo-e6af4186c355bbf8"
+        ],
+        "similarity": 0.889,
+        "titles": [
+          "독립운동인명사전 기록(ID 11087) - 독립운동인명사전",
+          "독립운동인명사전 기록(ID 7533) - 독립운동인명사전"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-769ddbe4e396c295",
+          "mokpo-51d42bd7a801d43e"
+        ],
+        "similarity": 0.913,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 329)",
+          "독립운동인명사전 참고 레코드(ID 330)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-769ddbe4e396c295",
+          "mokpo-8b05432001f808e3"
+        ],
+        "similarity": 0.917,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 329)",
+          "독립운동인명사전 참고 레코드(ID 13914)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-769ddbe4e396c295",
+          "mokpo-6db453b44e5542e8"
+        ],
+        "similarity": 0.917,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 329)",
+          "독립운동인명사전 참고 레코드(ID 13694)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-769ddbe4e396c295",
+          "mokpo-35348ffad10c1e7e"
+        ],
+        "similarity": 0.894,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 329)",
+          "독립운동인명사전 참고 레코드(ID 2665)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-769ddbe4e396c295",
+          "mokpo-efcab37ddf9a442b"
+        ],
+        "similarity": 0.894,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 329)",
+          "독립운동인명사전 참고 레코드(ID 4459)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-769ddbe4e396c295",
+          "mokpo-8968fb476d00af54"
+        ],
+        "similarity": 0.894,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 329)",
+          "독립운동인명사전 참고 레코드(ID 5375)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-769ddbe4e396c295",
+          "mokpo-a2902242a8ddd255"
+        ],
+        "similarity": 0.894,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 329)",
+          "독립운동인명사전 참고 레코드(ID 9734)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-769ddbe4e396c295",
+          "mokpo-0153d5872f6e7641"
+        ],
+        "similarity": 0.894,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 329)",
+          "독립운동인명사전 참고 레코드(ID 9597)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-769ddbe4e396c295",
+          "mokpo-18d96912fc28a3db"
+        ],
+        "similarity": 0.894,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 329)",
+          "독립운동인명사전 참고 레코드(ID 7183)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-769ddbe4e396c295",
+          "mokpo-22d77ef3c4b2ba67"
+        ],
+        "similarity": 0.894,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 329)",
+          "독립운동인명사전 참고 레코드(ID 4663)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-769ddbe4e396c295",
+          "mokpo-e99d0df6973f0c4d"
+        ],
+        "similarity": 0.894,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 329)",
+          "독립운동인명사전 참고 레코드(ID 6525)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-769ddbe4e396c295",
+          "mokpo-5c3f20e281a8ba2e"
+        ],
+        "similarity": 0.894,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 329)",
+          "독립운동인명사전 참고 레코드(ID 7285)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-51d42bd7a801d43e",
+          "mokpo-8968fb476d00af54"
+        ],
+        "similarity": 0.894,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 330)",
+          "독립운동인명사전 참고 레코드(ID 5375)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-51d42bd7a801d43e",
+          "mokpo-a2902242a8ddd255"
+        ],
+        "similarity": 0.894,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 330)",
+          "독립운동인명사전 참고 레코드(ID 9734)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-51d42bd7a801d43e",
+          "mokpo-18d96912fc28a3db"
+        ],
+        "similarity": 0.894,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 330)",
+          "독립운동인명사전 참고 레코드(ID 7183)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-51d42bd7a801d43e",
+          "mokpo-22d77ef3c4b2ba67"
+        ],
+        "similarity": 0.894,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 330)",
+          "독립운동인명사전 참고 레코드(ID 4663)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-8b05432001f808e3",
+          "mokpo-6db453b44e5542e8"
+        ],
+        "similarity": 0.96,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 13914)",
+          "독립운동인명사전 참고 레코드(ID 13694)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-8b05432001f808e3",
+          "mokpo-a2902242a8ddd255"
+        ],
+        "similarity": 0.898,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 13914)",
+          "독립운동인명사전 참고 레코드(ID 9734)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-8b05432001f808e3",
+          "mokpo-18d96912fc28a3db"
+        ],
+        "similarity": 0.898,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 13914)",
+          "독립운동인명사전 참고 레코드(ID 7183)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-8b05432001f808e3",
+          "mokpo-5229c02607df2eb7"
+        ],
+        "similarity": 0.92,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 13914)",
+          "독립운동인명사전 참고 레코드(ID 13674)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-6db453b44e5542e8",
+          "mokpo-a2902242a8ddd255"
+        ],
+        "similarity": 0.898,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 13694)",
+          "독립운동인명사전 참고 레코드(ID 9734)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-6db453b44e5542e8",
+          "mokpo-18d96912fc28a3db"
+        ],
+        "similarity": 0.898,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 13694)",
+          "독립운동인명사전 참고 레코드(ID 7183)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-6db453b44e5542e8",
+          "mokpo-5229c02607df2eb7"
+        ],
+        "similarity": 0.96,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 13694)",
+          "독립운동인명사전 참고 레코드(ID 13674)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-35348ffad10c1e7e",
+          "mokpo-22d77ef3c4b2ba67"
+        ],
+        "similarity": 0.917,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 2665)",
+          "독립운동인명사전 참고 레코드(ID 4663)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-35348ffad10c1e7e",
+          "mokpo-fe824fed5263b296"
+        ],
+        "similarity": 0.917,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 2665)",
+          "독립운동인명사전 참고 레코드(ID 6667)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-35348ffad10c1e7e",
+          "mokpo-e99d0df6973f0c4d"
+        ],
+        "similarity": 0.917,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 2665)",
+          "독립운동인명사전 참고 레코드(ID 6525)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-35348ffad10c1e7e",
+          "mokpo-5c3f20e281a8ba2e"
+        ],
+        "similarity": 0.917,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 2665)",
+          "독립운동인명사전 참고 레코드(ID 7285)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-efcab37ddf9a442b",
+          "mokpo-0153d5872f6e7641"
+        ],
+        "similarity": 0.917,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 4459)",
+          "독립운동인명사전 참고 레코드(ID 9597)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-8968fb476d00af54",
+          "mokpo-0153d5872f6e7641"
+        ],
+        "similarity": 0.917,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 5375)",
+          "독립운동인명사전 참고 레코드(ID 9597)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-8968fb476d00af54",
+          "mokpo-e99d0df6973f0c4d"
+        ],
+        "similarity": 0.917,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 5375)",
+          "독립운동인명사전 참고 레코드(ID 6525)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-8968fb476d00af54",
+          "mokpo-5c3f20e281a8ba2e"
+        ],
+        "similarity": 0.917,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 5375)",
+          "독립운동인명사전 참고 레코드(ID 7285)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-8968fb476d00af54",
+          "mokpo-5229c02607df2eb7"
+        ],
+        "similarity": 0.898,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 5375)",
+          "독립운동인명사전 참고 레코드(ID 13674)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-a2902242a8ddd255",
+          "mokpo-0153d5872f6e7641"
+        ],
+        "similarity": 0.917,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 9734)",
+          "독립운동인명사전 참고 레코드(ID 9597)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-a2902242a8ddd255",
+          "mokpo-18d96912fc28a3db"
+        ],
+        "similarity": 0.917,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 9734)",
+          "독립운동인명사전 참고 레코드(ID 7183)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-a2902242a8ddd255",
+          "mokpo-5229c02607df2eb7"
+        ],
+        "similarity": 0.898,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 9734)",
+          "독립운동인명사전 참고 레코드(ID 13674)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-18d96912fc28a3db",
+          "mokpo-5c3f20e281a8ba2e"
+        ],
+        "similarity": 0.917,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 7183)",
+          "독립운동인명사전 참고 레코드(ID 7285)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-22d77ef3c4b2ba67",
+          "mokpo-fe824fed5263b296"
+        ],
+        "similarity": 0.917,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 4663)",
+          "독립운동인명사전 참고 레코드(ID 6667)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-fe824fed5263b296",
+          "mokpo-5229c02607df2eb7"
+        ],
+        "similarity": 0.898,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 6667)",
+          "독립운동인명사전 참고 레코드(ID 13674)"
+        ]
+      },
+      {
+        "document_ids": [
+          "mokpo-e99d0df6973f0c4d",
+          "mokpo-5c3f20e281a8ba2e"
+        ],
+        "similarity": 0.917,
+        "titles": [
+          "독립운동인명사전 참고 레코드(ID 6525)",
+          "독립운동인명사전 참고 레코드(ID 7285)"
+        ]
+      }
+    ],
+    "source_url": []
+  },
+  "lane_counts": {
+    "development_real": 3,
+    "fixture": 2,
+    "production_candidate": 1,
+    "provisional": 48
+  },
+  "license_counts": {
+    "pending_review": 3,
+    "unconfirmed": 48,
+    "unknown": 1
+  },
+  "mismatches": {
+    "chunks_without_manifest_document": [],
+    "index_details": [
+      {
+        "chunk_count": 6,
+        "document_count": 3,
+        "path": "data/development_real/retrieval_index/hashing-v1--builtin.json"
+      },
+      {
+        "chunk_count": 0,
+        "document_count": 0,
+        "path": "data/retrieval_index/hashing-v1--builtin.json"
+      }
+    ],
+    "index_documents_not_in_manifest": [],
+    "manifest_documents_not_in_index": [
+      "auto-national_archives-1323bcbe9beea1f39fab",
+      "mokpo-0153d5872f6e7641",
+      "mokpo-1750a1cfa79fab5a",
+      "mokpo-18d96912fc28a3db",
+      "mokpo-20db4fc2c2312e14",
+      "mokpo-22d77ef3c4b2ba67",
+      "mokpo-2526b988706c03a0",
+      "mokpo-35348ffad10c1e7e",
+      "mokpo-38b34c3919f62dca",
+      "mokpo-51d42bd7a801d43e",
+      "mokpo-5229c02607df2eb7",
+      "mokpo-5c3f20e281a8ba2e",
+      "mokpo-5f94d78e5c1dee83",
+      "mokpo-6db453b44e5542e8",
+      "mokpo-734d3600faeb5b6f",
+      "mokpo-74abf5b9e7926710",
+      "mokpo-769ddbe4e396c295",
+      "mokpo-7d40b14bc5bcf402",
+      "mokpo-7d91c9299f4a0a5e",
+      "mokpo-7e74b49138e96a23",
+      "mokpo-892e377f1b386bc3",
+      "mokpo-8968fb476d00af54",
+      "mokpo-8b05432001f808e3",
+      "mokpo-8fb91a85a5d424e0",
+      "mokpo-96c136dd1a1646f6",
+      "mokpo-986674eb2bd1c7f5",
+      "mokpo-9f4738c00aa939d3",
+      "mokpo-a0bf638bbff6150f",
+      "mokpo-a2902242a8ddd255",
+      "mokpo-a50452bd9b1092c3",
+      "mokpo-a8239c7aff510fb6",
+      "mokpo-b03f5c51698a91a1",
+      "mokpo-b7b7ff7f8f595f4f",
+      "mokpo-bb622fcc32f9cbc6",
+      "mokpo-bc9c4b22a73fbe18",
+      "mokpo-c2649df7ecb6e519",
+      "mokpo-d0874b62634939fc",
+      "mokpo-d0cbcd39dd5857a1",
+      "mokpo-daa4dbb46b5a852b",
+      "mokpo-daa68d43d5a6e033",
+      "mokpo-ddc83264e2374af8",
+      "mokpo-e57c652e21032af1",
+      "mokpo-e6af4186c355bbf8",
+      "mokpo-e868f61e15971e27",
+      "mokpo-e99d0df6973f0c4d",
+      "mokpo-efcab37ddf9a442b",
+      "mokpo-fe255cf642165ba2",
+      "mokpo-fe824fed5263b296",
+      "mokpo-ff314916d24c0cb5"
+    ],
+    "manifest_missing_raw_file": [],
+    "manifest_without_chunks": [
+      "auto-national_archives-1323bcbe9beea1f39fab"
+    ],
+    "manifest_without_extracted_text": [
+      "mokpo-0153d5872f6e7641",
+      "mokpo-1750a1cfa79fab5a",
+      "mokpo-18d96912fc28a3db",
+      "mokpo-20db4fc2c2312e14",
+      "mokpo-22d77ef3c4b2ba67",
+      "mokpo-2526b988706c03a0",
+      "mokpo-35348ffad10c1e7e",
+      "mokpo-38b34c3919f62dca",
+      "mokpo-51d42bd7a801d43e",
+      "mokpo-5229c02607df2eb7",
+      "mokpo-5c3f20e281a8ba2e",
+      "mokpo-5f94d78e5c1dee83",
+      "mokpo-6db453b44e5542e8",
+      "mokpo-734d3600faeb5b6f",
+      "mokpo-74abf5b9e7926710",
+      "mokpo-769ddbe4e396c295",
+      "mokpo-7d40b14bc5bcf402",
+      "mokpo-7d91c9299f4a0a5e",
+      "mokpo-7e74b49138e96a23",
+      "mokpo-892e377f1b386bc3",
+      "mokpo-8968fb476d00af54",
+      "mokpo-8b05432001f808e3",
+      "mokpo-8fb91a85a5d424e0",
+      "mokpo-96c136dd1a1646f6",
+      "mokpo-986674eb2bd1c7f5",
+      "mokpo-9f4738c00aa939d3",
+      "mokpo-a0bf638bbff6150f",
+      "mokpo-a2902242a8ddd255",
+      "mokpo-a50452bd9b1092c3",
+      "mokpo-a8239c7aff510fb6",
+      "mokpo-b03f5c51698a91a1",
+      "mokpo-b7b7ff7f8f595f4f",
+      "mokpo-bb622fcc32f9cbc6",
+      "mokpo-bc9c4b22a73fbe18",
+      "mokpo-c2649df7ecb6e519",
+      "mokpo-d0874b62634939fc",
+      "mokpo-d0cbcd39dd5857a1",
+      "mokpo-daa4dbb46b5a852b",
+      "mokpo-daa68d43d5a6e033",
+      "mokpo-ddc83264e2374af8",
+      "mokpo-e57c652e21032af1",
+      "mokpo-e6af4186c355bbf8",
+      "mokpo-e868f61e15971e27",
+      "mokpo-e99d0df6973f0c4d",
+      "mokpo-efcab37ddf9a442b",
+      "mokpo-fe255cf642165ba2",
+      "mokpo-fe824fed5263b296",
+      "mokpo-ff314916d24c0cb5",
+      "mokpo_hist_0004",
+      "mokpo_hist_0005",
+      "mokpo_hist_0006"
+    ],
+    "manifest_without_raw_path_or_resolvable_rule": [
+      "mokpo_hist_0004",
+      "mokpo_hist_0005",
+      "mokpo_hist_0006"
+    ],
+    "raw_without_manifest": []
+  },
+  "missing_field_counts": {
+    "accessed_at": 0,
+    "clean_text_path": 52,
+    "document_id": 0,
+    "historical_period": 4,
+    "institution": 0,
+    "license_status": 0,
+    "person_tags": 52,
+    "place_tags": 52,
+    "production_approved": 49,
+    "published_date": 52,
+    "raw_text_path": 51,
+    "review_status": 0,
+    "source_url": 0,
+    "title": 0,
+    "topic_tags": 1,
+    "usage_scope": 4
+  },
+  "physical_field_absence": {
+    "production_approved": 49,
+    "review_status": 48
+  },
+  "quality_warnings": [
+    {
+      "document_id": "auto-national_archives-1323bcbe9beea1f39fab",
+      "review_required": false,
+      "warnings": [
+        "empty_body"
+      ]
+    }
+  ],
+  "raw_lane_counts": {
+    "production_candidate": 1,
+    "provisional": 48
+  },
+  "schema_field_assessment": {
+    "currently_present_and_sufficient": [
+      "document_id",
+      "title",
+      "source_url",
+      "published_date",
+      "accessed_at (accessed_date)",
+      "license_status (copyright_status)",
+      "review_status",
+      "historical_period",
+      "person_tags (people)"
+    ],
+    "minimal_change_proposal_only": "A future version may add usage_scope, production_approved, raw_text_path, and clean_text_path without changing existing values; no schema change was made by this audit.",
+    "not_in_current_general_schema": [
+      "usage_scope",
+      "production_approved",
+      "clean_text_path"
+    ],
+    "present_but_incomplete": [
+      "institution (publisher)",
+      "topic_tags (keywords)",
+      "place_tags (places)",
+      "raw_text_path (local_path: raw/clean meaning is ambiguous)"
+    ]
+  },
+  "schema_mapping": {
+    "accessed_at": "accessed_date/collected_at",
+    "clean_text_path": "no manifest field; chunks/processed files are separate artifacts",
+    "document_id": "document_id (provisional fallback: source_id)",
+    "historical_period": "historical_period or period",
+    "institution": "institution or publisher",
+    "license_status": "copyright_status/license_review_status/rights_status",
+    "person_tags": "people",
+    "place_tags": "places",
+    "production_approved": "development schema only; general schema uses allowed_for_rag plus reviewed",
+    "published_date": "published_date",
+    "raw_text_path": "local_path; provisional deterministic raw path",
+    "review_status": "review_status or provisional usage_status",
+    "source_url": "source_url or canonical_source_url",
+    "title": "title (provisional: source_title)",
+    "topic_tags": "keywords/retrieval_subjects/topic/primary_topic",
+    "usage_scope": "usage_scope (no general-schema equivalent)"
+  },
+  "status_counts": {
+    "draft": 0,
+    "fixture": 2,
+    "other_review_state": 3,
+    "production_approved": 0,
+    "production_rejected": 1,
+    "provisional": 48,
+    "reference_only": 0,
+    "review_status_missing": 0
+  },
+  "topic_coverage": [
+    {
+      "chunk_count": 5,
+      "classification": "estimated",
+      "confidence": {
+        "high": 1,
+        "low_review_required": 2,
+        "medium": 6
+      },
+      "document_count": 9,
+      "document_ids": [
+        "mokpo-1750a1cfa79fab5a",
+        "mokpo-2526b988706c03a0",
+        "mokpo-892e377f1b386bc3",
+        "mokpo-986674eb2bd1c7f5",
+        "mokpo-b03f5c51698a91a1",
+        "mokpo-c2649df7ecb6e519",
+        "mokpo-e868f61e15971e27",
+        "mokpo-fe255cf642165ba2",
+        "mokpo-ff314916d24c0cb5"
+      ],
+      "dominant_source_share": 0.667,
+      "independent_source_count": 3,
+      "license_unknown_count": 9,
+      "production_approved_count": 0,
+      "provisional_count": 9,
+      "recommended_additional_count": 3,
+      "reference_only_count": 0,
+      "representative_titles": [
+        "구 목포 화신연쇄점",
+        "구 목포부청 서고 및 방공호",
+        "목포 근대역사문화공간",
+        "목포 근대역사문화공간 내 일본인 가옥-1",
+        "목포 역사·지명유래"
+      ],
+      "search_keywords": [
+        "목포 개항",
+        "개항장",
+        "개항"
+      ],
+      "shortage": true,
+      "source_institution_count": 3,
+      "topic": "목포 개항"
+    },
+    {
+      "chunk_count": 1,
+      "classification": "estimated",
+      "confidence": {
+        "high": 1
+      },
+      "document_count": 1,
+      "document_ids": [
+        "mokpo-b03f5c51698a91a1"
+      ],
+      "dominant_source_share": 1.0,
+      "independent_source_count": 1,
+      "license_unknown_count": 1,
+      "production_approved_count": 0,
+      "provisional_count": 1,
+      "recommended_additional_count": 5,
+      "reference_only_count": 0,
+      "representative_titles": [
+        "목포세관 구 목포지점 터와 세관창고"
+      ],
+      "search_keywords": [
+        "목포 해관",
+        "해관",
+        "세관"
+      ],
+      "shortage": true,
+      "source_institution_count": 1,
+      "topic": "목포 해관"
+    },
+    {
+      "chunk_count": 1,
+      "classification": "estimated",
+      "confidence": {
+        "low_review_required": 1
+      },
+      "document_count": 1,
+      "document_ids": [
+        "mokpo-2526b988706c03a0"
+      ],
+      "dominant_source_share": 1.0,
+      "independent_source_count": 1,
+      "license_unknown_count": 1,
+      "production_approved_count": 0,
+      "provisional_count": 1,
+      "recommended_additional_count": 5,
+      "reference_only_count": 0,
+      "representative_titles": [
+        "목포 정광정혜원"
+      ],
+      "search_keywords": [
+        "외국인 거류지",
+        "조계지",
+        "조계",
+        "거류지"
+      ],
+      "shortage": true,
+      "source_institution_count": 1,
+      "topic": "외국인 거류지·조계지"
+    },
+    {
+      "chunk_count": 2,
+      "classification": "estimated",
+      "confidence": {
+        "high": 1
+      },
+      "document_count": 1,
+      "document_ids": [
+        "mokpo_hist_0004"
+      ],
+      "dominant_source_share": 1.0,
+      "independent_source_count": 1,
+      "license_unknown_count": 1,
+      "production_approved_count": 0,
+      "provisional_count": 0,
+      "recommended_additional_count": 5,
+      "reference_only_count": 0,
+      "representative_titles": [
+        "구 목포 일본영사관의 건립과 용도 변화"
+      ],
+      "search_keywords": [
+        "구 목포 일본영사관",
+        "목포 일본영사관",
+        "일본영사관",
+        "근대역사관 1관"
+      ],
+      "shortage": true,
+      "source_institution_count": 1,
+      "topic": "구 일본영사관"
+    },
+    {
+      "chunk_count": 6,
+      "classification": "estimated",
+      "confidence": {
+        "high": 1,
+        "low_review_required": 4
+      },
+      "document_count": 5,
+      "document_ids": [
+        "mokpo-892e377f1b386bc3",
+        "mokpo-b03f5c51698a91a1",
+        "mokpo-fe255cf642165ba2",
+        "mokpo-ff314916d24c0cb5",
+        "mokpo_hist_0006"
+      ],
+      "dominant_source_share": 0.8,
+      "independent_source_count": 2,
+      "license_unknown_count": 5,
+      "production_approved_count": 0,
+      "provisional_count": 4,
+      "recommended_additional_count": 5,
+      "reference_only_count": 0,
+      "representative_titles": [
+        "구 목포부청 서고 및 방공호",
+        "동양척식주식회사 목포지점 건물의 건립과 현존",
+        "목포 근대역사문화공간",
+        "목포 근대역사문화공간 내 일본인 가옥-1",
+        "목포세관 구 목포지점 터와 세관창고"
+      ],
+      "search_keywords": [
+        "동양척식주식회사 목포지점",
+        "동양척식주식회사",
+        "동척",
+        "근대역사관 2관"
+      ],
+      "shortage": true,
+      "source_institution_count": 2,
+      "topic": "동양척식주식회사 목포지점"
+    },
+    {
+      "chunk_count": 4,
+      "classification": "estimated",
+      "confidence": {
+        "high": 2,
+        "low_review_required": 2
+      },
+      "document_count": 4,
+      "document_ids": [
+        "mokpo-fe255cf642165ba2",
+        "mokpo-ff314916d24c0cb5",
+        "mokpo_hist_0004",
+        "mokpo_hist_0006"
+      ],
+      "dominant_source_share": 0.5,
+      "independent_source_count": 2,
+      "license_unknown_count": 4,
+      "production_approved_count": 0,
+      "provisional_count": 2,
+      "recommended_additional_count": 3,
+      "reference_only_count": 0,
+      "representative_titles": [
+        "구 목포 일본영사관의 건립과 용도 변화",
+        "동양척식주식회사 목포지점 건물의 건립과 현존",
+        "목포 근대역사문화공간",
+        "목포 근대역사문화공간 내 일본인 가옥-1"
+      ],
+      "search_keywords": [
+        "목포 근대역사문화공간",
+        "근대역사문화공간",
+        "근대역사관"
+      ],
+      "shortage": true,
+      "source_institution_count": 2,
+      "topic": "목포 근대역사문화공간"
+    },
+    {
+      "chunk_count": 6,
+      "classification": "estimated",
+      "confidence": {
+        "low_review_required": 3
+      },
+      "document_count": 3,
+      "document_ids": [
+        "mokpo-1750a1cfa79fab5a",
+        "mokpo-daa4dbb46b5a852b",
+        "mokpo-e6af4186c355bbf8"
+      ],
+      "dominant_source_share": 0.667,
+      "independent_source_count": 2,
+      "license_unknown_count": 3,
+      "production_approved_count": 0,
+      "provisional_count": 3,
+      "recommended_additional_count": 3,
+      "reference_only_count": 0,
+      "representative_titles": [
+        "남궁혁 - 독립운동인명사전",
+        "독립운동인명사전 기록(ID 7533) - 독립운동인명사전",
+        "목포 역사·지명유래"
+      ],
+      "search_keywords": [
+        "목포항",
+        "항만",
+        "부두",
+        "철도",
+        "호남선"
+      ],
+      "shortage": true,
+      "source_institution_count": 2,
+      "topic": "근대 항만과 철도"
+    },
+    {
+      "chunk_count": 35,
+      "classification": "estimated",
+      "confidence": {
+        "high": 8,
+        "low_review_required": 13,
+        "medium": 1
+      },
+      "document_count": 22,
+      "document_ids": [
+        "mokpo-0153d5872f6e7641",
+        "mokpo-1750a1cfa79fab5a",
+        "mokpo-22d77ef3c4b2ba67",
+        "mokpo-38b34c3919f62dca",
+        "mokpo-5f94d78e5c1dee83",
+        "mokpo-734d3600faeb5b6f",
+        "mokpo-7d91c9299f4a0a5e",
+        "mokpo-8fb91a85a5d424e0",
+        "mokpo-a0bf638bbff6150f",
+        "mokpo-b7b7ff7f8f595f4f",
+        "mokpo-bb622fcc32f9cbc6",
+        "mokpo-bc9c4b22a73fbe18",
+        "mokpo-c2649df7ecb6e519",
+        "mokpo-d0874b62634939fc",
+        "mokpo-d0cbcd39dd5857a1",
+        "mokpo-daa4dbb46b5a852b",
+        "mokpo-daa68d43d5a6e033",
+        "mokpo-e6af4186c355bbf8",
+        "mokpo-e868f61e15971e27",
+        "mokpo-e99d0df6973f0c4d",
+        "mokpo-efcab37ddf9a442b",
+        "mokpo-fe824fed5263b296"
+      ],
+      "dominant_source_share": 0.909,
+      "independent_source_count": 3,
+      "license_unknown_count": 22,
+      "production_approved_count": 0,
+      "provisional_count": 22,
+      "recommended_additional_count": 3,
+      "reference_only_count": 0,
+      "representative_titles": [
+        "곽우영 - 독립운동인명사전",
+        "구 목포 화신연쇄점",
+        "남궁혁 - 독립운동인명사전",
+        "독립운동인명사전 기록(ID 4516) - 독립운동인명사전",
+        "독립운동인명사전 기록(ID 7533) - 독립운동인명사전"
+      ],
+      "search_keywords": [
+        "산업",
+        "도시 변화",
+        "도시변화",
+        "도시 형성",
+        "면화",
+        "미곡",
+        "상업",
+        "공업",
+        "노동"
+      ],
+      "shortage": true,
+      "source_institution_count": 3,
+      "topic": "일제강점기 목포의 산업과 도시 변화"
+    }
+  ]
+}
