@@ -8,10 +8,16 @@ from dataclasses import asdict
 from pathlib import Path
 
 from history_chatbot.chat.api_models import (
+    ChatRequest,
+    ChatResponse,
     FreeChatRequest,
     GenericChatRequest,
+    HealthResponse,
     JourneyActionRequest,
     PieceChatRequest,
+    ReadyResponse,
+    SearchRequest,
+    SearchResponse,
     SessionCreateRequest,
     TrackChatRequest,
     TransitionRequest,
@@ -93,6 +99,27 @@ def create_app(
             "status": "ok", "service": "history-pieces",
             "chat_modes": [mode.value for mode in ConversationMode],
         }
+
+    @app.get("/api/v1/health", response_model=HealthResponse)
+    def health_v1():
+        return resolved.health()
+
+    @app.get("/ready", response_model=ReadyResponse)
+    @app.get("/api/v1/ready", response_model=ReadyResponse)
+    def ready_v1():
+        return resolved.readiness_v1()
+
+    @app.post("/api/v1/search", response_model=SearchResponse)
+    def search_v1(payload: SearchRequest):
+        return resolved.search(payload.query, top_k=payload.top_k)
+
+    @app.post("/api/v1/chat", response_model=ChatResponse)
+    def chat_v1(payload: ChatRequest):
+        result = resolved.answer(
+            payload.message,
+            [item.model_dump() for item in payload.history],
+        )
+        return ChatResponse(answer=str(result["answer"]))
 
     @app.post("/api/session")
     def create_session(payload: SessionCreateRequest | None = None):

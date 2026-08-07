@@ -24,6 +24,8 @@ class IndexChunk:
     title: str
     publisher: str
     source_url: str
+    author: str
+    published_date: str
     language: str
     copyright_status: str
     license_name: str
@@ -187,6 +189,8 @@ class ReviewedChunkLoader:
             title=document.title,
             publisher=document.publisher,
             source_url=document.source_url,
+            author=document.author,
+            published_date=document.published_date,
             language=document.language,
             copyright_status=document.copyright_status.value,
             license_name=document.license_name,

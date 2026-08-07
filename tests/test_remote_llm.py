@@ -260,6 +260,25 @@ def test_environment_factory_selects_remote_adapter_without_network(
     assert selected.readiness()["status"] == "remote_unverified"
 
 
+def test_history_llm_environment_aliases_select_existing_remote_backend() -> None:
+    selected = build_llm_from_environment(
+        RuntimeMode.DEVELOPMENT,
+        environ={
+            "HISTORY_LLM_BACKEND": "openai_compatible",
+            "HISTORY_LLM_BASE_URL": "http://localhost:8001",
+            "HISTORY_LLM_MODEL_ID": "hackathon-llama",
+            "HISTORY_LLM_API_FORMAT": "openai",
+            "LLM_READINESS_PROBE": "false",
+        },
+    )
+
+    assert isinstance(selected, RemoteLLMBackend)
+    assert isinstance(selected.adapter, OpenAICompatibleAdapter)
+    assert selected.config.base_url == "http://localhost:8001"
+    assert selected.config.model == "hackathon-llama"
+    assert selected.readiness()["status"] == "remote_unverified"
+
+
 @pytest.mark.parametrize(
     "environment",
     [

@@ -128,7 +128,7 @@ def create_hackathon_orchestrator(
     )
 
 
-class ChatApplicationService:
+class HistoryChatService:
     def __init__(self, orchestrator: ConversationalRagOrchestrator) -> None:
         self.orchestrator = orchestrator
 
@@ -156,6 +156,102 @@ class ChatApplicationService:
             user_consent=payload.get("user_consent") is True,
         )
         return response.to_dict()
+
+    def search(self, query: str, *, top_k: int = 5) -> dict[str, object]:
+        """LLM 호출 없이 기존 hybrid retriever 결과를 반환한다."""
+
+        value = query.strip()
+        if not value:
+            raise ValueError("질문을 입력하세요.")
+        if not 1 <= top_k <= 10:
+            raise ValueError("top_k는 1~10이어야 합니다.")
+        results = self.orchestrator.retrieval.search(value)[:top_k]
+        return {
+            "query": value,
+            "results": [
+                {
+                    "chunk_id": item.chunk.chunk_id,
+                    "document_id": item.chunk.document_id,
+                    "title": item.chunk.title,
+                    "text": item.chunk.text,
+                    "score": round(item.score, 6),
+                    "source_name": item.chunk.publisher,
+                    "source_url": item.chunk.source_url,
+                }
+                for item in results
+            ],
+        }
+
+    def answer(
+        self,
+        question: str,
+        chat_history: list[dict[str, str]] | None = None,
+    ) -> dict[str, object]:
+        """대화 문맥은 해석에만, 검색 chunk는 사실 근거로만 사용한다."""
+
+        session = self.orchestrator.sessions.create("ko")
+        pending_user: str | None = None
+        for message in chat_history or []:
+            role = str(message.get("role", ""))
+            content = str(message.get("content", "")).strip()
+            if role == "user":
+                pending_user = content
+            elif role == "assistant" and pending_user is not None:
+                self.orchestrator.sessions.add_turn(
+                    session.session_id, pending_user, content
+                )
+                pending_user = None
+        try:
+            response = self.chat(
+                {
+                    "user_query": question,
+                    "session_id": session.session_id,
+                    "conversation_mode": "free_chat",
+                    "screen_type": "free_chat",
+                }
+            )
+        finally:
+            self.orchestrator.sessions.reset(session.session_id)
+        grounded = response.get("grounded") is True
+        answer = str(response.get("answer", ""))
+        if not grounded and response.get("status") == "insufficient_evidence":
+            answer = "제공된 역사 자료에서 충분한 근거를 찾지 못했습니다."
+        sources = (
+            [
+                {
+                    "document_id": str(source.get("document_id", "")),
+                    "chunk_id": str(source.get("chunk_id", "")),
+                    "title": str(source.get("title", "")),
+                    "source_name": str(source.get("institution", "")),
+                    "source_url": str(source.get("source_url", "")),
+                    "score": float(source.get("retrieval_score", 0.0)),
+                }
+                for source in response.get("sources", [])
+                if isinstance(source, dict)
+            ]
+            if grounded
+            else []
+        )
+        return {
+            "answer": answer,
+            "sources": sources,
+            "grounded": grounded,
+            "status": str(response.get("status", "")),
+        }
+
+    def readiness_v1(self) -> dict[str, object]:
+        retrieval = self.orchestrator.retrieval.status()
+        llm = self.orchestrator.llm.readiness()
+        retriever_ready = bool(retrieval.get("ready"))
+        llm_ready = bool(llm.get("model_ready"))
+        return {
+            "ready": retriever_ready and llm_ready,
+            "index_loaded": retriever_ready and int(retrieval.get("chunks", 0)) > 0,
+            "retriever": retriever_ready,
+            "llm": llm_ready,
+            "backend": self.orchestrator.llm.backend_name,
+            "llm_status": str(llm.get("status", "unknown")),
+        }
 
     @staticmethod
     def _query(payload: dict[str, object]) -> str:
@@ -252,6 +348,10 @@ class ChatApplicationService:
                 else ""
             ),
         }
+
+
+# 기존 import와 frontend 연동을 유지하는 호환 이름.
+ChatApplicationService = HistoryChatService
 
 
 def create_production_service(

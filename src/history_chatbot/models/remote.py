@@ -177,7 +177,19 @@ class RemoteLLMConfig:
     def from_environment(
         cls, mode: RuntimeMode, environ: Mapping[str, str] | None = None
     ) -> "RemoteLLMConfig":
-        values = os.environ if environ is None else environ
+        source = os.environ if environ is None else environ
+        values = dict(source)
+        aliases_to_legacy = {
+            "HISTORY_LLM_BASE_URL": "LLM_BASE_URL",
+            "HISTORY_LLM_MODEL_ID": "LLM_MODEL",
+            "HISTORY_LLM_API_KEY": "LLM_API_KEY",
+            "HISTORY_LLM_API_FORMAT": "LLM_API_FORMAT",
+            "HISTORY_LLM_ALLOWED_HOSTS": "LLM_ALLOWED_HOSTS",
+            "HISTORY_LLM_MODEL_REVISION": "LLM_MODEL_REVISION",
+        }
+        for alias, legacy in aliases_to_legacy.items():
+            if values.get(alias, "").strip():
+                values[legacy] = values[alias]
         config = cls(
             api_format=values.get("LLM_API_FORMAT", "openai"),
             base_url=values.get("LLM_BASE_URL", ""),

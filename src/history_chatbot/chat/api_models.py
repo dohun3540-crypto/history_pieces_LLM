@@ -3,8 +3,17 @@
 from __future__ import annotations
 
 import re
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, StrictBool, StrictInt, StrictStr
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictBool,
+    StrictInt,
+    StrictStr,
+    field_validator,
+)
 
 
 SESSION_PATTERN = re.compile(r"^[a-f0-9]{32}$")
@@ -112,13 +121,103 @@ class GenericChatRequest(ApiRequest):
         return value
 
 
+class ApiV1Model(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class HistoryMessage(ApiV1Model):
+    role: Literal["user", "assistant"]
+    content: StrictStr = Field(min_length=1, max_length=MAX_MESSAGE_LENGTH)
+
+    @field_validator("content")
+    @classmethod
+    def content_must_not_be_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("content는 비어 있을 수 없습니다.")
+        return value.strip()
+
+
+class SearchRequest(ApiV1Model):
+    query: StrictStr = Field(min_length=1, max_length=MAX_MESSAGE_LENGTH)
+    top_k: StrictInt = Field(default=5, ge=1, le=10)
+
+    @field_validator("query")
+    @classmethod
+    def query_must_not_be_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("query는 비어 있을 수 없습니다.")
+        return value.strip()
+
+
+class ChatRequest(ApiV1Model):
+    message: StrictStr = Field(min_length=1, max_length=MAX_MESSAGE_LENGTH)
+    history: tuple[HistoryMessage, ...] = Field(default=(), max_length=20)
+
+    @field_validator("message")
+    @classmethod
+    def message_must_not_be_blank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("message는 비어 있을 수 없습니다.")
+        return value.strip()
+
+
+class SearchResultResponse(ApiV1Model):
+    chunk_id: str
+    document_id: str
+    title: str
+    text: str
+    score: float
+    source_name: str
+    source_url: str
+
+
+class SearchResponse(ApiV1Model):
+    query: str
+    results: tuple[SearchResultResponse, ...]
+
+
+class SourceResponse(ApiV1Model):
+    document_id: str
+    chunk_id: str
+    title: str
+    source_name: str
+    source_url: str
+    score: float
+
+
+class ChatResponse(ApiV1Model):
+    answer: str
+
+
+class HealthResponse(ApiV1Model):
+    status: Literal["ok"]
+
+
+class ReadyResponse(ApiV1Model):
+    ready: bool
+    index_loaded: bool
+    retriever: bool
+    llm: bool
+    backend: str
+    llm_status: str
+
+
 __all__ = [
+    "ChatRequest",
+    "ChatResponse",
     "FreeChatRequest",
     "GenericChatRequest",
+    "HealthResponse",
+    "HistoryMessage",
     "JourneyActionRequest",
     "MAX_MESSAGE_LENGTH",
     "PieceChatRequest",
+    "ReadyResponse",
+    "SearchRequest",
+    "SearchResponse",
+    "SearchResultResponse",
     "SessionCreateRequest",
+    "SourceResponse",
     "TrackChatRequest",
     "TransitionRequest",
     "validate_session_id",

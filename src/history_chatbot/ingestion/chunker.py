@@ -88,6 +88,13 @@ class DocumentChunker:
     @staticmethod
     def _metadata(document: SourceDocument) -> dict[str, object]:
         return {
+            "document_id": document.document_id,
+            "title": document.title,
+            "source_name": document.publisher,
+            "source_url": document.source_url,
+            "author": document.author,
+            "published_date": document.published_date,
+            "review_status": document.review_status.value,
             "language": document.language,
             "period_start": document.period_start,
             "period_end": document.period_end,
@@ -101,6 +108,7 @@ class DocumentChunker:
             "verification_notes": document.verification_notes,
             "copyright_status": document.copyright_status.value,
             "license_name": document.license_name,
+            "license": document.license_name,
             "license_url": document.license_url,
             "attribution_text": document.attribution_text,
             "redistribution_allowed": document.redistribution_allowed,

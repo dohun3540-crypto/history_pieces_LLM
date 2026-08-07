@@ -59,7 +59,8 @@ def build_llm_from_environment(
 
     values = os.environ if environ is None else environ
     requested_backend = values.get(
-        "LLM_BACKEND", "mock" if runtime_mode.allows_fixtures else ""
+        "HISTORY_LLM_BACKEND",
+        values.get("LLM_BACKEND", "mock" if runtime_mode.allows_fixtures else ""),
     ).strip().lower()
     aliases = {
         "openai_compatible": "openai",
@@ -70,6 +71,17 @@ def build_llm_from_environment(
     if not backend:
         raise ValueError("production에는 LLM_BACKEND 설정이 필요합니다.")
     remote_values = dict(values)
+    aliases_to_legacy = {
+        "HISTORY_LLM_BASE_URL": "LLM_BASE_URL",
+        "HISTORY_LLM_MODEL_ID": "LLM_MODEL",
+        "HISTORY_LLM_API_KEY": "LLM_API_KEY",
+        "HISTORY_LLM_API_FORMAT": "LLM_API_FORMAT",
+        "HISTORY_LLM_ALLOWED_HOSTS": "LLM_ALLOWED_HOSTS",
+        "HISTORY_LLM_MODEL_REVISION": "LLM_MODEL_REVISION",
+    }
+    for alias, legacy in aliases_to_legacy.items():
+        if remote_values.get(alias, "").strip():
+            remote_values[legacy] = remote_values[alias]
     if api_format:
         remote_values["LLM_API_FORMAT"] = api_format
     if backend == "remote":
