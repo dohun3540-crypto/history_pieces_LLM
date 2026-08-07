@@ -240,18 +240,23 @@ class ServerAdapter(Protocol):
     stream_path: str
     health_path: str
     ready_path: str
+    fallback_ready_path: str | None
 
     def payload(self, request: LLMRequest, config: RemoteLLMConfig) -> dict[str, object]: ...
     def parse_response(
         self, payload: dict[str, object], request: LLMRequest, config: RemoteLLMConfig, latency_ms: int
     ) -> LLMResponse: ...
     def parse_stream_line(self, line: str) -> tuple[str, str | dict[str, object]] | None: ...
+    def is_ready(
+        self, payload: dict[str, object], config: RemoteLLMConfig, path: str
+    ) -> bool: ...
 
 
 class OpenAICompatibleAdapter:
     generate_path = stream_path = "/v1/chat/completions"
     health_path = "/health"
-    ready_path = "/ready"
+    ready_path = "/v1/models"
+    fallback_ready_path = "/ready"
 
     def payload(self, request: LLMRequest, config: RemoteLLMConfig) -> dict[str, object]:
         messages = [{"role": "system", "content": request.system_prompt}]
@@ -303,12 +308,30 @@ class OpenAICompatibleAdapter:
         except (json.JSONDecodeError, KeyError, IndexError, TypeError) as error:
             raise RemoteLLMError("invalid_response", "스트리밍 응답 형식이 올바르지 않습니다.") from error
 
+    def is_ready(self, payload, config, path):
+        if path == self.fallback_ready_path:
+            reported_model = payload.get("model")
+            return bool(
+                payload.get("ready", payload.get("status") == "ready")
+                and (not reported_model or reported_model == config.model)
+            )
+        models = payload.get("data")
+        if not isinstance(models, list):
+            raise RemoteLLMError(
+                "invalid_response", "원격 LLM 모델 목록 형식이 올바르지 않습니다."
+            )
+        return any(
+            isinstance(item, dict) and item.get("id") == config.model
+            for item in models
+        )
+
 
 class ProjectLlamaAdapter:
     generate_path = "/generate"
     stream_path = "/generate/stream"
     health_path = "/health"
     ready_path = "/ready"
+    fallback_ready_path = None
 
     def payload(self, request, config):
         return {
@@ -355,6 +378,10 @@ class ProjectLlamaAdapter:
             raise KeyError(event)
         except (json.JSONDecodeError, KeyError, TypeError) as error:
             raise RemoteLLMError("invalid_response", "스트리밍 응답 형식이 올바르지 않습니다.") from error
+
+    def is_ready(self, payload, config, path):
+        del config, path
+        return bool(payload.get("ready", payload.get("status") == "ready"))
 
 
 class RemoteLLMBackend(ChatCompletionBackend):
@@ -483,12 +510,18 @@ class RemoteLLMBackend(ChatCompletionBackend):
                 "GET", self._url(self.adapter.health_path), self._headers(), None, 3.0
             )
             self._raise_for_status(health.status)
+            ready_path = self.adapter.ready_path
             ready = self.transport.request(
-                "GET", self._url(self.adapter.ready_path), self._headers(), None, 3.0
+                "GET", self._url(ready_path), self._headers(), None, 3.0
             )
+            if ready.status == 404 and self.adapter.fallback_ready_path:
+                ready_path = self.adapter.fallback_ready_path
+                ready = self.transport.request(
+                    "GET", self._url(ready_path), self._headers(), None, 3.0
+                )
             self._raise_for_status(ready.status)
             payload = json.loads(ready.body.decode("utf-8") or "{}")
-            model_ready = bool(payload.get("ready", payload.get("status") == "ready"))
+            model_ready = self.adapter.is_ready(payload, self.config, ready_path)
             return {
                 "configured": True,
                 "reachable": True,

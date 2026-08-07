@@ -366,17 +366,44 @@ def test_context_budget_keeps_system_question_and_high_score_evidence() -> None:
     assert result.trimmed_conversation >= 1
 
 
-def test_readiness_uses_health_and_ready_without_generation() -> None:
+def test_openai_readiness_uses_health_and_models_without_generation() -> None:
     transport = FakeTransport(
         [
             HttpResponse(200, b'{"status":"ok"}'),
-            HttpResponse(200, b'{"ready":true}'),
+            HttpResponse(
+                200,
+                b'{"object":"list","data":[{"id":"meta-llama/test-instruct"}]}',
+            ),
         ]
     )
     status = backend(transport).readiness()
     assert status["status"] == "ready"
     assert [call[0] for call in transport.calls] == ["GET", "GET"]
+    assert transport.calls[0][1].endswith("/health")
+    assert transport.calls[1][1].endswith("/v1/models")
     assert all("/generate" not in call[1] and "/chat/completions" not in call[1] for call in transport.calls)
+
+
+def test_openai_readiness_falls_back_for_legacy_worker_without_models() -> None:
+    transport = FakeTransport(
+        [
+            HttpResponse(200, b'{"status":"ok"}'),
+            HttpResponse(404, b'{"error":"not found"}'),
+            HttpResponse(
+                200,
+                b'{"ready":true,"status":"ready","model":"meta-llama/test-instruct"}',
+            ),
+        ]
+    )
+
+    status = backend(transport).readiness()
+
+    assert status["status"] == "ready"
+    assert [call[1].rsplit("/", 1)[-1] for call in transport.calls] == [
+        "health",
+        "models",
+        "ready",
+    ]
 
 
 def test_readiness_distinguishes_model_not_ready_and_unreachable() -> None:
@@ -384,16 +411,33 @@ def test_readiness_distinguishes_model_not_ready_and_unreachable() -> None:
         FakeTransport(
             [
                 HttpResponse(200, b'{"status":"ok"}'),
-                HttpResponse(200, b'{"ready":false}'),
+                HttpResponse(200, b'{"data":[{"id":"another-model"}]}'),
             ]
         )
     ).readiness()
     assert not_ready["status"] == "model_not_ready"
+    assert not_ready["reachable"] is True
+    assert not_ready["model_ready"] is False
     unreachable = backend(
         FakeTransport([TransportTimeoutError()])
     ).readiness()
     assert unreachable["status"] == "remote_llm_unreachable"
     assert unreachable["error_code"] == "timeout"
+
+
+def test_project_readiness_keeps_health_and_ready_contract() -> None:
+    transport = FakeTransport(
+        [
+            HttpResponse(200, b'{"status":"ok"}'),
+            HttpResponse(200, b'{"ready":true,"status":"ready"}'),
+        ]
+    )
+
+    status = backend(transport, api_format="project").readiness()
+
+    assert status["status"] == "ready"
+    assert transport.calls[0][1].endswith("/health")
+    assert transport.calls[1][1].endswith("/ready")
 
 
 def test_project_api_contract() -> None:
