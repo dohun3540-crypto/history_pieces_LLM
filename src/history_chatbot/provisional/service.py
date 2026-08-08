@@ -20,6 +20,7 @@ from typing import Callable
 from urllib.parse import urlparse
 
 from history_chatbot.indexing.snapshot import stable_json_hash
+from history_chatbot.provisional.cleaning import CleanSection, clean_sections
 from history_chatbot.provisional.remap import CURRENT_DETAIL_TEMPLATE
 from history_chatbot.retrieval.sparse import BM25Searcher
 
@@ -440,6 +441,37 @@ class ProvisionalDataService:
             if line.strip()
         ]
 
+    def reprocess_local(self) -> dict[str, int]:
+        """Rebuild processed chunks exclusively from already stored raw HTML."""
+
+        selected, _ = self.select()
+        selected_ids = {str(item["source_id"]) for item in selected}
+        records = [
+            record
+            for record in self.load_manifest()
+            if record.get("active", True)
+            and str(record.get("source_id", "")) in selected_ids
+        ]
+        chunks: list[dict] = []
+        for record in records:
+            raw_path = self.raw_dir / f"{record['source_id']}.html"
+            if not raw_path.is_file():
+                raise FileNotFoundError(f"로컬 raw 원문이 없습니다: {record['source_id']}")
+            payload = raw_path.read_bytes()
+            expected_raw_hash = str(record.get("raw_sha256", ""))
+            if expected_raw_hash and hashlib.sha256(payload).hexdigest() != expected_raw_hash:
+                raise ValueError(
+                    f"raw 원문 hash가 manifest와 다릅니다: {record['source_id']}"
+                )
+            chunks.extend(self._chunks(record, self._extract_text(payload)))
+        resolved = self._deduplicate(chunks)
+        self._atomic_jsonl(self.chunks_path, resolved)
+        return {
+            "documents": len(records),
+            "chunks": len(resolved),
+            "network_requests": 0,
+        }
+
     @staticmethod
     def _fetch(url: str) -> bytes:
         host = (urlparse(url).hostname or "").lower()
@@ -475,14 +507,69 @@ class ProvisionalDataService:
                 retries += 1
                 time.sleep(1.0)
 
-    def _chunks(self, record: dict, text: str, maximum: int = 900, minimum: int = 120) -> list[dict]:
-        paragraphs = [item.strip() for item in re.split(r"\n{1,}", text) if item.strip()]
+    def _chunks(
+        self, record: dict, text: str, maximum: int = 900, minimum: int = 120
+    ) -> list[dict]:
+        grouped: list[tuple[CleanSection, str]] = []
+        for section in clean_sections(record, text):
+            grouped.extend(
+                (section, value)
+                for value in self._pack_section(
+                    section, maximum=maximum, minimum=minimum
+                )
+            )
+        result = []
+        for sequence, (section, value) in enumerate(grouped):
+            searchable_value = f"{section.title}\n{value}".strip()
+            digest = hashlib.sha256(searchable_value.encode("utf-8")).hexdigest()
+            chunk = {
+                "document_id": record["source_id"],
+                "chunk_id": f"{record['source_id']}::provisional-{sequence:04d}",
+                "source_id": record["source_id"],
+                "source_title": record["source_title"],
+                "title": f"{record['source_title']} — {section.title}",
+                "institution": record["institution"],
+                "publisher": record["institution"],
+                "source_url": record["source_url"],
+                "usage_status": USAGE_STATUS,
+                "rights_status": RIGHTS_STATUS,
+                "usage_scope": USAGE_SCOPE,
+                "allowed_for_rag": False,
+                "allowed_for_training": False,
+                "public_release_allowed": False,
+                "text": searchable_value,
+                "section_title": section.title,
+                "sequence": sequence,
+                "content_hash": digest,
+                "content_sha256": digest,
+                "expires_or_review_after": REVIEW_AFTER,
+                "active": True,
+            }
+            chunk.update(section.metadata)
+            result.append(chunk)
+        return result
+
+    @staticmethod
+    def _pack_section(
+        section: CleanSection, *, maximum: int, minimum: int
+    ) -> list[str]:
+        paragraphs: list[str] = []
+        for paragraph in section.paragraphs:
+            if len(paragraph) <= maximum:
+                paragraphs.append(paragraph)
+                continue
+            sentences = [
+                item.strip()
+                for item in re.split(r"(?<=[.!?。])\s+", paragraph)
+                if item.strip()
+            ]
+            paragraphs.extend(sentences or [paragraph])
+
         grouped: list[str] = []
         current = ""
         for paragraph in paragraphs:
             if current and len(current) + len(paragraph) + 1 > maximum:
-                if len(current) >= minimum:
-                    grouped.append(current)
+                grouped.append(current)
                 current = ""
             current = f"{current}\n{paragraph}".strip()
         if current:
@@ -490,35 +577,7 @@ class ProvisionalDataService:
                 grouped[-1] = f"{grouped[-1]}\n{current}"
             else:
                 grouped.append(current)
-        result = []
-        for sequence, value in enumerate(grouped):
-            digest = hashlib.sha256(value.encode("utf-8")).hexdigest()
-            result.append(
-                {
-                    "document_id": record["source_id"],
-                    "chunk_id": f"{record['source_id']}::provisional-{sequence:04d}",
-                    "source_id": record["source_id"],
-                    "source_title": record["source_title"],
-                    "title": record["source_title"],
-                    "institution": record["institution"],
-                    "publisher": record["institution"],
-                    "source_url": record["source_url"],
-                    "usage_status": USAGE_STATUS,
-                    "rights_status": RIGHTS_STATUS,
-                    "usage_scope": USAGE_SCOPE,
-                    "allowed_for_rag": False,
-                    "allowed_for_training": False,
-                    "public_release_allowed": False,
-                    "text": value,
-                    "section_title": "",
-                    "sequence": sequence,
-                    "content_hash": digest,
-                    "content_sha256": digest,
-                    "expires_or_review_after": REVIEW_AFTER,
-                    "active": True,
-                }
-            )
-        return result
+        return grouped
 
     @staticmethod
     def _deduplicate(chunks: list[dict]) -> list[dict]:

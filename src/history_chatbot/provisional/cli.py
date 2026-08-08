@@ -26,6 +26,7 @@ def parser() -> argparse.ArgumentParser:
     commands.add_parser("purge-all")
     commands.add_parser("expire")
     commands.add_parser("rebuild")
+    commands.add_parser("reprocess-local")
     return root
 
 
@@ -64,6 +65,8 @@ def main() -> None:
     elif args.command == "rebuild":
         report = service.rebuild_index()
         print(json.dumps({"report": str(report)}, ensure_ascii=False))
+    elif args.command == "reprocess-local":
+        print(json.dumps(service.reprocess_local(), ensure_ascii=False))
 
 
 if __name__ == "__main__":

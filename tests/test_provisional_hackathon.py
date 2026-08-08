@@ -108,6 +108,24 @@ def test_fake_collection_excludes_common_page_chrome_and_images(tmp_path) -> Non
     assert all(item["allowed_for_training"] is False for item in chunks)
 
 
+def test_local_reprocess_uses_only_stored_raw_and_preserves_manifest(tmp_path) -> None:
+    provisional = prepare_and_collect(tmp_path)
+    manifest_before = provisional.manifest_path.read_bytes()
+    raw_before = {
+        path.name: path.read_bytes() for path in provisional.raw_dir.glob("*.html")
+    }
+
+    report = provisional.reprocess_local()
+
+    assert report["documents"] == 48
+    assert report["chunks"] > 0
+    assert report["network_requests"] == 0
+    assert provisional.manifest_path.read_bytes() == manifest_before
+    assert {
+        path.name: path.read_bytes() for path in provisional.raw_dir.glob("*.html")
+    } == raw_before
+
+
 def test_extraction_prefers_semantic_main_over_div_based_page_chrome(tmp_path) -> None:
     provisional = service(tmp_path)
     payload = (

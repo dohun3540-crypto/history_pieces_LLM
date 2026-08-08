@@ -9,16 +9,18 @@ import json
 import os
 import re
 import shutil
+import socket
 import tempfile
 import time
 import urllib.request
+import urllib.error
 import xml.etree.ElementTree as ET
 from dataclasses import asdict, dataclass, field
 from difflib import SequenceMatcher
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Protocol, Sequence, Tuple
-from urllib.parse import parse_qsl, quote_plus, urlencode, urljoin, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, quote, quote_plus, urlencode, urljoin, urlsplit, urlunsplit
 
 from history_chatbot.collectors.hackathon_metadata import FIXED_RIGHTS, normalize_space, normalize_title
 
@@ -53,6 +55,35 @@ TRACKING_KEYS = {"fbclid", "gclid", "ref", "source", "utm_campaign", "utm_medium
 
 class BatchError(RuntimeError):
     pass
+
+
+class RequestDiagnosticError(BatchError):
+    """A secret-free structured request or API failure."""
+
+    def __init__(self, category: str, http_status: Optional[int] = None,
+                 api_code: str = "", api_message: str = "", retryable: bool = False) -> None:
+        BatchError.__init__(self, category)
+        self.category = category
+        self.http_status = http_status
+        self.api_code = api_code
+        self.api_message = api_message
+        self.retryable = retryable
+
+
+class AuthenticationError(RequestDiagnosticError):
+    """An authentication failure which must never be retried."""
+
+
+class ApiResponseError(RequestDiagnosticError):
+    """A successful HTTP response containing an API-level error."""
+
+
+class RedirectRejected(BatchError):
+    """A redirect crossed the source allowlist and must stop the run."""
+
+
+class GlobalSafetyError(BatchError):
+    """A run-wide safety boundary which source isolation must not swallow."""
 
 
 @dataclass
@@ -116,14 +147,28 @@ class SourceSpec:
     discovery_templates: Tuple[str, ...]
     media_types: Tuple[str, ...] = tuple(ALLOWED_MEDIA_TYPES)
     api_key_environment: str = ""
+    api_key_format_environment: str = ""
     portal_name: str = ""
+    endpoint_verification_status: str = "verified"
+    endpoint_source: str = "official"
+    production_enabled: bool = True
 
 
 SOURCE_SPECS = {
-    "national_archives": SourceSpec(
-        "national_archives", "국가기록원", ("www.archives.go.kr", "theme.archives.go.kr"),
+    "national_archives_html": SourceSpec(
+        "national_archives_html", "국가기록원", ("www.archives.go.kr", "theme.archives.go.kr"),
         ("https://www.archives.go.kr/next/newsearch/searchTotal.do?keyword={query}",),
         portal_name="국가기록원",
+    ),
+    "national_archives_api": SourceSpec(
+        "national_archives_api", "국가기록원", ("apis.data.go.kr", "www.archives.go.kr"),
+        ("https://apis.data.go.kr/1741000/recordInformation/getrecordInformation?"
+         "searchKeyword={query}&pageNo=1&numOfRows=10",),
+        api_key_environment="NATIONAL_ARCHIVES_API_KEY",
+        api_key_format_environment="NATIONAL_ARCHIVES_API_KEY_FORMAT",
+        portal_name="나라기록물정보 OpenAPI",
+        endpoint_verification_status="unverified", endpoint_source="estimated",
+        production_enabled=False,
     ),
     "heritage_portal": SourceSpec(
         "heritage_portal", "국가유산청", ("www.heritage.go.kr", "heritage.go.kr"),
@@ -137,14 +182,28 @@ SOURCE_SPECS = {
     "tour_api": SourceSpec(
         "tour_api", "한국관광공사", ("apis.data.go.kr",),
         ("https://apis.data.go.kr/B551011/KorService2/searchKeyword2?MobileOS=ETC&MobileApp=MokpoHistoryRAG&_type=json&keyword={query}",),
-        api_key_environment="TOUR_API_SERVICE_KEY", portal_name="공공데이터포털 TourAPI",
+        api_key_environment="TOUR_API_SERVICE_KEY",
+        api_key_format_environment="TOUR_API_SERVICE_KEY_FORMAT",
+        portal_name="공공데이터포털 TourAPI",
     ),
     "data_portal": SourceSpec(
         "data_portal", "공공데이터포털", ("www.data.go.kr", "data.go.kr"),
         ("https://www.data.go.kr/tcs/dss/selectDataSetList.do?keyword={query}",),
         portal_name="공공데이터포털",
     ),
+    "heritage_wfs": SourceSpec(
+        "heritage_wfs", "국가유산청", (), (),
+        portal_name="국가유산 공간정보 WFS",
+    ),
 }
+
+# Backward-compatible alias. New commands should use national_archives_html.
+SOURCE_SPECS["national_archives"] = SourceSpec(
+    "national_archives", SOURCE_SPECS["national_archives_html"].institution,
+    SOURCE_SPECS["national_archives_html"].allowed_hosts,
+    SOURCE_SPECS["national_archives_html"].discovery_templates,
+    portal_name=SOURCE_SPECS["national_archives_html"].portal_name,
+)
 
 
 class BatchTransport(Protocol):
@@ -159,7 +218,10 @@ class _RedirectPolicy(urllib.request.HTTPRedirectHandler):
 
     def redirect_request(self, req: Any, fp: Any, code: int, msg: str,
                          headers: Any, newurl: str) -> Any:
-        validate_public_url(newurl, self.allowed_hosts)
+        try:
+            validate_public_url(newurl, self.allowed_hosts)
+        except BatchError:
+            raise RedirectRejected("redirect_rejected")
         return urllib.request.HTTPRedirectHandler.redirect_request(
             self, req, fp, code, msg, headers, newurl
         )
@@ -301,26 +363,107 @@ def _flatten_values(value: Any) -> str:
     return str(value or "")
 
 
+def _local_name(tag: str) -> str:
+    return tag.rsplit("}", 1)[-1].split(":", 1)[-1]
+
+
+def _xml_fields(element: ET.Element) -> Dict[str, str]:
+    values = {}  # type: Dict[str, str]
+    for child in element.iter():
+        if child is element or list(child):
+            continue
+        value = normalize_space(child.text or "")
+        if value:
+            values[_local_name(child.tag).lower()] = value
+    return values
+
+
+def _pick(values: Mapping[str, str], *names: str) -> str:
+    for name in names:
+        value = values.get(name.lower(), "")
+        if value:
+            return value
+    return ""
+
+
+def _api_error(root: ET.Element) -> Tuple[str, str]:
+    fields = _xml_fields(root)
+    code = _pick(fields, "resultCode", "returnReasonCode", "errorCode", "errCode")
+    message = _pick(fields, "resultMsg", "returnAuthMsg", "errorMessage", "errMsg")
+    return code, message
+
+
+def _safe_api_message(value: str) -> str:
+    compact = normalize_space(value)
+    compact = re.sub(r"(?i)(serviceKey|authorization)\s*[=:]\s*\S+", r"\1=[redacted]", compact)
+    compact = re.sub(r"https?://\S+", "[url redacted]", compact)
+    return compact[:200]
+
+
+def _encoded_service_key(key: str, key_format: str) -> str:
+    if key_format == "decoding":
+        return quote(key, safe="")
+    if key_format != "encoding":
+        raise BatchError("skipped_unknown_key_format")
+    if not re.fullmatch(r"[A-Za-z0-9._~!$'()*+,;=:%/-]+", key):
+        raise BatchError("invalid_encoding_key_format")
+    if re.search(r"%(?![0-9A-Fa-f]{2})", key):
+        raise BatchError("invalid_encoding_key_format")
+    return key
+
+
+def _json_api_error(value: Mapping[str, Any]) -> Tuple[str, str]:
+    try:
+        header = value["response"]["header"]
+    except (KeyError, TypeError):
+        return "", ""
+    if not isinstance(header, dict):
+        return "", ""
+    return normalize_space(header.get("resultCode")), normalize_space(header.get("resultMsg"))
+
+
 class PublicSourceAdapter:
     def __init__(self, spec: SourceSpec) -> None:
         self.spec = spec
 
     def discovery_urls(self, keywords: Sequence[str], environment: Mapping[str, str]) -> List[str]:
-        key = ""
         if self.spec.api_key_environment:
-            key = environment.get(self.spec.api_key_environment, "").strip()
-            if not key:
-                raise BatchError("missing API key environment: " + self.spec.api_key_environment)
+            if not environment.get(self.spec.api_key_environment, "").strip():
+                raise BatchError("skipped_missing_api_key:" + self.spec.api_key_environment)
         urls = []
         for keyword in keywords:
             for template in self.spec.discovery_templates:
                 url = template.format(query=quote_plus(keyword))
-                if key:
-                    separator = "&" if "?" in url else "?"
-                    url += separator + "serviceKey=" + quote_plus(key)
                 validate_public_url(url, self.spec.allowed_hosts)
                 urls.append(url)
         return urls
+
+    def readiness_status(self, environment: Mapping[str, str]) -> str:
+        if not self.spec.production_enabled or self.spec.endpoint_verification_status != "verified":
+            return "skipped_unverified_endpoint"
+        if self.spec.api_key_environment and not environment.get(self.spec.api_key_environment, "").strip():
+            return "skipped_missing_api_key"
+        if self.spec.api_key_format_environment:
+            key_format = environment.get(self.spec.api_key_format_environment, "").strip().lower()
+            if key_format not in ("encoding", "decoding"):
+                return "skipped_unknown_key_format"
+        return "ready"
+
+    def request_url(self, public_url: str, environment: Mapping[str, str]) -> str:
+        """Insert credentials at the final request boundary only."""
+        if not self.spec.api_key_environment:
+            return public_url
+        key = environment.get(self.spec.api_key_environment, "").strip()
+        if not key:
+            raise BatchError("skipped_missing_api_key:" + self.spec.api_key_environment)
+        key_format = environment.get(self.spec.api_key_format_environment, "").strip().lower()
+        if key_format not in ("encoding", "decoding"):
+            raise BatchError("skipped_unknown_key_format")
+        separator = "&" if "?" in public_url else "?"
+        return public_url + separator + "serviceKey=" + _encoded_service_key(key, key_format)
+
+    def request_spec(self, public_url: str) -> SourceSpec:
+        return self.spec
 
     def discover(self, response: BatchResponse, request_url: str) -> List[BatchCandidate]:
         media = validate_media_type(response.content_type, ())
@@ -373,6 +516,12 @@ class PublicSourceAdapter:
 class TourApiAdapter(PublicSourceAdapter):
     def discover(self, response: BatchResponse, request_url: str) -> List[BatchCandidate]:
         value = json.loads(decode_body(response.body))
+        code, message = _json_api_error(value)
+        if code and code not in ("0", "00", "0000"):
+            category = "api_authentication_error" if code in ("10", "20", "30") else (
+                "api_rate_limit_error" if code in ("22", "429") else "api_application_error"
+            )
+            raise ApiResponseError(category, api_code=code, api_message=_safe_api_message(message))
         try:
             items = value["response"]["body"]["items"]["item"]
         except (KeyError, TypeError):
@@ -400,17 +549,152 @@ class TourApiAdapter(PublicSourceAdapter):
         return candidates
 
     def detail_url(self, candidate: BatchCandidate, environment: Mapping[str, str]) -> str:
-        key = environment.get(self.spec.api_key_environment, "").strip()
-        if not key:
-            raise BatchError("missing API key environment: " + self.spec.api_key_environment)
-        separator = "&" if "?" in candidate.source_url else "?"
-        return candidate.source_url + separator + "serviceKey=" + quote_plus(key)
+        return self.request_url(candidate.source_url, environment)
 
 
-ADAPTERS = {
-    name: (TourApiAdapter(spec) if name == "tour_api" else PublicSourceAdapter(spec))
-    for name, spec in SOURCE_SPECS.items()
-}
+class NationalArchivesApiAdapter(PublicSourceAdapter):
+    ITEM_NAMES = {"item", "record", "row", "list"}
+
+    def discovery_urls(self, keywords: Sequence[str], environment: Mapping[str, str]) -> List[str]:
+        if self.readiness_status(environment) == "skipped_unverified_endpoint":
+            raise BatchError("skipped_unverified_endpoint")
+        if not environment.get(self.spec.api_key_environment, "").strip():
+            raise BatchError("skipped_missing_api_key:" + self.spec.api_key_environment)
+        return [self.spec.discovery_templates[0].format(query=quote_plus(keyword)) for keyword in keywords]
+
+    def discover(self, response: BatchResponse, request_url: str) -> List[BatchCandidate]:
+        if response.status in (401, 403):
+            raise AuthenticationError(_http_category(response.status), response.status)
+        root = ET.fromstring(decode_body(response.body))
+        code, message = _api_error(root)
+        if code and code not in ("0", "00", "0000", "INFO-0"):
+            if code in ("10", "20", "30", "99") or "auth" in message.lower() or "key" in message.lower():
+                raise ApiResponseError("api_authentication_error", api_code=code,
+                                       api_message=_safe_api_message(message))
+            category = "api_rate_limit_error" if code in ("22", "429") else "api_application_error"
+            raise ApiResponseError(category, api_code=code, api_message=_safe_api_message(message))
+        candidates = []
+        seen = set()
+        for element in root.iter():
+            if _local_name(element.tag).lower() not in self.ITEM_NAMES:
+                continue
+            fields = _xml_fields(element)
+            record_id = _pick(fields, "recordId", "record_id", "rcdId", "itemId", "id")
+            title = _pick(fields, "title", "recordTitle", "sj", "name")
+            if not record_id or not title or record_id in seen:
+                continue
+            seen.add(record_id)
+            parent_id = _pick(fields, "parentRecordId", "seriesId", "fileId", "parentId")
+            level = _pick(fields, "recordLevel", "recordType", "level", "type")
+            public_url = "https://www.archives.go.kr/next/newsearch/showDetailPopup.do?rc_code=" + quote_plus(record_id)
+            candidate = BatchCandidate(
+                document_id="national-archives-" + re.sub(r"[^A-Za-z0-9_-]", "-", record_id),
+                source_id=self.spec.source_id, title=title, institution="국가기록원",
+                source_url=public_url, canonical_url=canonicalize_public_url(public_url),
+                document_type="archival_metadata", parent_document_id=parent_id,
+                portal_name=self.spec.portal_name, original_institution=_pick(fields, "producer", "agency", "productionAgency"),
+            )
+            candidate.published_date = _pick(fields, "productionYear", "year", "date")
+            candidate.discovery_metadata.update({
+                "record_id": record_id, "record_level": level,
+                "record_type": _pick(fields, "recordType", "materialType", "type"),
+                "producer": candidate.original_institution,
+                "production_year": candidate.published_date,
+                "public_status": _pick(fields, "publicStatus", "openYn", "isPublic"),
+                "original_available": _pick(fields, "originalYn", "fileYn", "hasOriginal"),
+                "parent_record_id": parent_id,
+            })
+            candidates.append(candidate)
+        return candidates
+
+
+class HeritageWfsAdapter(PublicSourceAdapter):
+    GEOMETRY_NAMES = {"geometry", "geom", "the_geom", "shape", "boundedby", "point", "polygon", "multipolygon", "coordinates", "pos", "poslist"}
+
+    def _base(self, environment: Mapping[str, str]) -> str:
+        base = environment.get("HERITAGE_WFS_BASE_URL", "").strip()
+        if not base:
+            raise BatchError("skipped_missing_api_key:HERITAGE_WFS_BASE_URL")
+        parts = urlsplit(base)
+        validate_public_url(base, ((parts.hostname or ""),))
+        return urlunsplit((parts.scheme, parts.netloc, parts.path, parts.query, ""))
+
+    def discovery_urls(self, keywords: Sequence[str], environment: Mapping[str, str]) -> List[str]:
+        base = self._base(environment)
+        separator = "&" if "?" in base else "?"
+        return [base + separator + urlencode({"service": "WFS", "request": "GetCapabilities"})]
+
+    def get_feature_url(self, environment: Mapping[str, str], type_name: str, count: int = 10) -> str:
+        base = self._base(environment)
+        separator = "&" if "?" in base else "?"
+        return base + separator + urlencode({
+            "service": "WFS", "version": "2.0.0", "request": "GetFeature",
+            "typeNames": type_name, "count": min(max(count, 1), 10),
+            "CQL_FILTER": "address LIKE '%목포%'",
+        })
+
+    def request_spec(self, public_url: str) -> SourceSpec:
+        host = (urlsplit(public_url).hostname or "").lower()
+        return SourceSpec(self.spec.source_id, self.spec.institution, (host,), (), portal_name=self.spec.portal_name)
+
+    def capability_layers(self, response: BatchResponse) -> List[str]:
+        root = ET.fromstring(decode_body(response.body))
+        layers = []
+        for element in root.iter():
+            if _local_name(element.tag).lower() == "featuretype":
+                fields = _xml_fields(element)
+                name = _pick(fields, "name")
+                if name and name not in layers:
+                    layers.append(name)
+        return layers
+
+    def discover(self, response: BatchResponse, request_url: str) -> List[BatchCandidate]:
+        root = ET.fromstring(decode_body(response.body))
+        if _local_name(root.tag).lower().endswith("capabilities"):
+            return []
+        candidates = []
+        seen = set()
+        for member in root.iter():
+            if _local_name(member.tag).lower() not in ("member", "featuremember") or not list(member):
+                continue
+            feature = list(member)[0]
+            fields = _xml_fields(feature)
+            attributes = {k: v for k, v in fields.items() if k not in self.GEOMETRY_NAMES}
+            geometry = {k: v for k, v in fields.items() if k in self.GEOMETRY_NAMES}
+            identifier = _pick(attributes, "id", "fid", "heritageId", "ccbaKdcd", "manageNo") or feature.attrib.get("{http://www.opengis.net/gml/3.2}id", "")
+            title = _pick(attributes, "name", "title", "heritageName", "ccbaMnm1")
+            address = _pick(attributes, "address", "addr", "location", "ccbaCtcdNm")
+            if not identifier or identifier in seen:
+                continue
+            seen.add(identifier)
+            candidate = BatchCandidate(
+                document_id="heritage-wfs-" + re.sub(r"[^A-Za-z0-9_-]", "-", identifier),
+                source_id=self.spec.source_id, title=title or identifier,
+                institution=self.spec.institution, source_url=canonicalize_public_url(request_url),
+                canonical_url=canonicalize_public_url(request_url) + "#" + quote_plus(identifier),
+                document_type="spatial_metadata", portal_name=self.spec.portal_name,
+                original_institution=self.spec.institution,
+            )
+            candidate.discovery_metadata.update({
+                "heritage_id": identifier, "heritage_type": _pick(attributes, "type", "category", "ccbaKdcdNm"),
+                "address": address, "designation": _pick(attributes, "designation", "designatedDate", "ccbaAsdt"),
+                "attributes": attributes, "geometry": geometry,
+                "historical_document_eligible": False,
+            })
+            candidates.append(candidate)
+        return candidates
+
+
+ADAPTERS = {}
+for _name, _spec in SOURCE_SPECS.items():
+    if _name == "tour_api":
+        ADAPTERS[_name] = TourApiAdapter(_spec)
+    elif _name == "national_archives_api":
+        ADAPTERS[_name] = NationalArchivesApiAdapter(_spec)
+    elif _name == "heritage_wfs":
+        ADAPTERS[_name] = HeritageWfsAdapter(_spec)
+    else:
+        ADAPTERS[_name] = PublicSourceAdapter(_spec)
 
 
 class RequestController:
@@ -420,8 +704,8 @@ class RequestController:
                  clock: Callable[[], float] = time.monotonic, max_retries: int = 1) -> None:
         if max_requests < 1 or max_requests > 500:
             raise BatchError("max-requests must be between 1 and 500")
-        if delay_seconds < 1.0:
-            raise BatchError("host delay must be at least one second")
+        if delay_seconds < 1.2:
+            raise BatchError("host delay must be at least 1.2 seconds")
         if max_retries < 0 or max_retries > 1:
             raise BatchError("max retries cannot exceed one")
         self.max_requests = max_requests
@@ -431,10 +715,16 @@ class RequestController:
         self.clock = clock
         self.max_retries = max_retries
         self.request_count = 0
+        self.source_request_counts = {}  # type: Dict[str, int]
+        self.events = []  # type: List[Dict[str, Any]]
         self.last_request = {}  # type: Dict[str, float]
 
-    def get(self, url: str, spec: SourceSpec, timeout: float, max_bytes: int) -> BatchResponse:
-        validate_public_url(url, spec.allowed_hosts)
+    def get(self, url: str, spec: SourceSpec, timeout: float, max_bytes: int,
+            stage: str = "request") -> BatchResponse:
+        try:
+            validate_public_url(url, spec.allowed_hosts)
+        except BatchError:
+            raise GlobalSafetyError("host_or_https_rejected")
         host = (urlsplit(url).hostname or "").lower()
         error = None  # type: Optional[Exception]
         for attempt in range(self.max_retries + 1):
@@ -444,21 +734,71 @@ class RequestController:
                 if remaining > 0:
                     self.sleep(remaining)
             if self.request_count >= self.max_requests:
-                raise BatchError("maximum request count exceeded")
+                raise GlobalSafetyError("maximum request count exceeded")
             self.request_count += 1
+            source_number = self.source_request_counts.get(spec.source_id, 0) + 1
+            self.source_request_counts[spec.source_id] = source_number
             self.last_request[host] = self.clock()
+            event = {
+                "source_id": spec.source_id, "stage": stage,
+                "request_number": self.request_count, "source_request_number": source_number,
+                "retry": attempt > 0, "outcome": "pending", "http_status": None,
+            }
+            self.events.append(event)
             try:
                 response = self.transport_factory(spec.allowed_hosts).get(url, timeout, max_bytes)
-                validate_public_url(response.final_url, spec.allowed_hosts)
+                try:
+                    validate_public_url(response.final_url, spec.allowed_hosts)
+                except BatchError:
+                    event["outcome"] = "redirect_rejected"
+                    raise RedirectRejected("redirect_rejected")
+                event["http_status"] = response.status
+                if response.status in (401, 403, 404, 429) or response.status >= 500:
+                    raise RequestDiagnosticError(_http_category(response.status), response.status,
+                                                 retryable=response.status >= 500)
+                if response.status < 200 or response.status >= 300:
+                    raise RequestDiagnosticError("http_error", response.status)
                 validate_media_type(response.content_type, ())
                 if len(response.body) > max_bytes:
                     raise BatchError("response size limit exceeded")
+                event["outcome"] = "success"
                 return response
             except Exception as exc:
                 error = exc
+                if isinstance(exc, RedirectRejected):
+                    raise
+                diagnostic = _request_diagnostic(exc)
+                if diagnostic is not None:
+                    event["outcome"] = diagnostic.category
+                    event["http_status"] = diagnostic.http_status
+                    if not diagnostic.retryable or attempt >= self.max_retries:
+                        raise diagnostic
+                else:
+                    event["outcome"] = "request_error"
                 if attempt >= self.max_retries:
                     break
-        raise BatchError("request failed: " + str(error))
+        raise BatchError("request failed: " + type(error).__name__)
+
+
+def _http_category(status: int) -> str:
+    if status in (401, 403, 404, 429):
+        return "http_%d" % status
+    if status >= 500:
+        return "http_5xx"
+    return "http_error"
+
+
+def _request_diagnostic(exc: Exception) -> Optional[RequestDiagnosticError]:
+    if isinstance(exc, RequestDiagnosticError):
+        return exc
+    if isinstance(exc, urllib.error.HTTPError):
+        return RequestDiagnosticError(_http_category(exc.code), exc.code,
+                                      retryable=exc.code >= 500)
+    if isinstance(exc, (socket.timeout, TimeoutError)):
+        return RequestDiagnosticError("timeout", retryable=True)
+    if isinstance(exc, urllib.error.URLError) and isinstance(exc.reason, (socket.timeout, TimeoutError)):
+        return RequestDiagnosticError("timeout", retryable=True)
+    return None
 
 
 def is_relevant(title: str, text: str) -> Tuple[bool, List[str]]:
@@ -596,9 +936,11 @@ def build_manifest_record(candidate: BatchCandidate, detail: DetailDocument,
     extracted = render_extracted(candidate, detail.text)
     body_hash = hashlib.sha256(normalize_space(detail.text).encode("utf-8")).hexdigest()
     record = {
-        "document_id": candidate.document_id, "source_id": candidate.document_id,
+        "document_id": candidate.document_id, "source_id": candidate.source_id,
         "title": candidate.title, "source_title": candidate.title,
-        "institution": candidate.institution, "source_url": candidate.source_url,
+        "institution": candidate.institution, "publisher": candidate.institution,
+        "source_name": candidate.portal_name or candidate.institution,
+        "license_name": candidate.license_name, "source_url": candidate.source_url,
         "canonical_url": candidate.canonical_url, "document_type": candidate.document_type,
         "topic": candidate.topic_tags, "topic_tags": candidate.topic_tags,
         "place_tags": candidate.place_tags, "published_date": candidate.published_date,
@@ -611,7 +953,7 @@ def build_manifest_record(candidate: BatchCandidate, detail: DetailDocument,
             "original_institution": candidate.original_institution,
             "public_access_status": candidate.public_access_status,
             "license_name": candidate.license_name,
-            "allowed_for_hackathon_rag": True,
+            "allowed_for_hackathon_rag": False,
             "allowed_for_public_production": False,
             "response_content_type": detail.content_type.split(";", 1)[0],
             "response_bytes": detail.response_bytes,
@@ -696,15 +1038,123 @@ class BatchPipeline:
             specs.append({
                 "source_id": source_id, "allowed_hosts": list(adapter.spec.allowed_hosts),
                 "api_key_environment": adapter.spec.api_key_environment or None,
+                "api_key_format_environment": adapter.spec.api_key_format_environment or None,
                 "discovery_templates": list(adapter.spec.discovery_templates),
+                "endpoint_verification_status": adapter.spec.endpoint_verification_status,
+                "endpoint_source": adapter.spec.endpoint_source,
+                "production_enabled": adapter.spec.production_enabled,
             })
         return {
             "mode": "dry-run", "network": False, "files_created": False,
             "sources": specs, "limits": dict(limits),
             "paths": {key: str(value) for key, value in paths.items()},
             "rights": dict(FIXED_RIGHTS),
-            "hackathon_usage": {"allowed_for_hackathon_rag": True, "allowed_for_public_production": False},
+            "hackathon_usage": {"allowed_for_hackathon_rag": False, "allowed_for_public_production": False},
             "unchanged": ["raw", "chunks", "index", "allowed_for_rag"],
+        }
+
+    def smoke_test(self, source_ids: Sequence[str], environment: Mapping[str, str],
+                   timeout: float, max_bytes: int) -> Dict[str, Any]:
+        """Run bounded probes and return only structural summaries; never write files."""
+        controller = self._controller()
+        source_results = []  # type: List[Dict[str, Any]]
+
+        def probe(adapter: PublicSourceAdapter, public_url: str, stage: str) -> BatchResponse:
+            request_url = adapter.request_url(public_url, environment)
+            return controller.get(request_url, adapter.request_spec(public_url), timeout, max_bytes, stage)
+
+        for source_id in source_ids:
+            adapter = self._adapter(source_id)
+            result = {
+                "source_id": source_id, "status": "pending", "failed_stage": None,
+                "http_status": None, "api_result_code": "", "api_result_message": "",
+                "steps": [], "stopped_after_failure": False,
+            }  # type: Dict[str, Any]
+            source_results.append(result)
+            readiness = adapter.readiness_status(environment)
+            if readiness != "ready":
+                result["status"] = readiness
+                result["stopped_after_failure"] = True
+                continue
+            stage = "readiness"
+            try:
+                if source_id == "national_archives_api":
+                    stage = "search"
+                    public_url = adapter.discovery_urls(["목포"], environment)[0]
+                    response = probe(adapter, public_url, stage)
+                    result["steps"].append(_response_summary(source_id, stage, response))
+                    found = adapter.discover(response, public_url)
+                    if found:
+                        stage = "detail"
+                        detail = found[0].source_url
+                        detail_response = controller.get(detail, adapter.request_spec(detail), timeout,
+                                                         max_bytes, stage)
+                        result["steps"].append(_response_summary(source_id, stage, detail_response))
+                    else:
+                        result["status"] = "empty_result"
+                elif source_id == "tour_api":
+                    base = "https://apis.data.go.kr/B551011/KorService2/"
+                    area = base + "areaCode2?" + urlencode({"MobileOS": "ETC", "MobileApp": "MokpoHistoryRAG", "_type": "json"})
+                    stage = "area_code"
+                    response = probe(adapter, area, stage)
+                    result["steps"].append(_response_summary(source_id, stage, response))
+                    _raise_json_api_error(response)
+                    stage = "keyword_search"
+                    public_url = adapter.discovery_urls(["목포 근대역사"], environment)[0]
+                    response = probe(adapter, public_url, stage)
+                    result["steps"].append(_response_summary(source_id, stage, response))
+                    found = adapter.discover(response, public_url)
+                    if found:
+                        stage = "common_detail"
+                        response = probe(adapter, found[0].source_url, stage)
+                        result["steps"].append(_response_summary(source_id, stage, response))
+                        _raise_json_api_error(response)
+                    else:
+                        result["status"] = "empty_result"
+                elif source_id == "heritage_wfs":
+                    stage = "get_capabilities"
+                    public_url = adapter.discovery_urls([], environment)[0]
+                    response = probe(adapter, public_url, stage)
+                    result["steps"].append(_response_summary(source_id, stage, response))
+                    layers = adapter.capability_layers(response)  # type: ignore[attr-defined]
+                    if layers:
+                        stage = "get_feature"
+                        response = probe(adapter, adapter.get_feature_url(environment, layers[0], 1), stage)  # type: ignore[attr-defined]
+                        result["steps"].append(_response_summary(source_id, stage, response))
+                        found = adapter.discover(response, public_url)
+                        if not found:
+                            result["status"] = "empty_result"
+                    else:
+                        result["status"] = "empty_result"
+                else:
+                    raise BatchError("smoke-test source is not supported: " + source_id)
+                if result["status"] == "pending":
+                    result["status"] = "success"
+            except RequestDiagnosticError as exc:
+                result.update({
+                    "status": exc.category, "failed_stage": stage,
+                    "http_status": exc.http_status, "api_result_code": exc.api_code,
+                    "api_result_message": exc.api_message, "stopped_after_failure": True,
+                })
+                if controller.events:
+                    controller.events[-1]["outcome"] = exc.category
+            except (ValueError, json.JSONDecodeError, ET.ParseError, UnicodeError):
+                result.update({"status": "parser_error", "failed_stage": stage,
+                               "stopped_after_failure": True})
+            except (RedirectRejected, GlobalSafetyError):
+                raise
+            except BatchError as exc:
+                status = str(exc) if str(exc).startswith("skipped_") else "request_error"
+                result.update({"status": status, "failed_stage": stage,
+                               "stopped_after_failure": True})
+            result["request_count"] = controller.source_request_counts.get(source_id, 0)
+        for result in source_results:
+            result.setdefault("request_count", controller.source_request_counts.get(result["source_id"], 0))
+        return {
+            "mode": "smoke-test", "network": True, "no_write": True,
+            "files_created": 0, "request_count": controller.request_count,
+            "source_request_counts": dict(controller.source_request_counts),
+            "requests": list(controller.events), "sources": source_results,
         }
 
     def discover(self, batch_id: str, source_ids: Sequence[str], keywords: Sequence[str],
@@ -725,7 +1175,8 @@ class BatchPipeline:
                 continue
             for url in urls:
                 try:
-                    response = controller.get(url, adapter.spec, timeout, max_bytes)
+                    secured_url = adapter.request_url(url, environment)
+                    response = controller.get(secured_url, adapter.request_spec(url), timeout, max_bytes)
                     for candidate in adapter.discover(response, url):
                         key = (candidate.document_id, candidate.canonical_url)
                         if key not in seen:
@@ -777,7 +1228,7 @@ class BatchPipeline:
                                                    "rejected_access_policy", ["explicit access policy prohibition"]))
                     continue
                 request_url = adapter.detail_url(candidate, environment)
-                response = controller.get(request_url, adapter.spec, timeout, max_bytes)
+                response = controller.get(request_url, adapter.request_spec(request_url), timeout, max_bytes)
                 detail = adapter.fetch_detail(candidate, response)
                 result = quality_decision(candidate, detail.text)
                 if result.decision in ACCEPTED_DECISIONS:
@@ -835,11 +1286,49 @@ class BatchPipeline:
         per_source = int(limits["max_per_source"])
         requests = int(limits["max_requests"])
         delay = float(limits["delay_seconds"])
-        if accepted < 1 or accepted > 30:
-            raise BatchError("max-accepted cannot exceed 30")
-        if per_source < 1 or per_source > 15:
-            raise BatchError("max-per-source cannot exceed 15")
+        if accepted < 1 or accepted > 10:
+            raise BatchError("max-accepted cannot exceed 10")
+        if per_source < 1 or per_source > 2:
+            raise BatchError("max-per-source cannot exceed 2")
         if requests < 1 or requests > 500:
             raise BatchError("max-requests is invalid")
-        if delay < 1.0:
-            raise BatchError("delay-seconds must be at least 1.0")
+        if delay < 1.2:
+            raise BatchError("delay-seconds must be at least 1.2")
+
+
+def _raise_json_api_error(response: BatchResponse) -> None:
+    value = json.loads(decode_body(response.body))
+    if not isinstance(value, dict):
+        raise ValueError("JSON response root must be an object")
+    code, message = _json_api_error(value)
+    if code and code not in ("0", "00", "0000"):
+        category = "api_authentication_error" if code in ("10", "20", "30") else (
+            "api_rate_limit_error" if code in ("22", "429") else "api_application_error"
+        )
+        raise ApiResponseError(category, api_code=code, api_message=_safe_api_message(message))
+
+
+def _response_summary(source_id: str, stage: str, response: BatchResponse) -> Dict[str, Any]:
+    media = validate_media_type(response.content_type, ())
+    fields = []  # type: List[str]
+    api_code = ""
+    api_message = ""
+    try:
+        source = decode_body(response.body)
+        if media in ("application/json", "text/json"):
+            value = json.loads(source)
+            if isinstance(value, dict):
+                fields = sorted(str(key) for key in value.keys())[:30]
+                api_code, api_message = _json_api_error(value)
+        elif media in ("application/xml", "text/xml"):
+            root = ET.fromstring(source)
+            fields = sorted({_local_name(item.tag) for item in root.iter()})[:30]
+            api_code, api_message = _api_error(root)
+    except (ValueError, ET.ParseError, BatchError):
+        fields = []
+    return {
+        "source_id": source_id, "stage": stage, "http_status": response.status,
+        "response_format": media, "fields": fields,
+        "encoding_ok": True, "api_result_code": api_code,
+        "api_result_message": _safe_api_message(api_message),
+    }

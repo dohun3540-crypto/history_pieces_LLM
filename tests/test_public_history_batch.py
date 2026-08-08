@@ -61,7 +61,7 @@ class FakeTransport:
 def controller(responses, calls=None, sleeps=None, clock=None, max_requests=75):
     shared_calls = calls if calls is not None else []
     return RequestController(
-        max_requests, 1.0, lambda hosts: FakeTransport(responses, shared_calls),
+        max_requests, 1.2, lambda hosts: FakeTransport(responses, shared_calls),
         sleep=(sleeps.append if sleeps is not None else (lambda value: None)),
         clock=clock or (lambda: 0.0), max_retries=0,
     )
@@ -83,7 +83,7 @@ def paths(tmp_path):
 
 
 def limits(**values):
-    result = {"max_accepted": 30, "max_per_source": 15, "max_requests": 75, "delay_seconds": 1.0}
+    result = {"max_accepted": 10, "max_per_source": 2, "max_requests": 75, "delay_seconds": 1.2}
     result.update(values)
     return result
 
@@ -117,11 +117,14 @@ def test_cli_dry_run_has_no_files(tmp_path, capsys):
             "--extracted-dir", str(target["extracted_dir"]), "--report-json", str(target["report_json"]),
             "--report-md", str(target["report_md"]), "--source", "national_archives", "--dry-run"]
     assert main(args) == 0
-    assert '"network": false' in capsys.readouterr().out
+    result = json.loads(capsys.readouterr().out)
+    assert result["network"] is False
+    assert result["limits"]["max_accepted"] == 10
+    assert result["limits"]["max_per_source"] == 2
     assert not tmp_path.joinpath("data").exists()
 
 
-@pytest.mark.parametrize("value,key", [(31, "max_accepted"), (16, "max_per_source"), (0, "max_requests")])
+@pytest.mark.parametrize("value,key", [(11, "max_accepted"), (3, "max_per_source"), (0, "max_requests")])
 def test_batch_limits_are_bounded(value, key):
     with pytest.raises(BatchError):
         BatchPipeline(ADAPTERS).dry_run([], {}, limits(**{key: value}))
@@ -143,7 +146,7 @@ def test_per_host_delay_is_applied():
     control = controller({item.source_url: html_response(item)}, sleeps=sleeps, clock=lambda: next(ticks))
     control.get(item.source_url, SOURCE_SPECS["national_archives"], 2, 10000)
     control.get(item.source_url, SOURCE_SPECS["national_archives"], 2, 10000)
-    assert sleeps == [1.0]
+    assert sleeps == [1.2]
 
 
 @pytest.mark.parametrize("url", ["http://www.archives.go.kr/x", "https://evil.example/x"])
@@ -249,8 +252,13 @@ def test_execute_rights_hackathon_metadata_lf_and_hash(tmp_path):
     record = rows[-1]
     for key, value in FIXED_RIGHTS.items():
         assert record[key] == value
+    assert record["review_status"] == "draft"
     assert record["allowed_for_rag"] is False
-    assert record["collection_metadata"]["allowed_for_hackathon_rag"] is True
+    assert record["source_id"] == item.source_id
+    assert record["publisher"] == item.institution
+    assert record["source_name"] == item.portal_name
+    assert record["license_name"] == ""
+    assert record["collection_metadata"]["allowed_for_hackathon_rag"] is False
     assert record["collection_metadata"]["allowed_for_public_production"] is False
     output = target["extracted_dir"] / (item.document_id + ".txt")
     assert b"\r\n" not in output.read_bytes()
@@ -278,6 +286,65 @@ def test_per_source_limit_is_enforced(tmp_path):
     assert report["counts"]["stored"] == 2
 
 
+def test_total_pilot_limit_is_enforced(tmp_path):
+    sources = [
+        ("national_archives", "https://www.archives.go.kr/detail"),
+        ("national_archives_html", "https://www.archives.go.kr/next/detail"),
+        ("heritage_portal", "https://www.heritage.go.kr/detail"),
+        ("mokpo_official", "https://www.mokpo.go.kr/detail"),
+        ("data_portal", "https://www.data.go.kr/detail"),
+    ]
+    items = []
+    responses = {}
+    number = 1
+    for source_id, base_url in sources:
+        for unused in range(2):
+            item = candidate(number, source_id=source_id)
+            item.source_url = "%s/%d" % (base_url, number)
+            item.canonical_url = item.source_url
+            items.append(item)
+            responses[item.source_url] = html_response(item, descriptive_text(number))
+            number += 1
+    overflow = candidate(number, source_id="heritage_wfs")
+    overflow.source_url = "https://unused.invalid/detail/%d" % number
+    overflow.canonical_url = overflow.source_url
+    items.append(overflow)
+
+    target, report = execute(tmp_path, items, responses)
+
+    assert report["counts"]["stored"] == 10
+    assert len(list(target["extracted_dir"].glob("*.txt"))) == 10
+
+
+def test_disallowed_source_candidate_is_skipped(tmp_path):
+    item = candidate(source_id="unlisted_source")
+    target, report = execute(tmp_path, [item], {})
+    assert report["counts"]["stored"] == 0
+    assert not target["extracted_dir"].exists()
+
+
+def test_execute_duplicate_is_skipped(tmp_path):
+    item = candidate()
+    target = paths(tmp_path)
+    write_jsonl(target["manifest"], [{
+        "document_id": item.document_id,
+        "source_url": item.source_url,
+        "canonical_url": item.canonical_url,
+    }])
+    write_jsonl(target["catalog"], [item.__dict__])
+    pipeline = BatchPipeline(ADAPTERS, controller({item.source_url: html_response(item)}))
+
+    report = pipeline.execute(
+        "batch", [item.source_id], target["catalog"], target["manifest"],
+        target["extracted_dir"], target["report_json"], target["report_md"],
+        2, 10000, limits(), "2026-08-02",
+    )
+
+    assert report["counts"]["stored"] == 0
+    assert report["counts"]["rejected_duplicate"] == 1
+    assert not target["extracted_dir"].exists()
+
+
 def test_partial_candidate_failure_is_reported_but_success_is_saved(tmp_path):
     good, bad = candidate(1), candidate(2)
     target, report = execute(tmp_path, [good, bad], {
@@ -288,6 +355,18 @@ def test_partial_candidate_failure_is_reported_but_success_is_saved(tmp_path):
     assert report["counts"]["rejected_empty"] == 1
     assert (target["extracted_dir"] / (good.document_id + ".txt")).exists()
     assert not (target["extracted_dir"] / (bad.document_id + ".txt")).exists()
+
+
+def test_failed_request_is_skipped_but_later_candidate_is_saved(tmp_path):
+    failed, good = candidate(1), candidate(2)
+    target, report = execute(tmp_path, [failed, good], {
+        failed.source_url: BatchError("fictional request failure"),
+        good.source_url: html_response(good, descriptive_text(2)),
+    })
+    assert report["counts"]["stored"] == 1
+    assert report["counts"]["rejected_quality"] == 1
+    assert not (target["extracted_dir"] / (failed.document_id + ".txt")).exists()
+    assert (target["extracted_dir"] / (good.document_id + ".txt")).exists()
 
 
 def test_batch_commit_failure_rolls_back_manifest_and_outputs(tmp_path):
@@ -332,7 +411,9 @@ def test_tour_api_json_discovery_keeps_key_out_of_candidate():
     found = adapter.discover(response, response.final_url)
     assert found[0].document_id == "tour-api-123"
     assert "serviceKey" not in found[0].source_url
-    assert "secret" in adapter.detail_url(found[0], {"TOUR_API_SERVICE_KEY": "secret"})
+    assert "secret" in adapter.detail_url(found[0], {
+        "TOUR_API_SERVICE_KEY": "secret", "TOUR_API_SERVICE_KEY_FORMAT": "decoding",
+    })
 
 
 def test_python_38_ast_compatibility():
