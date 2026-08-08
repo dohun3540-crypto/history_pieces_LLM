@@ -7,7 +7,7 @@ from collections import Counter
 from collections.abc import Sequence
 
 from history_chatbot.retrieval.base import RankedChunk, RetrievalChunk
-from history_chatbot.retrieval.query_normalizer import tokenize
+from history_chatbot.retrieval.query_normalizer import normalize_query, tokenize
 
 
 class BM25Searcher:
@@ -27,7 +27,7 @@ class BM25Searcher:
         )
 
     def search(self, query: str, limit: int) -> list[RankedChunk]:
-        query_tokens = set(tokenize(query))
+        query_tokens = set(normalize_query(query).informative_tokens)
         if not query_tokens or limit <= 0 or not self.chunks:
             return []
         scored: list[RankedChunk] = []

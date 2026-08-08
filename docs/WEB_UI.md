@@ -40,6 +40,19 @@ $env:APP_MODE = "development"
 python -m uvicorn history_chatbot.chat.api:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
+실제 임시 corpus를 사용하는 비상업적 해커톤 smoke에서는 로컬 처리 파일을 먼저
+준비하고 다음처럼 명시한다. `mock`은 browser/RAG 연결 확인용이며 실제 Llama 추론
+성공으로 간주하지 않는다.
+
+```powershell
+$env:APP_MODE = "hackathon"
+$env:HISTORY_LLM_BACKEND = "mock"
+python -m uvicorn history_chatbot.chat.api:create_app --factory --host 127.0.0.1 --port 8000
+```
+
+실제 remote Llama 연결은 `docs/VLLM_E2E_SMOKE.md`의 환경변수와 smoke 절차를
+사용한다.
+
 브라우저 주소는 `http://127.0.0.1:8000/`이다. API 문서는
 `http://127.0.0.1:8000/docs`에서 확인한다. 기본 bind는 로컬 loopback이며 debug
 mode를 사용하지 않는다.
@@ -73,14 +86,9 @@ Refresh 시 `sessionStorage`의 session ID로 같은 server process의 상태를
 
 ## 기록새 이미지 계약
 
-저장소에는 기록새 이미지가 없어 CSS placeholder를 사용한다. 이미지를 생성하거나
-다운로드하지 않았다. 추후 검수된 원본은 다음 경로에 배치할 수 있다.
-
-- `assets/giroksae/giroksae_full.png`
-- `assets/giroksae/giroksae_chat_icon.png`
-- `assets/giroksae/giroksae_profile.png`
-
-연결 시 비율 유지, 대체 텍스트와 작은 avatar 가독성을 별도 검증해야 한다.
+현재 package에는 승인 시안 `chat/static/assets/giroksae/giroksae_character.png`가
+포함되어 `/assets/giroksae/giroksae_character.png`로 제공된다. 투명 단독 컷이
+아니므로 원본을 수정하거나 왜곡하지 않고 기존 crop과 대체 텍스트 계약을 유지한다.
 
 ## 한계와 provider 경계
 

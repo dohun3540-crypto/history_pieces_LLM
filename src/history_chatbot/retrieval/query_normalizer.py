@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from history_chatbot.preprocessing.normalize_korean import normalize_korean
 
 
-GENERIC_TOKENS = frozenset(
+GENERIC_WORDS = frozenset(
     {
         "목포",
         "근대",
@@ -21,7 +21,50 @@ GENERIC_TOKENS = frozenset(
         "무엇",
         "어떤",
         "누구",
+        "현재",
+        "언제",
+        "어떻게",
+        "역할",
+        "발전",
+        "방법",
+        "설명",
+        "공간",
+        "사용",
+        "알려",
+        "주세요",
+        "했나요",
     }
+)
+
+_QUERY_SUFFIXES = (
+    "이었나요",
+    "되었나요",
+    "했나요",
+    "인가요",
+    "되는",
+    "으로",
+    "에서",
+    "에는",
+    "에게",
+    "부터",
+    "까지",
+    "처럼",
+    "보다",
+    "이라고",
+    "라고",
+    "이며",
+    "이고",
+    "은",
+    "는",
+    "이",
+    "가",
+    "을",
+    "를",
+    "의",
+    "에",
+    "와",
+    "과",
+    "인",
 )
 
 
@@ -30,6 +73,7 @@ class NormalizedQuery:
     original: str
     normalized: str
     tokens: tuple[str, ...]
+    informative_words: tuple[str, ...]
     informative_tokens: tuple[str, ...]
 
 
@@ -51,15 +95,37 @@ def tokenize(text: str) -> tuple[str, ...]:
     return tuple(dict.fromkeys(features))
 
 
+def content_words(text: str) -> tuple[str, ...]:
+    """Return particle-normalized words with question boilerplate removed."""
+
+    values: list[str] = []
+    for raw in re.findall(r"[0-9A-Za-z가-힣]+", normalize_korean(text).lower()):
+        if len(raw) <= 1:
+            continue
+        word = raw
+        for suffix in _QUERY_SUFFIXES:
+            if word.endswith(suffix) and len(word) > len(suffix) + 1:
+                word = word[: -len(suffix)]
+                break
+        if len(word) > 1 and word not in GENERIC_WORDS:
+            values.append(word)
+    return tuple(dict.fromkeys(values))
+
+
 def normalize_query(text: str) -> NormalizedQuery:
     original = text
     normalized = normalize_korean(text)
     if not normalized:
         raise ValueError("검색 질문을 입력하세요.")
     tokens = tokenize(normalized)
+    words = content_words(normalized)
+    informative = tuple(
+        dict.fromkeys(feature for word in words for feature in tokenize(word))
+    )
     return NormalizedQuery(
         original,
         normalized,
         tokens,
-        tuple(token for token in tokens if token not in GENERIC_TOKENS),
+        words,
+        informative,
     )

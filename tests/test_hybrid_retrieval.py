@@ -5,6 +5,7 @@ import pytest
 
 from history_chatbot.indexing.snapshot import stable_json_hash
 from history_chatbot.retrieval.base import DenseEncoder
+from history_chatbot.retrieval.dense import HashingDenseEncoder
 from history_chatbot.retrieval.service import HybridRetrievalService, RetrievalConfig
 
 
@@ -86,6 +87,21 @@ def make_service(tmp_path: Path, records: list[dict]) -> HybridRetrievalService:
     return HybridRetrievalService(config, encoder=FixtureEncoder())
 
 
+def make_hashing_service(tmp_path: Path, records: list[dict]) -> HybridRetrievalService:
+    ready = tmp_path / "index_ready"
+    write_index_ready(ready, records)
+    config = RetrievalConfig(
+        embedding_model="hashing-v1",
+        embedding_revision="builtin",
+        minimum_score=0.20,
+        minimum_dense_score=0.72,
+        local_storage_path=tmp_path / "retrieval",
+        index_ready_path=ready,
+        runtime_mode="test",
+    )
+    return HybridRetrievalService(config, encoder=HashingDenseEncoder())
+
+
 def test_dense_and_sparse_results_are_fused(tmp_path) -> None:
     service = make_service(
         tmp_path,
@@ -123,6 +139,33 @@ def test_unrelated_astronaut_question_does_not_match_common_mokpo_word(tmp_path)
     service.build_index()
 
     assert service.search("목포 출신 최초의 우주비행사는 누구인가요?") == []
+
+
+def test_hashing_backend_rejects_partial_question_boilerplate_overlap(tmp_path) -> None:
+    service = make_hashing_service(
+        tmp_path,
+        [chunk("method", 0, "독립운동을 전개하는 방법을 논의하였다")],
+    )
+    service.build_index()
+
+    assert service.search("양자컴퓨터의 큐비트 오류 정정 방법을 설명해 주세요.") == []
+
+
+def test_hashing_backend_keeps_multi_chunk_topic_coverage(tmp_path) -> None:
+    service = make_hashing_service(
+        tmp_path,
+        [
+            chunk("rail", 0, "목포역과 호남선 철도 발전에 관한 기록"),
+            chunk("port", 0, "목포 항만 발전에 관한 기록"),
+        ],
+    )
+    service.build_index()
+
+    results = service.search(
+        "목포역은 근대 목포의 철도와 항만 발전에 어떤 역할을 했나요?"
+    )
+
+    assert {item.chunk.document_id for item in results} == {"rail", "port"}
 
 
 def test_korean_particle_and_spacing_variant_is_retrieved(tmp_path) -> None:

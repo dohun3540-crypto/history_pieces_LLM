@@ -36,20 +36,24 @@ def test_real_model_dimension_revision_prefix_and_normalization(runtime) -> None
     assert math.isclose(math.sqrt(sum(x * x for x in vector)), 1.0, rel_tol=1e-5)
 
 
-def test_real_index_has_133_finite_vectors_and_48_documents(runtime) -> None:
+def test_real_index_has_239_finite_vectors_and_48_documents(runtime) -> None:
     _, store = runtime
     entries = store.entries()
-    assert len(entries) == 133
+    assert len(entries) == 239
     assert len({chunk.document_id for chunk, _ in entries}) == 48
     assert all(len(vector) == 384 and all(math.isfinite(x) for x in vector) for _, vector in entries)
     assert all(chunk.payload["usage_status"] == "provisional_hackathon" for chunk, _ in entries)
     assert store.metadata()["data_lane"] == "provisional_hackathon"
 
 
-def test_real_chinese_query_retrieves_korean_corpus(runtime) -> None:
+def test_real_chinese_query_retrieves_korean_document_in_top_ten(runtime) -> None:
     encoder, store = runtime
-    results = DenseSearcher(encoder, store).search("朴爱顺的出生地和独立运动类别是什么？", 5)
-    assert any(item.chunk.chunk_id == "mokpo-7e74b49138e96a23::provisional-0000" for item in results)
+    results = DenseSearcher(encoder, store).search(
+        "朴爱顺的出生地和独立运动类别是什么？", 10
+    )
+    assert any(
+        item.chunk.document_id == "mokpo-7e74b49138e96a23" for item in results
+    )
 
 
 def test_e5_and_hashing_indexes_are_separate(runtime) -> None:

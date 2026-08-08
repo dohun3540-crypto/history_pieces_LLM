@@ -60,11 +60,12 @@ UI는 in-memory demo journey와 중립적인 조각 label을 사용하며 서버
 FastAPI 계약으로 교체할 수 있습니다.
 
 ```powershell
-$env:LLM_BACKEND="remote"
-$env:LLM_BASE_URL="<허용된 GPU 서버 URL>"
-$env:LLM_ALLOWED_HOSTS="<GPU 서버 호스트명>"
-$env:LLM_MODEL="<정확한 모델 ID>"
-$env:LLM_MODEL_REVISION="<고정 revision>"
+$env:HISTORY_LLM_BACKEND="openai_compatible"
+$env:HISTORY_LLM_BASE_URL="<허용된 GPU 서버 URL>"
+$env:HISTORY_LLM_ALLOWED_HOSTS="<GPU 서버 호스트명>"
+$env:HISTORY_LLM_MODEL_ID="<정확한 model ID>"
+$env:HISTORY_LLM_MODEL_REVISION="<고정 revision>"
+$env:LLM_READINESS_PROBE="true"
 ```
 
 실제 배포 전 모델 라이선스와 context window를 확인해야 합니다. 자세한 계약은
@@ -236,17 +237,19 @@ python -m history_chatbot.retrieval.cli benchmark
 
 ## 비상업적 해커톤 임시 모드
 
-현재 공식 후보 51건 중 권리 확인 대기 48건은 정식 승인 자료가 아니다.
-공공누리 제4유형 3건은 제외하며, 나머지도 `allowed_for_rag=false`,
+현재 local manifest 50건과 정제된 48문서는 정식 승인 자료가 아니다.
+정제 결과는 현재 239청크이며, 모두 `allowed_for_rag=false`,
 `allowed_for_training=false`를 유지한 채 비상업적 대학 산학 해커톤에서만
 `provisional_hackathon`으로 격리 사용할 수 있다.
 
 ```powershell
 $env:APP_MODE = "hackathon"
+$env:HISTORY_LLM_BACKEND = "mock" # 로컬 연결 검증 전용, 실제 Llama 성공이 아님
 python -m history_chatbot.provisional.cli dry-run
 python -m history_chatbot.provisional.cli prepare
 python -m history_chatbot.provisional.cli list
 python -m history_chatbot.provisional.cli rebuild
+python -m uvicorn history_chatbot.chat.api:create_app --factory --host 127.0.0.1 --port 8000
 ```
 
 원문·정제문·해커톤 인덱스는 공개 Git에 올리지 않는다. production은 임시
@@ -256,6 +259,8 @@ python -m history_chatbot.provisional.cli rebuild
 [수명주기](docs/PROVISIONAL_DATA_LIFECYCLE.md),
 [제거 안내](docs/PROVISIONAL_DATA_REMOVAL.md)를 참고한다.
 
-현재 제한 GET 결과는 48건 중 7건 성공, 41건 실패이며, 중복 제거 후
-26청크의 hackathon 격리 인덱스가 생성되었다. 따라서 readiness는
-`hackathon_data_partial`이고 정식 서비스 준비 완료를 의미하지 않는다.
+`data/provisional_hackathon/processed/chunks.jsonl`은 Git에 포함되지 않으므로 새로
+받은 저장소에서는 먼저 허용된 로컬 원문으로 `collect`/`reprocess-local`과 `rebuild`를
+완료해야 한다. 파일이 준비된 현재 작업 환경의 readiness는 해커톤 데모용으로만
+ready이며 정식 서비스 준비 완료를 의미하지 않는다. 브라우저 주소는
+`http://127.0.0.1:8000/`, API 문서는 `http://127.0.0.1:8000/docs`다.

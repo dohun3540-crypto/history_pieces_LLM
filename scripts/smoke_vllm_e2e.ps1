@@ -3,7 +3,7 @@ param(
     [string]$AppBaseUrl = "http://127.0.0.1:8000",
     [string]$EvidenceQuestion = "목포 개항 이후 도시에는 어떤 변화가 있었나요?",
     [string[]]$FallbackProbeQuestions = @(
-        "목포 출신 최초의 화성 우주비행사는 누구인가?"
+        "양자컴퓨터의 큐비트 오류 정정 방법을 설명해 주세요."
     )
 )
 

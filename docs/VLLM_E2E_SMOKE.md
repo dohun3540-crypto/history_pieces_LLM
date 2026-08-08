@@ -269,11 +269,9 @@ $fallback.answer
 ```
 
 현재 `data/provisional_hackathon` index에서는
-`목포 출신 최초의 화성 우주비행사는 누구인가?`도 무관 chunk가 검색되므로 fallback
-probe로 사용하면 안 된다. 이 문서는 retrieval 설정을 바꾸지 않는다. 검색 결과가 0건인
-질문이 확보되기 전에는 자동화된 mock HTTP 테스트가 보장하는 “빈 retrieval이면 remote
-호출 없음”과 실서버의 근거 질문 호출만 각각 검증하고, 실제 fallback E2E는 대기 상태로
-보고한다.
+`양자컴퓨터의 큐비트 오류 정정 방법을 설명해 주세요.`가 0건을 반환하는 회귀 질문으로
+검증되어 기본 fallback probe로 사용된다. 이 질문의 chat 응답은 안전 fallback이어야 하며
+원격 `/v1/chat/completions` 요청이 새로 생기면 안 된다.
 
 ## 7. 자동 smoke script
 

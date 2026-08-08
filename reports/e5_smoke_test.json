@@ -14,23 +14,19 @@
       "grounded": true,
       "citation_count": 2,
       "retrieved_chunk_ids": [
+        "mokpo-1750a1cfa79fab5a::provisional-0009",
         "mokpo-1750a1cfa79fab5a::provisional-0001",
-        "mokpo-1750a1cfa79fab5a::provisional-0002",
-        "mokpo-e6af4186c355bbf8::provisional-0003"
+        "mokpo-b03f5c51698a91a1::provisional-0000"
       ]
     },
     {
       "case_id": "zh_history",
       "query": "朴爱顺的出生地和独立运动类别是什么？",
-      "status": "ok",
+      "status": "insufficient_evidence",
       "situation": "HISTORY_FACT_QUESTION",
-      "grounded": true,
-      "citation_count": 3,
-      "retrieved_chunk_ids": [
-        "mokpo-efcab37ddf9a442b::provisional-0000",
-        "mokpo-b7b7ff7f8f595f4f::provisional-0000",
-        "mokpo-74abf5b9e7926710::provisional-0000"
-      ]
+      "grounded": false,
+      "citation_count": 0,
+      "retrieved_chunk_ids": []
     },
     {
       "case_id": "paired_ko",
@@ -38,25 +34,21 @@
       "status": "ok",
       "situation": "HISTORY_FACT_QUESTION",
       "grounded": true,
-      "citation_count": 3,
+      "citation_count": 2,
       "retrieved_chunk_ids": [
-        "mokpo-a50452bd9b1092c3::provisional-0000",
-        "mokpo-a8239c7aff510fb6::provisional-0000",
-        "mokpo-9f4738c00aa939d3::provisional-0000"
+        "mokpo-a50452bd9b1092c3::provisional-0001",
+        "mokpo-a50452bd9b1092c3::provisional-0002",
+        "mokpo-9f4738c00aa939d3::provisional-0003"
       ]
     },
     {
       "case_id": "paired_zh",
       "query": "金玉实参加了什么独立运动？",
-      "status": "ok",
+      "status": "insufficient_evidence",
       "situation": "HISTORY_FACT_QUESTION",
-      "grounded": true,
-      "citation_count": 3,
-      "retrieved_chunk_ids": [
-        "mokpo-a0bf638bbff6150f::provisional-0002",
-        "mokpo-96c136dd1a1646f6::provisional-0000",
-        "mokpo-e99d0df6973f0c4d::provisional-0002"
-      ]
+      "grounded": false,
+      "citation_count": 0,
+      "retrieved_chunk_ids": []
     },
     {
       "case_id": "unrelated",
@@ -64,11 +56,10 @@
       "status": "ok",
       "situation": "HISTORY_FACT_QUESTION",
       "grounded": true,
-      "citation_count": 3,
+      "citation_count": 2,
       "retrieved_chunk_ids": [
-        "mokpo-a8239c7aff510fb6::provisional-0001",
-        "mokpo-e57c652e21032af1::provisional-0001",
-        "mokpo-20db4fc2c2312e14::provisional-0002"
+        "mokpo-a8239c7aff510fb6::provisional-0002",
+        "mokpo-e57c652e21032af1::provisional-0003"
       ]
     },
     {
@@ -80,8 +71,8 @@
       "citation_count": 3,
       "retrieved_chunk_ids": [
         "mokpo-fe255cf642165ba2::provisional-0000",
-        "mokpo-ff314916d24c0cb5::provisional-0000",
-        "mokpo-e868f61e15971e27::provisional-0000"
+        "mokpo-e868f61e15971e27::provisional-0000",
+        "mokpo-e6af4186c355bbf8::provisional-0002"
       ]
     },
     {
@@ -92,9 +83,9 @@
       "grounded": true,
       "citation_count": 2,
       "retrieved_chunk_ids": [
-        "mokpo-1750a1cfa79fab5a::provisional-0002",
         "mokpo-1750a1cfa79fab5a::provisional-0005",
-        "mokpo-986674eb2bd1c7f5::provisional-0000"
+        "mokpo-1750a1cfa79fab5a::provisional-0009",
+        "mokpo-986674eb2bd1c7f5::provisional-0001"
       ]
     },
     {
@@ -105,9 +96,9 @@
       "grounded": true,
       "citation_count": 2,
       "retrieved_chunk_ids": [
-        "mokpo-7e74b49138e96a23::provisional-0000",
+        "mokpo-7e74b49138e96a23::provisional-0003",
         "mokpo-7e74b49138e96a23::provisional-0001",
-        "mokpo-d0874b62634939fc::provisional-0000"
+        "mokpo-b7b7ff7f8f595f4f::provisional-0002"
       ]
     }
   ],

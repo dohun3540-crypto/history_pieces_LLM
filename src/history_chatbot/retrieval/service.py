@@ -13,7 +13,7 @@ from history_chatbot.retrieval.base import DenseEncoder, RankedChunk, RetrievalC
 from history_chatbot.retrieval.dense import DenseSearcher, HashingDenseEncoder, SentenceTransformerEncoder
 from history_chatbot.retrieval.fusion import reciprocal_rank_fusion
 from history_chatbot.retrieval.qdrant_store import LocalJsonVectorStore
-from history_chatbot.retrieval.query_normalizer import normalize_query
+from history_chatbot.retrieval.query_normalizer import content_words, normalize_query
 from history_chatbot.retrieval.reranker import NoOpReranker
 from history_chatbot.retrieval.sparse import BM25Searcher
 from history_chatbot.retrieval.thresholds import apply_thresholds
@@ -492,7 +492,19 @@ class HybridRetrievalService:
                 item for item in reranked
                 if item.chunk.document_id in matched_documents
             ]
-        return apply_thresholds(
+        hashing_guard = (
+            self.encoder.model_id == "hashing-v1"
+            and self.config.development_chunks_path is None
+        )
+        if hashing_guard:
+            query_words = set(query.informative_words)
+            reranked = [
+                item
+                for item in reranked
+                if query_words
+                & set(content_words(f"{item.chunk.title} {item.chunk.text}"))
+            ]
+        selected = apply_thresholds(
             query,
             reranked,
             minimum_score=self.config.minimum_score,
@@ -500,6 +512,28 @@ class HybridRetrievalService:
             max_chunks_per_document=self.config.max_chunks_per_document,
             final_top_k=self.config.final_top_k,
         )
+        if hashing_guard and not self._hashing_coverage(
+            query.informative_words, selected
+        ):
+            return []
+        return selected
+
+    @staticmethod
+    def _hashing_coverage(
+        query_words: tuple[str, ...], results: list[RankedChunk]
+    ) -> bool:
+        """Reject accidental hashing/BM25 matches that cover too little of a query."""
+
+        if not query_words or not results:
+            return False
+        searchable = {
+            word
+            for result in results
+            for word in content_words(f"{result.chunk.title} {result.chunk.text}")
+        }
+        matched = len(set(query_words) & searchable)
+        required = 1 if len(query_words) <= 2 else len(query_words) // 2 + 1
+        return matched >= required
 
     def _development_subject_documents(self, normalized_query: str) -> set[str]:
         matched: set[str] = set()
