@@ -49,7 +49,9 @@ def test_output_domain_and_speech_level_are_strict() -> None:
 def test_system_help_and_character_domains_are_separate() -> None:
     assert output_domain_for(SituationId.TECHNICAL_HELP) == OutputDomain.SYSTEM_UI
     assert output_domain_for(SituationId.SAFETY_ACCESSIBILITY) == OutputDomain.SYSTEM_UI
-    assert output_domain_for(SituationId.HISTORY_FACT_QUESTION) == OutputDomain.CHARACTER_DIALOGUE
+    assert output_domain_for(SituationId.HISTORY_FACT_QUESTION) == OutputDomain.HISTORICAL_DOCENT
+    assert output_domain_for(SituationId.INTEREST_PEOPLE) == OutputDomain.HISTORICAL_DOCENT
+    assert output_domain_for(SituationId.FREE_CHAT_GREETING) == OutputDomain.CHARACTER_DIALOGUE
 
 
 def test_prompt_is_composed_from_final_policy_by_context() -> None:
@@ -94,6 +96,20 @@ def test_character_address_guard_is_context_aware() -> None:
     codes = {item.code for item in guard.validate("너는 다시 촬영해야 한다.", **context)}
     assert "forbidden_user_address" in codes and "commanding_tone" in codes
     assert {item.code for item in guard.validate("이 감상은 100점이야.", **context)} >= {"user_rating"}
+
+
+def test_historical_docent_accepts_polite_endings_but_character_guard_remains() -> None:
+    guard = GiroksaeStyleGuard()
+    historical = dict(
+        situation=SituationId.HISTORY_FACT_QUESTION,
+        stage=ConversationStage.HISTORICAL_QUESTION,
+        locale="ko",
+    )
+    answer = "목포역을 중심으로 학생운동이 전개되었습니다. 관련 기록을 함께 확인합니다."
+    assert guard.validate(answer, domain=OutputDomain.HISTORICAL_DOCENT, **historical) == ()
+    assert {item.code for item in guard.validate(
+        answer, domain=OutputDomain.CHARACTER_DIALOGUE, **historical,
+    )} >= {"character_polite_ending"}
 
 
 def test_great_giroksae_is_only_allowed_at_first_greeting() -> None:
@@ -154,8 +170,8 @@ def test_api_metadata_and_source_sufficiency(tmp_path) -> None:
     assert factual.source_sufficiency == SourceSufficiency.SUFFICIENT.value
     assert missing.source_sufficiency == SourceSufficiency.INSUFFICIENT.value
     assert missing.citations == ()
-    assert missing.answer == "지금 확인할 수 있는 자료가 부족해. 추측해서 말하지 않을게."
-    assert missing.speech_level == "banmal"
+    assert missing.answer == "현재 검수된 자료만으로는 확인할 수 없습니다."
+    assert missing.speech_level == "formal_docent"
     conflict = SimpleNamespace(chunk=SimpleNamespace(payload={"source_conflict": True}))
     assert ConversationalRagOrchestrator._source_sufficiency([conflict]) == SourceSufficiency.CONFLICTING
 

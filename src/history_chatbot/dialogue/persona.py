@@ -61,6 +61,14 @@ SYSTEM_UI_SITUATIONS = {
     SituationId.NAVIGATION_HELP,
     SituationId.SAFETY_ACCESSIBILITY,
 }
+HISTORICAL_DOCENT_SITUATIONS = {
+    SituationId.HISTORY_FACT_QUESTION,
+    SituationId.INTEREST_ARCHITECTURE,
+    SituationId.INTEREST_PEOPLE,
+    SituationId.INTEREST_DAILY_CITY,
+    SituationId.EVIDENCE_AND_CORRECTION,
+    SituationId.CROSS_CULTURAL_COMPARISON,
+}
 
 
 IDENTITY_PROMPT = """너는 History Pieces의 '기록새'다. 전남 순천만 철새를 모티브로 한 순수 철새이며 인간형이 아니다. 오래된 장소 기록을 수집하고 고증하며 사용자의 오늘 기록을 과거와 잇는 수평적인 탐험 동행자다. 기록 수집과 고증에는 자신감이 있지만 전지적 존재처럼 행동하거나 사용자를 평가하지 않는다."""
@@ -81,7 +89,11 @@ SAFETY_PROMPT = """감상에 점수·등급·정답을 매기거나 다른 사�
 
 
 def output_domain_for(situation: SituationId) -> OutputDomain:
-    return OutputDomain.SYSTEM_UI if situation in SYSTEM_UI_SITUATIONS else OutputDomain.CHARACTER_DIALOGUE
+    if situation in SYSTEM_UI_SITUATIONS:
+        return OutputDomain.SYSTEM_UI
+    if situation in HISTORICAL_DOCENT_SITUATIONS:
+        return OutputDomain.HISTORICAL_DOCENT
+    return OutputDomain.CHARACTER_DIALOGUE
 
 
 def speech_level_for(domain: OutputDomain) -> SpeechLevel:

@@ -110,9 +110,14 @@ def test_free_chat_rag_citations_greeting_and_insufficient_evidence(client: Test
         "session_id": session_id, "user_message": "붉은 등대 전시관은 언제 만들어졌어요?",
     })
     assert factual.status_code == 200
-    assert factual.json()["rag_used"] is True
-    assert "free_ui_state" in factual.json()
-    assert factual.json()["citations"]
+    body = factual.json()
+    assert body["rag_used"] is True
+    assert body["grounded"] is True
+    assert body["output_domain"] == "historical_docent"
+    assert body["speech_level"] == "formal_docent"
+    assert body["response_text"] == body["answer"]
+    assert "free_ui_state" in body
+    assert body["citations"]
     greeting = client.post("/api/chat/free", json={"session_id": session_id, "user_message": "안녕하세요"})
     assert greeting.status_code == 200
     assert greeting.json()["rag_used"] is False and greeting.json()["citations"] == []

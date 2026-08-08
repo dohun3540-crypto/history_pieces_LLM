@@ -553,7 +553,17 @@ class ConversationalRagOrchestrator:
 
     @staticmethod
     def _rewrite_followup(query: str, previous_query: str) -> str:
-        if previous_query and re.search(r"(그곳|그 건물|그때|그와|그 과정|그 자료)", query):
+        explicit_people_followup = re.fullmatch(
+            r"(?:관련(?:된)?\s*(?:인물|사람)(?:은|이)?"
+            r"(?:\s*누구(?:인가요|예요|야)?)?"
+            r"|누가\s*(?:참여|관여|주도)(?:했나요|했어요|했어|했습니까)?)"
+            r"[?.!]?",
+            query.strip(),
+        )
+        if previous_query and (
+            re.search(r"(그곳|그 건물|그때|그와|그 과정|그 자료)", query)
+            or explicit_people_followup
+        ):
             return f"{previous_query} {query}"
         return query
 

@@ -51,6 +51,38 @@ def test_followup_question_keeps_session_context(tmp_path) -> None:
     assert session is not None and len(session.turns) == 2
 
 
+def test_explicit_people_followup_reuses_previous_retrieval_query(tmp_path, monkeypatch) -> None:
+    chat = orchestrator(tmp_path)
+    queries: list[str] = []
+    original_search = chat.retrieval.search
+
+    def capture_search(query: str):
+        queries.append(query)
+        return original_search(query)
+
+    monkeypatch.setattr(chat.retrieval, "search", capture_search)
+    first = chat.ask("붉은 등대 전시관은 언제 만들어졌어요?")
+    chat.ask("관련 인물은 누구인가요?", session_id=first.session_id)
+
+    assert queries[-1] == "붉은 등대 전시관은 언제 만들어졌어요? 관련 인물은 누구인가요?"
+
+
+def test_independent_question_does_not_reuse_previous_retrieval_query(tmp_path, monkeypatch) -> None:
+    chat = orchestrator(tmp_path)
+    queries: list[str] = []
+    original_search = chat.retrieval.search
+
+    def capture_search(query: str):
+        queries.append(query)
+        return original_search(query)
+
+    monkeypatch.setattr(chat.retrieval, "search", capture_search)
+    first = chat.ask("붉은 등대 전시관은 언제 만들어졌어요?")
+    chat.ask("가상 해솔관은 어떤 건물인가요?", session_id=first.session_id)
+
+    assert queries[-1] == "가상 해솔관은 어떤 건물인가요?"
+
+
 def test_missing_evidence_never_calls_grounded_generation(tmp_path, monkeypatch) -> None:
     chat = orchestrator(tmp_path)
 
@@ -59,10 +91,21 @@ def test_missing_evidence_never_calls_grounded_generation(tmp_path, monkeypatch)
 
     monkeypatch.setattr(chat.llm, "generate_grounded", forbidden)
     response = chat.ask("서울 궁궐의 왕은 누구야?")
-    assert response.answer == "지금 확인할 수 있는 자료가 부족해. 추측해서 말하지 않을게."
+    assert response.answer == "현재 검수된 자료만으로는 확인할 수 없습니다."
     assert response.status == "insufficient_evidence"
     assert response.sources == ()
     assert response.used_chunks == 0
+
+
+@pytest.mark.parametrize(
+    "followup",
+    ("관련 인물은 누구인가요?", "관련된 사람은?", "누가 참여했나요?"),
+)
+def test_explicit_people_followup_forms_are_bounded(followup: str) -> None:
+    previous = "목포역 학생운동은 어떻게 전개되었나요?"
+    assert ConversationalRagOrchestrator._rewrite_followup(followup, previous) == (
+        f"{previous} {followup}"
+    )
 
 
 def test_session_create_lookup_limit_reset_and_unknown_reset(tmp_path) -> None:
