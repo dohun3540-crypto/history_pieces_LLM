@@ -18,6 +18,7 @@ from pydantic import (
 
 SESSION_PATTERN = re.compile(r"^[a-f0-9]{32}$")
 LOCALE_PATTERN = re.compile(r"[A-Za-z]{2}(?:-[A-Za-z]{2})?")
+CONTEXT_ID_PATTERN = re.compile(r"^[\w][\w.:-]{0,127}$")
 MAX_MESSAGE_LENGTH = 2000
 
 
@@ -36,6 +37,12 @@ def validate_session_id(value: str) -> str:
 def validate_locale(value: str) -> str:
     if not LOCALE_PATTERN.fullmatch(value):
         raise ValueError("locale 형식이 올바르지 않습니다.")
+    return value
+
+
+def validate_context_id(value: str) -> str:
+    if not CONTEXT_ID_PATTERN.fullmatch(value):
+        raise ValueError("관광 문맥 ID 형식이 올바르지 않습니다.")
     return value
 
 
@@ -152,6 +159,12 @@ class SearchRequest(ApiV1Model):
 class ChatRequest(ApiV1Model):
     message: StrictStr = Field(min_length=1, max_length=MAX_MESSAGE_LENGTH)
     history: tuple[HistoryMessage, ...] = Field(default=(), max_length=20)
+    session_id: StrictStr | None = None
+    locale: StrictStr = "ko"
+    current_place_id: StrictStr | None = None
+    current_piece_id: StrictStr | None = None
+    completed_place_ids: tuple[StrictStr, ...] = Field(default=(), max_length=20)
+    completed_piece_ids: tuple[StrictStr, ...] = Field(default=(), max_length=50)
 
     @field_validator("message")
     @classmethod
@@ -159,6 +172,24 @@ class ChatRequest(ApiV1Model):
         if not value.strip():
             raise ValueError("message는 비어 있을 수 없습니다.")
         return value.strip()
+
+    def resolved_session_id(self) -> str | None:
+        return validate_session_id(self.session_id) if self.session_id is not None else None
+
+    def resolved_locale(self) -> str:
+        return validate_locale(self.locale)
+
+    @field_validator("current_place_id", "current_piece_id")
+    @classmethod
+    def context_id_must_be_safe(cls, value: str | None) -> str | None:
+        return validate_context_id(value) if value is not None else None
+
+    @field_validator("completed_place_ids", "completed_piece_ids")
+    @classmethod
+    def context_ids_must_be_safe(cls, values: tuple[str, ...]) -> tuple[str, ...]:
+        if len(values) != len(set(values)):
+            raise ValueError("관광 문맥 ID에는 중복이 없어야 합니다.")
+        return tuple(validate_context_id(value) for value in values)
 
 
 class SearchResultResponse(ApiV1Model):

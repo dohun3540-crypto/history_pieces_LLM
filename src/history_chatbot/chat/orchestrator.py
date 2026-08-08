@@ -86,6 +86,7 @@ class ChatResponse:
     context_state: tuple[str, ...] = ()
     current_place_id: str | None = None
     current_piece_id: str | None = None
+    completed_place_ids: tuple[str, ...] = ()
     completed_piece_ids: tuple[str, ...] = ()
     game_state_mutation: bool = False
     mode_transition: dict[str, object] | None = None
@@ -161,6 +162,7 @@ class ConversationalRagOrchestrator:
         screen_type: str | None = None,
         current_piece_id: str | None = None,
         current_place_id: str | None = None,
+        completed_place_ids: tuple[str, ...] = (),
         visited_piece_ids: tuple[str, ...] = (),
         existing_style_preferences: tuple[str, ...] = (),
         current_journey_step: str | None = None,
@@ -184,6 +186,7 @@ class ConversationalRagOrchestrator:
         shared_context = SharedSessionContext(
             session_id=session.session_id, locale=locale,
             current_place_id=current_place_id, current_piece_id=current_piece_id,
+            completed_place_ids=completed_place_ids,
             completed_piece_ids=visited_piece_ids, current_journey_step=current_journey_step,
             temporary_response_length_preference=(existing_style_preferences[0] if existing_style_preferences else None),
             available_capabilities=available_capabilities,
@@ -252,6 +255,7 @@ class ConversationalRagOrchestrator:
             )),
             "current_place_id": current_place_id,
             "current_piece_id": current_piece_id,
+            "completed_place_ids": completed_place_ids,
             "completed_piece_ids": visited_piece_ids,
             "game_state_mutation": False,
             "mode_transition": asdict(track.transition) if track.transition else None,
@@ -313,8 +317,17 @@ class ConversationalRagOrchestrator:
             max_new_tokens=self.max_new_tokens,
         )
         chunks = chunks[: len(budget.evidence)]
+        contextual_query = self._contextualize_query(
+            self._journey_scoped_query(
+                query, classification.primary_situation_id.value, visited_piece_ids
+            ),
+            current_place_id=current_place_id,
+            current_piece_id=current_piece_id,
+            completed_place_ids=completed_place_ids,
+            completed_piece_ids=visited_piece_ids,
+        )
         prompt = build_prompt(
-            user_query=self._journey_scoped_query(query, classification.primary_situation_id.value, visited_piece_ids),
+            user_query=contextual_query,
             conversation_summary="\n".join(budget.conversation),
             chunks=chunks,
             locale=locale,
@@ -351,7 +364,7 @@ class ConversationalRagOrchestrator:
                 for item in chunks
             )
             request = self._llm_request(
-                query, prompt, session, chunks, is_fixture, budget,
+                contextual_query, prompt, session, chunks, is_fixture, budget,
                 locale=locale, conversation_mode=chat_mode,
                 output_domain=output_domain,
                 situation=classification.primary_situation_id,
@@ -552,6 +565,32 @@ class ConversationalRagOrchestrator:
         return (
             f"{query}\n[게임 메타데이터] 실제 완료 조각 ID: {completed}. "
             "이 목록 밖의 조각을 완료했다고 말하지 마세요. 역사 관계는 검색 근거와 구분하세요."
+        )
+
+    @staticmethod
+    def _contextualize_query(
+        query: str,
+        *,
+        current_place_id: str | None,
+        current_piece_id: str | None,
+        completed_place_ids: tuple[str, ...],
+        completed_piece_ids: tuple[str, ...],
+    ) -> str:
+        context: list[str] = []
+        if current_place_id:
+            context.append(f"현재 장소 ID: {current_place_id}")
+        if current_piece_id:
+            context.append(f"현재 조각 ID: {current_piece_id}")
+        if completed_place_ids:
+            context.append("완료 장소 ID: " + ", ".join(completed_place_ids))
+        if completed_piece_ids:
+            context.append("완료 조각 ID: " + ", ".join(completed_piece_ids))
+        if not context:
+            return query
+        return (
+            query
+            + "\n[관광 여정 문맥 | 역사적 사실의 근거가 아님] "
+            + "; ".join(context)
         )
 
     def _select(self, results: list[RankedChunk], top_k: int) -> list[RankedChunk]:

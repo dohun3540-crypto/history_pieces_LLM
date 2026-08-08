@@ -118,6 +118,12 @@ def create_app(
         result = resolved.answer(
             payload.message,
             [item.model_dump() for item in payload.history],
+            session_id=payload.resolved_session_id(),
+            locale=payload.resolved_locale(),
+            current_place_id=payload.current_place_id,
+            current_piece_id=payload.current_piece_id,
+            completed_place_ids=payload.completed_place_ids,
+            completed_piece_ids=payload.completed_piece_ids,
         )
         return ChatResponse(answer=str(result["answer"]))
 

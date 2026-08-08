@@ -143,6 +143,7 @@ class HistoryChatService:
             screen_type=str(payload["screen_type"]) if payload.get("screen_type") else None,
             current_piece_id=str(payload["current_piece_id"]) if payload.get("current_piece_id") else None,
             current_place_id=str(payload["current_place_id"]) if payload.get("current_place_id") else None,
+            completed_place_ids=tuple(str(x) for x in payload.get("completed_place_ids", ())),
             visited_piece_ids=tuple(str(x) for x in payload.get("visited_piece_ids", ())),
             existing_style_preferences=tuple(str(x) for x in payload.get("existing_style_preferences", ())),
             current_journey_step=str(payload["current_journey_step"]) if payload.get("current_journey_step") else None,
@@ -186,12 +187,26 @@ class HistoryChatService:
         self,
         question: str,
         chat_history: list[dict[str, str]] | None = None,
+        *,
+        session_id: str | None = None,
+        locale: str = "ko",
+        current_place_id: str | None = None,
+        current_piece_id: str | None = None,
+        completed_place_ids: tuple[str, ...] = (),
+        completed_piece_ids: tuple[str, ...] = (),
     ) -> dict[str, object]:
         """대화 문맥은 해석에만, 검색 chunk는 사실 근거로만 사용한다."""
 
-        session = self.orchestrator.sessions.create("ko")
+        persistent = session_id is not None
+        if persistent:
+            session = self.orchestrator.sessions.get(session_id)
+            if session is None:
+                raise ValueError("존재하지 않는 session_id입니다.")
+        else:
+            session = self.orchestrator.sessions.create(locale)
         pending_user: str | None = None
-        for message in chat_history or []:
+        history_to_import = (chat_history or []) if not session.turns else []
+        for message in history_to_import:
             role = str(message.get("role", ""))
             content = str(message.get("content", "")).strip()
             if role == "user":
@@ -206,12 +221,18 @@ class HistoryChatService:
                 {
                     "user_query": question,
                     "session_id": session.session_id,
+                    "locale": locale,
                     "conversation_mode": "free_chat",
                     "screen_type": "free_chat",
+                    "current_place_id": current_place_id,
+                    "current_piece_id": current_piece_id,
+                    "completed_place_ids": completed_place_ids,
+                    "visited_piece_ids": completed_piece_ids,
                 }
             )
         finally:
-            self.orchestrator.sessions.reset(session.session_id)
+            if not persistent:
+                self.orchestrator.sessions.reset(session.session_id)
         grounded = response.get("grounded") is True
         answer = str(response.get("answer", ""))
         if not grounded and response.get("status") == "insufficient_evidence":

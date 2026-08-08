@@ -47,6 +47,7 @@ class SharedSessionContext:
     locale: str = "ko"
     current_place_id: str | None = None
     current_piece_id: str | None = None
+    completed_place_ids: tuple[str, ...] = ()
     completed_piece_ids: tuple[str, ...] = ()
     current_journey_step: str | None = None
     temporary_response_length_preference: str | None = None
@@ -58,6 +59,10 @@ class SharedSessionContext:
     user_consent: bool = False
 
     def __post_init__(self) -> None:
+        if len(self.completed_place_ids) != len(set(self.completed_place_ids)):
+            raise ValueError("completed_place_ids에는 중복이 없어야 합니다.")
+        if any(not value.strip() for value in self.completed_place_ids):
+            raise ValueError("completed_place_ids는 비어 있지 않은 문자열이어야 합니다.")
         if len(self.completed_piece_ids) != len(set(self.completed_piece_ids)):
             raise ValueError("completed_piece_ids에는 중복이 없어야 합니다.")
         if any(not value.strip() for value in self.completed_piece_ids):

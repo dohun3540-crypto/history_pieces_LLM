@@ -55,6 +55,9 @@ uvicorn history_chatbot.chat.api:create_app --factory
 
 Endpoint:
 
+- `POST /api/v1/search`: LLM 호출 없이 hybrid 검색 결과 반환
+- `POST /api/v1/chat`: 단순 `{answer}` 응답 계약의 근거 기반 채팅
+- `GET /ready`, `GET /api/v1/ready`: retriever와 LLM readiness 반환
 - `POST /api/chat`: JSON 질문을 처리하고 최종 답변과 출처를 반환
 - `POST /api/chat/stream`: SSE `start`, `token`/`delta` 이벤트 뒤 `completed` 이벤트 반환
 - `DELETE /api/sessions/{session_id}`: 세션 초기화
@@ -79,3 +82,26 @@ Endpoint:
 readiness는 `development_ready`, `production_not_ready`를 주 상태로 구분하고
 `missing_real_documents`, `missing_llm_backend`, `missing_index`를 별도
 불리언 필드로 제공한다.
+
+### `/api/v1/chat` 지속 대화
+
+기존의 일회성 `{message, history}` 요청은 그대로 지원한다. 서버가 관리하는 지속
+대화가 필요하면 먼저 `POST /api/session`으로 `session_id`를 발급받고 같은 ID를
+후속 `/api/v1/chat` 요청에 전달한다. 응답은 기존 브라우저 계약을 유지하기 위해
+계속 `{answer}` 하나만 반환한다.
+
+```json
+{
+  "message": "그 건물은 당시 어떤 역할을 했나요?",
+  "session_id": "<32자리 SESSION_ID>",
+  "locale": "ko",
+  "current_place_id": "mokpo-station-1932",
+  "current_piece_id": "station-piece-1",
+  "completed_place_ids": ["mokpo-music-hall"],
+  "completed_piece_ids": ["music-piece-1"]
+}
+```
+
+장소·조각 ID와 완료 목록은 대화 및 관광 여정 문맥일 뿐 역사적 사실의 근거가
+아니다. 역사 설명은 항상 검색된 문서 chunk를 근거로 생성하며, 알 수 없는
+`session_id`는 새 세션으로 암묵적으로 바꾸지 않고 `400 invalid_request`로 거절한다.
