@@ -7,6 +7,7 @@ import time
 import uuid
 from collections import Counter
 from dataclasses import asdict, dataclass
+from difflib import SequenceMatcher
 from typing import Iterator
 
 from history_chatbot.chat.citation_builder import build_citations
@@ -376,6 +377,9 @@ class ConversationalRagOrchestrator:
                 answer = self._apply_hackathon_policy(
                     completion.generated_text, chunks
                 )
+                answer = self._apply_repetition_guard(
+                    answer, output_domain=output_domain
+                )
                 if self.llm.backend_name == "mock":
                     answer = render_mock_grounded(answer, domain=output_domain, locale=locale)
                     if self._source_sufficiency(chunks) == SourceSufficiency.CONFLICTING:
@@ -732,6 +736,63 @@ class ConversationalRagOrchestrator:
         if len(normalized) > 1200:
             normalized = normalized[:1200].rstrip() + "…"
         return normalized
+
+    @staticmethod
+    def _apply_repetition_guard(
+        answer: str, *, output_domain: OutputDomain
+    ) -> str:
+        """Remove only conservative sentence repetition from docent answers."""
+        if output_domain != OutputDomain.HISTORICAL_DOCENT:
+            return answer
+
+        sentences = re.split(r"(?<=[.!?。！？])\s+", answer.strip())
+        kept: list[str] = []
+        exact_keys: set[str] = set()
+        for sentence in sentences:
+            candidate = sentence.strip()
+            if not candidate:
+                continue
+            exact_key = re.sub(r"\s+", " ", candidate)
+            if exact_key in exact_keys:
+                continue
+            if any(
+                ConversationalRagOrchestrator._is_near_duplicate_sentence(
+                    candidate, previous
+                )
+                for previous in kept[-2:]
+            ):
+                continue
+            kept.append(candidate)
+            exact_keys.add(exact_key)
+        return " ".join(kept)
+
+    @staticmethod
+    def _is_near_duplicate_sentence(left: str, right: str) -> bool:
+        if min(len(left), len(right)) < 20:
+            return False
+        if re.findall(r"\d[\d,.]*", left) != re.findall(r"\d[\d,.]*", right):
+            return False
+
+        subject_pattern = re.compile(
+            r"^(?:\[답변\]\s*)?([가-힣]{2,10})(?:은|는|이|가)(?:\s|,)"
+        )
+        left_subject = subject_pattern.match(left)
+        right_subject = subject_pattern.match(right)
+        if (
+            left_subject is not None
+            and right_subject is not None
+            and left_subject.group(1) != right_subject.group(1)
+        ):
+            return False
+
+        normalize = lambda value: re.sub(r"[\W_]+", "", value).casefold()
+        left_normalized = normalize(left)
+        right_normalized = normalize(right)
+        if not left_normalized or not right_normalized:
+            return False
+        return SequenceMatcher(
+            None, left_normalized, right_normalized, autojunk=False
+        ).ratio() >= 0.94
 
     @staticmethod
     def _limit_piece_answer(answer: str) -> str:

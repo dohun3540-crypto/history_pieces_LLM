@@ -1,10 +1,13 @@
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from history_chatbot.chat.service import create_development_orchestrator
 from history_chatbot.chat.service import ChatApplicationService
+from history_chatbot.chat.orchestrator import ConversationalRagOrchestrator
 from history_chatbot.dialogue.modes import ConversationMode
+from history_chatbot.dialogue.persona import OutputDomain
 from history_chatbot.dialogue.track_models import (
     FreeChatUiState, ModeTransition, PieceChatUiState, RequestState,
     SharedSessionContext,
@@ -118,6 +121,64 @@ def test_free_chat_fact_uses_rag_and_citations(tmp_path) -> None:
     assert response.ui_state == "showing_citations"
     assert not response.game_state_mutation
     assert response.response_text == response.answer
+
+
+def test_docent_repetition_guard_removes_exact_duplicates() -> None:
+    answer = "A입니다. A입니다. A입니다."
+    assert ConversationalRagOrchestrator._apply_repetition_guard(
+        answer, output_domain=OutputDomain.HISTORICAL_DOCENT,
+    ) == "A입니다."
+
+
+def test_docent_repetition_guard_removes_only_very_close_variants() -> None:
+    answer = "1929년 학생들은 시위를 준비했습니다. 1929년, 학생들은 시위를 준비했습니다."
+    assert ConversationalRagOrchestrator._apply_repetition_guard(
+        answer, output_domain=OutputDomain.HISTORICAL_DOCENT,
+    ) == "1929년 학생들은 시위를 준비했습니다."
+
+
+@pytest.mark.parametrize(
+    "answer",
+    (
+        "11월 16일 전단을 작성했습니다. 11월 19일 전단 1,500매를 인쇄했습니다.",
+        "전단 1,000매를 인쇄했습니다. 전단 1,500매를 인쇄했습니다.",
+        "박종식은 시위를 준비했습니다. 오상록은 전단 배포를 준비했습니다.",
+        "학생들은 전단을 작성했습니다. 학생들은 거리 시위를 전개했습니다.",
+    ),
+)
+def test_docent_repetition_guard_preserves_distinct_facts(answer: str) -> None:
+    assert ConversationalRagOrchestrator._apply_repetition_guard(
+        answer, output_domain=OutputDomain.HISTORICAL_DOCENT,
+    ) == answer
+
+
+@pytest.mark.parametrize(
+    "domain",
+    (OutputDomain.CHARACTER_DIALOGUE, OutputDomain.SYSTEM_UI),
+)
+def test_repetition_guard_does_not_change_other_domains(domain: OutputDomain) -> None:
+    answer = "같은 문장이야.  같은 문장이야."
+    assert ConversationalRagOrchestrator._apply_repetition_guard(
+        answer, output_domain=domain,
+    ) == answer
+
+
+def test_historical_docent_generation_path_applies_repetition_guard(
+    tmp_path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = chat(tmp_path)
+    monkeypatch.setattr(
+        engine.llm,
+        "complete",
+        lambda request: SimpleNamespace(
+            generated_text="목포의 역사 설명입니다. 목포의 역사 설명입니다."
+        ),
+    )
+    response = engine.ask(
+        "붉은 등대 전시관은 언제 만들어졌어요?", conversation_mode="free_chat",
+    )
+    assert response.output_domain == "historical_docent"
+    assert response.answer == "목포의 역사 설명입니다."
 
 
 def test_free_chat_source_request_exposes_citation_panel_action(tmp_path) -> None:

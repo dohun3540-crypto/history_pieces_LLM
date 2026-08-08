@@ -68,6 +68,32 @@ def test_prompt_is_composed_from_final_policy_by_context() -> None:
     assert "역사 사실" not in character  # facts are injected separately, not hard-coded here
 
 
+def test_historical_docent_prompt_enforces_grounded_concise_answers() -> None:
+    docent = build_persona_prompt(
+        domain=OutputDomain.HISTORICAL_DOCENT, locale="ko",
+        mode=ConversationMode.FREE_CHAT, situation=SituationId.HISTORY_FACT_QUESTION,
+    )
+    for unsupported_detail in ("인물명", "날짜", "연도", "숫자", "사건 관계"):
+        assert unsupported_detail in docent
+    assert "일반 지식으로 보완하지 않는다" in docent
+    assert "첫 1~2문장에서 질문에 직접 답" in docent
+    assert "같은 사실을 표현만 바꾸어 반복하지 않으며" in docent
+    assert "동일하거나 거의 동일한 문장을 반복하지 않는다" in docent
+    assert "어느 한쪽을 임의로 확정하지 말고" in docent
+    assert "사건과 직접 관련된 역할을 먼저 설명" in docent
+    assert "전체 생애나 전기를 길게 나열하지 않는다" in docent
+
+
+def test_character_dialogue_prompt_does_not_inherit_docent_constraints() -> None:
+    character = build_persona_prompt(
+        domain=OutputDomain.CHARACTER_DIALOGUE, locale="ko",
+        mode=ConversationMode.FREE_CHAT, situation=SituationId.FREE_CHAT_GREETING,
+    )
+    assert "친근한 해체 중심 반말" in character
+    assert "검색 근거에 없는 인물명, 날짜, 연도, 숫자, 사건 관계" not in character
+    assert "무관한 전체 생애나 전기를 길게 나열하지 않는다" not in character
+
+
 def test_character_banmal_and_system_ui_polite_are_enforced(tmp_path) -> None:
     chat = orchestrator(tmp_path)
     greeting = chat.ask("안녕하세요", conversation_mode="free_chat")
