@@ -108,6 +108,25 @@ def test_fake_collection_excludes_common_page_chrome_and_images(tmp_path) -> Non
     assert all(item["allowed_for_training"] is False for item in chunks)
 
 
+def test_extraction_prefers_semantic_main_over_div_based_page_chrome(tmp_path) -> None:
+    provisional = service(tmp_path)
+    payload = (
+        "<html><body>"
+        "<div class='global-links'>통합검색 인기검색어 반복 메뉴</div>"
+        "<main id='content'><h1>구 동양척식주식회사 목포지점</h1>"
+        "<p>검증 대상 역사 설명 본문입니다.</p></main>"
+        "<div class='search-layer'>검색 필터 breadcrumb 반복 링크</div>"
+        "</body></html>"
+    ).encode("utf-8")
+
+    extracted = provisional._extract_text(payload)
+
+    assert "구 동양척식주식회사 목포지점" in extracted
+    assert "검증 대상 역사 설명 본문" in extracted
+    assert "통합검색 인기검색어" not in extracted
+    assert "검색 필터 breadcrumb" not in extracted
+
+
 def test_existing_successes_are_reused_without_network(tmp_path) -> None:
     provisional = prepare_and_collect(tmp_path)
     calls: list[str] = []

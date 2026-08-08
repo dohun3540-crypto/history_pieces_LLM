@@ -46,28 +46,47 @@ class _TextExtractor(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
         self.depth = 0
+        self.main_depth = 0
+        self.main_found = False
         self.parts: list[str] = []
+        self.main_parts: list[str] = []
 
     def handle_starttag(self, tag: str, attrs) -> None:
         del attrs
-        if tag.lower() in self.BLOCKED:
+        lowered = tag.lower()
+        if lowered in self.BLOCKED:
             self.depth += 1
-        elif not self.depth and tag.lower() in {"p", "div", "section", "article", "h1", "h2", "h3", "li", "br"}:
+        elif lowered == "main":
+            self.main_found = True
+            self.main_depth += 1
+            self.main_parts.append("\n")
+        elif not self.depth and lowered in {"p", "div", "section", "article", "h1", "h2", "h3", "li", "br"}:
             self.parts.append("\n")
+            if self.main_depth:
+                self.main_parts.append("\n")
 
     def handle_endtag(self, tag: str) -> None:
-        if tag.lower() in self.BLOCKED and self.depth:
+        lowered = tag.lower()
+        if lowered in self.BLOCKED and self.depth:
             self.depth -= 1
-        elif not self.depth and tag.lower() in {"p", "div", "section", "article", "h1", "h2", "h3", "li"}:
+        elif lowered == "main" and self.main_depth:
+            self.main_parts.append("\n")
+            self.main_depth -= 1
+        elif not self.depth and lowered in {"p", "div", "section", "article", "h1", "h2", "h3", "li"}:
             self.parts.append("\n")
+            if self.main_depth:
+                self.main_parts.append("\n")
 
     def handle_data(self, data: str) -> None:
         if not self.depth:
             self.parts.append(data)
+            if self.main_depth:
+                self.main_parts.append(data)
 
     def text(self) -> str:
+        source = self.main_parts if self.main_found else self.parts
         lines = []
-        for line in "".join(self.parts).replace("\r\n", "\n").replace("\r", "\n").splitlines():
+        for line in "".join(source).replace("\r\n", "\n").replace("\r", "\n").splitlines():
             value = re.sub(r"[ \t]+", " ", line).strip()
             if value and value not in lines[-3:]:
                 lines.append(value)
