@@ -26,16 +26,17 @@ function Write-Skip([string]$Message) {
 
 function ConvertTo-Utf8JsonBytes([object]$Value) {
     $json = $Value | ConvertTo-Json -Depth 8 -Compress
-    return [System.Text.Encoding]::UTF8.GetBytes($json)
+    return ,([System.Text.Encoding]::UTF8.GetBytes([string]$json))
 }
 
 function Invoke-JsonPost([string]$Uri, [object]$Value, [hashtable]$Headers) {
+    [byte[]]$body = ConvertTo-Utf8JsonBytes $Value
     return Invoke-RestMethod `
         -Method Post `
         -Uri $Uri `
         -Headers $Headers `
         -ContentType "application/json; charset=utf-8" `
-        -Body (ConvertTo-Utf8JsonBytes $Value)
+        -Body $body
 }
 
 $llmBaseUrl = [string]$env:HISTORY_LLM_BASE_URL
