@@ -139,6 +139,24 @@ def test_request_limit_is_enforced():
         control.get(item.source_url, SOURCE_SPECS["national_archives"], 2, 10000)
 
 
+def test_batch_controller_source_preflight_fails_before_transport():
+    calls = []
+
+    class NeverCalled:
+        def get(self, url, timeout, max_bytes):
+            calls.append(url)
+            raise AssertionError("preflight must fail before transport")
+
+    control = RequestController(1, 1.2, lambda hosts: NeverCalled(),
+                                require_source_preflight=True)
+    spec = SourceSpec("fixture", "기관", ("example.invalid",),
+                      ("https://example.invalid/",), robots_status="unknown",
+                      policy_status="allowed")
+    with pytest.raises(BatchError, match="robots_preflight_not_allowed"):
+        control.get("https://example.invalid/item", spec, 1, 1000)
+    assert calls == [] and control.request_count == 0
+
+
 def test_per_host_delay_is_applied():
     item = candidate()
     sleeps = []

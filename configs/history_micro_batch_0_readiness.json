@@ -1,0 +1,29 @@
+{
+  "phase": "A",
+  "status": "PARTIAL",
+  "collection_network_requests": 0,
+  "sources": [
+    {
+      "source_id": "heritage_portal",
+      "robots_status": "verified_allowed",
+      "policy_status": "needs_human_review",
+      "rights_metadata_status": "document_level_required",
+      "public_access_status": "public",
+      "live_extraction_status": "success",
+      "candidate_collection_ready": true,
+      "verified_collection_ready": false,
+      "crawl_delay_seconds": 0,
+      "blockers": [],
+      "evidence": [
+        {
+          "evidence_type": "live_detail_validation",
+          "url": "https://www.heritage.go.kr/heri/cul/culSelectDetail.do?ccbaCpno=4413607180000&pageNo=1_1_1_0",
+          "http_status": 200,
+          "extraction_success": true,
+          "substantive_historical_body": true,
+          "human_review_required": true
+        }
+      ]
+    }
+  ]
+}

@@ -33,7 +33,7 @@ DECISIONS = (
 ACCEPTED_DECISIONS = {"accepted_hackathon", "accepted_metadata_only", "needs_review"}
 ALLOWED_MEDIA_TYPES = {
     "text/html", "application/xhtml+xml", "application/json", "text/json",
-    "application/xml", "text/xml", "text/csv", "application/csv",
+    "application/xml", "text/xml", "text/csv", "application/csv", "text/plain",
 }
 BLOCKED_MEDIA_PREFIXES = ("application/pdf", "image/", "application/zip", "application/x-zip")
 ERROR_PATTERNS = re.compile(
@@ -152,6 +152,9 @@ class SourceSpec:
     endpoint_verification_status: str = "verified"
     endpoint_source: str = "official"
     production_enabled: bool = True
+    robots_status: str = "unknown"
+    policy_status: str = "unknown"
+    candidate_only: bool = False
 
 
 SOURCE_SPECS = {
@@ -228,14 +231,16 @@ class _RedirectPolicy(urllib.request.HTTPRedirectHandler):
 
 
 class UrllibBatchTransport:
-    def __init__(self, allowed_hosts: Sequence[str]) -> None:
+    def __init__(self, allowed_hosts: Sequence[str],
+                 user_agent: str = "MokpoHistoryHackathonBatch/1.0") -> None:
         self.allowed_hosts = tuple(allowed_hosts)
+        self.user_agent = user_agent
 
     def get(self, url: str, timeout: float, max_bytes: int) -> BatchResponse:
         validate_public_url(url, self.allowed_hosts)
         opener = urllib.request.build_opener(_RedirectPolicy(self.allowed_hosts))
         request = urllib.request.Request(
-            url, headers={"User-Agent": "MokpoHistoryHackathonBatch/1.0", "Accept": "text/html,application/json,application/xml,text/xml,text/csv"}
+            url, headers={"User-Agent": self.user_agent, "Accept": "text/html,application/json,application/xml,text/xml,text/csv,text/plain"}
         )
         with opener.open(request, timeout=timeout) as response:
             final_url = response.geturl()
@@ -483,7 +488,15 @@ class PublicSourceAdapter:
                 continue
             if not is_relevant(title, title)[0]:
                 continue
-            candidates.append(self._candidate(url, title))
+            candidate = self._candidate(url, title)
+            query = dict(parse_qsl(urlsplit(request_url).query))
+            candidate.discovery_metadata.update({
+                "discovery_request_url": request_url,
+                "discovery_response_final_url": response.final_url,
+                "discovery_query": query.get("keyword", "") or query.get("searchKeyword", "")
+                    or query.get("query", ""),
+            })
+            candidates.append(candidate)
         return candidates
 
     def _discover_structured(self, response: BatchResponse) -> List[BatchCandidate]:
@@ -511,6 +524,76 @@ class PublicSourceAdapter:
             source_url=url, canonical_url=canonical, portal_name=self.spec.portal_name,
             original_institution=self.spec.institution,
         )
+
+
+class OfficialHtmlAdapter(PublicSourceAdapter):
+    """Conservative URL and evidence handling for official HTML sources."""
+
+    DETAIL_MARKERS: Tuple[str, ...] = ()
+    FORBIDDEN_MARKERS = ("print", "login", "captcha")
+
+    def _is_detail_url(self, url: str) -> bool:
+        lowered = url.lower()
+        return (not any(marker in lowered for marker in self.FORBIDDEN_MARKERS)
+                and any(marker in lowered for marker in self.DETAIL_MARKERS))
+
+    def discover(self, response: BatchResponse, request_url: str) -> List[BatchCandidate]:
+        return [item for item in PublicSourceAdapter.discover(self, response, request_url)
+                if self._is_detail_url(item.source_url)]
+
+    def detail_url(self, candidate: BatchCandidate, environment: Mapping[str, str]) -> str:
+        value = PublicSourceAdapter.detail_url(self, candidate, environment)
+        if not self._is_detail_url(value):
+            raise BatchError("source_detail_path_not_allowed")
+        return value
+
+    def fetch_detail(self, candidate: BatchCandidate, response: BatchResponse) -> DetailDocument:
+        detail = PublicSourceAdapter.fetch_detail(self, candidate, response)
+        source = decode_body(response.body)
+        canonical = re.search(
+            r'<link\b(?=[^>]*\brel=["\']canonical["\'])(?=[^>]*\bhref=["\']([^"\']+))[^>]*>',
+            source, re.I,
+        )
+        kogl = re.search(r'(?:공공누리\s*(?:제\s*)?([1-4])\s*유형|KOGL[-\s]?([1-4]))', source, re.I)
+        if canonical:
+            value = canonicalize_public_url(urljoin(response.final_url, html.unescape(canonical.group(1))))
+            validate_public_url(value, self.spec.allowed_hosts)
+            detail.metadata["document_canonical_url"] = value
+        if kogl:
+            kind = kogl.group(1) or kogl.group(2)
+            detail.metadata.update({
+                "kogl_type": "KOGL-" + kind,
+                "rights_evidence_text": normalize_space(kogl.group(0)),
+                "document_rights_url": response.final_url,
+            })
+        return detail
+
+
+class NationalArchivesHtmlAdapter(OfficialHtmlAdapter):
+    DETAIL_MARKERS = (
+        "showdetail",
+        "searchresultdetail",
+        "/detail/",
+        "view.do",
+    )
+
+
+class HeritagePortalHtmlAdapter(OfficialHtmlAdapter):
+    DETAIL_MARKERS = (
+        "culselectdetail",
+        "/detail/",
+        "view.do",
+    )
+
+
+class MokpoOfficialHtmlAdapter(OfficialHtmlAdapter):
+    DETAIL_MARKERS = (
+        "mode=view",
+        "/view/",
+        "/detail/",
+        "selectview.do",
+        "/www/introduce/history/",
+    )
 
 
 class TourApiAdapter(PublicSourceAdapter):
@@ -687,7 +770,13 @@ class HeritageWfsAdapter(PublicSourceAdapter):
 
 ADAPTERS = {}
 for _name, _spec in SOURCE_SPECS.items():
-    if _name == "tour_api":
+    if _name == "national_archives_html":
+        ADAPTERS[_name] = NationalArchivesHtmlAdapter(_spec)
+    elif _name == "heritage_portal":
+        ADAPTERS[_name] = HeritagePortalHtmlAdapter(_spec)
+    elif _name == "mokpo_official":
+        ADAPTERS[_name] = MokpoOfficialHtmlAdapter(_spec)
+    elif _name == "tour_api":
         ADAPTERS[_name] = TourApiAdapter(_spec)
     elif _name == "national_archives_api":
         ADAPTERS[_name] = NationalArchivesApiAdapter(_spec)
@@ -701,7 +790,10 @@ class RequestController:
     def __init__(self, max_requests: int, delay_seconds: float,
                  transport_factory: Callable[[Sequence[str]], BatchTransport],
                  sleep: Callable[[float], None] = time.sleep,
-                 clock: Callable[[], float] = time.monotonic, max_retries: int = 1) -> None:
+                 clock: Callable[[], float] = time.monotonic, max_retries: int = 1,
+                 require_source_preflight: bool = False,
+                 source_stage_limits: Optional[Mapping[str, Mapping[str, int]]] = None,
+                 source_delay_seconds: Optional[Mapping[str, float]] = None) -> None:
         if max_requests < 1 or max_requests > 500:
             raise BatchError("max-requests must be between 1 and 500")
         if delay_seconds < 1.2:
@@ -714,13 +806,34 @@ class RequestController:
         self.sleep = sleep
         self.clock = clock
         self.max_retries = max_retries
+        self.require_source_preflight = require_source_preflight
+        self.source_stage_limits = {source: dict(stages) for source, stages in (source_stage_limits or {}).items()}
+        self.source_delay_seconds = {source: float(value) for source, value in (source_delay_seconds or {}).items()}
+        if any(value < delay_seconds or value > 120 for value in self.source_delay_seconds.values()):
+            raise BatchError("source-specific delay must be between global delay and 120 seconds")
         self.request_count = 0
         self.source_request_counts = {}  # type: Dict[str, int]
+        self.source_stage_request_counts = {}  # type: Dict[Tuple[str, str], int]
         self.events = []  # type: List[Dict[str, Any]]
         self.last_request = {}  # type: Dict[str, float]
 
     def get(self, url: str, spec: SourceSpec, timeout: float, max_bytes: int,
             stage: str = "request") -> BatchResponse:
+        if self.require_source_preflight:
+            if spec.robots_status not in {"allowed", "verified_allowed"}:
+                raise GlobalSafetyError("robots_preflight_not_allowed")
+            candidate_policy = (
+                spec.candidate_only
+                and spec.policy_status in {
+                    "unknown", "needs_human_review", "document_level_required"
+                }
+            )
+            if spec.policy_status != "allowed" and not candidate_policy:
+                raise GlobalSafetyError("source_policy_not_allowed")
+        stage_limit = self.source_stage_limits.get(spec.source_id, {}).get(stage)
+        stage_key = (spec.source_id, stage)
+        if stage_limit is not None and self.source_stage_request_counts.get(stage_key, 0) >= stage_limit:
+            raise GlobalSafetyError("source_stage_request_budget_exceeded")
         try:
             validate_public_url(url, spec.allowed_hosts)
         except BatchError:
@@ -730,7 +843,8 @@ class RequestController:
         for attempt in range(self.max_retries + 1):
             last = self.last_request.get(host)
             if last is not None:
-                remaining = self.delay_seconds - (self.clock() - last)
+                required_delay = self.source_delay_seconds.get(spec.source_id, self.delay_seconds)
+                remaining = required_delay - (self.clock() - last)
                 if remaining > 0:
                     self.sleep(remaining)
             if self.request_count >= self.max_requests:
@@ -738,6 +852,7 @@ class RequestController:
             self.request_count += 1
             source_number = self.source_request_counts.get(spec.source_id, 0) + 1
             self.source_request_counts[spec.source_id] = source_number
+            self.source_stage_request_counts[stage_key] = self.source_stage_request_counts.get(stage_key, 0) + 1
             self.last_request[host] = self.clock()
             event = {
                 "source_id": spec.source_id, "stage": stage,
@@ -1026,9 +1141,13 @@ def markdown_report(report: Mapping[str, Any]) -> bytes:
 
 
 class BatchPipeline:
-    def __init__(self, adapters: Mapping[str, PublicSourceAdapter], controller: Optional[RequestController] = None) -> None:
+    def __init__(self, adapters: Mapping[str, PublicSourceAdapter], controller: Optional[RequestController] = None,
+                 *, phase_a_authorized: bool = False) -> None:
         self.adapters = dict(adapters)
         self.controller = controller
+        self.phase_a_authorized = phase_a_authorized
+        if phase_a_authorized and (controller is None or not controller.require_source_preflight):
+            raise BatchError("phase A requires require_source_preflight=True")
 
     def dry_run(self, source_ids: Sequence[str], paths: Mapping[str, Path], limits: Mapping[str, Any]) -> Dict[str, Any]:
         self._validate_limits(limits)
@@ -1176,7 +1295,8 @@ class BatchPipeline:
             for url in urls:
                 try:
                     secured_url = adapter.request_url(url, environment)
-                    response = controller.get(secured_url, adapter.request_spec(url), timeout, max_bytes)
+                    response = controller.get(secured_url, adapter.request_spec(url), timeout, max_bytes,
+                                              "discovery")
                     for candidate in adapter.discover(response, url):
                         key = (candidate.document_id, candidate.canonical_url)
                         if key not in seen:
@@ -1196,14 +1316,23 @@ class BatchPipeline:
                 extracted_dir: Path, report_json: Path, report_md: Path,
                 timeout: float, max_bytes: int, limits: Mapping[str, Any], collected_at: str,
                 environment: Optional[Mapping[str, str]] = None,
-                replace_file: Callable[[str, str], None] = os.replace) -> Dict[str, Any]:
+                replace_file: Callable[[str, str], None] = os.replace,
+                raw_dir: Optional[Path] = None,
+                record_builder: Optional[Callable[..., Dict[str, Any]]] = None,
+                external_duplicate_records: Sequence[Mapping[str, Any]] = ()) -> Dict[str, Any]:
         self._validate_limits(limits)
+        phase_a_records = raw_dir is not None or record_builder is not None
+        if phase_a_records and (raw_dir is None or record_builder is None):
+            raise BatchError("raw_dir and record_builder must be provided together")
+        if phase_a_records:
+            if "history_candidates" not in raw_dir.parts or "provisional_hackathon" in raw_dir.parts:
+                raise BatchError("Phase A raw artifacts must remain in history_candidates")
         controller = self._controller()
         candidates = [BatchCandidate.from_dict(item) for item in read_jsonl(catalog)]
         candidates = [item for item in candidates if item.source_id in source_ids]
         existing_bytes = manifest.read_bytes() if manifest.exists() else b""
         existing_rows = read_jsonl(manifest)
-        duplicates = DuplicateIndex(existing_rows)
+        duplicates = DuplicateIndex([*existing_rows, *external_duplicate_records])
         results = []  # type: List[CandidateResult]
         records = []  # type: List[Dict[str, Any]]
         output_files = {}  # type: Dict[Path, bytes]
@@ -1211,50 +1340,98 @@ class BatchPipeline:
         source_errors = {}  # type: Dict[str, int]
         max_accepted = int(limits["max_accepted"])
         max_per_source = int(limits["max_per_source"])
+        per_source_limits = {str(key): int(value) for key, value in limits.get("per_source_limits", {}).items()}
+        accepted_count = 0
+        raw_artifacts = set()  # type: set
+        extracted_artifacts = set()  # type: set
         environment = environment or {}
         for candidate in candidates:
-            if len(records) >= max_accepted:
+            if (accepted_count if phase_a_records else len(records)) >= max_accepted:
                 break
-            if per_source.get(candidate.source_id, 0) >= max_per_source:
+            source_limit = per_source_limits.get(candidate.source_id, max_per_source)
+            if per_source.get(candidate.source_id, 0) >= source_limit:
                 continue
             if source_errors.get(candidate.source_id, 0) >= 2:
                 results.append(CandidateResult(candidate.document_id, candidate.source_id, candidate.title,
                                                "rejected_quality", ["source stopped after repeated errors"]))
                 continue
             adapter = self._adapter(candidate.source_id)
+            response = None  # type: Optional[BatchResponse]
+            raw_target = None  # type: Optional[Path]
             try:
                 if candidate.discovery_metadata.get("access_policy") == "blocked":
                     results.append(CandidateResult(candidate.document_id, candidate.source_id, candidate.title,
                                                    "rejected_access_policy", ["explicit access policy prohibition"]))
                     continue
                 request_url = adapter.detail_url(candidate, environment)
-                response = controller.get(request_url, adapter.request_spec(request_url), timeout, max_bytes)
+                response = controller.get(request_url, adapter.request_spec(request_url), timeout, max_bytes,
+                                          "detail")
+                if raw_dir is not None:
+                    media = response.content_type.split(";", 1)[0].strip().lower()
+                    suffix = {
+                        "text/html": ".html", "application/xhtml+xml": ".html",
+                        "application/json": ".json", "text/json": ".json",
+                        "application/xml": ".xml", "text/xml": ".xml",
+                        "text/csv": ".csv", "application/csv": ".csv",
+                    }.get(media, ".txt")
+                    raw_target = raw_dir / (candidate.document_id + suffix)
+                    output_files[raw_target] = response.body
+                    raw_artifacts.add(raw_target)
                 detail = adapter.fetch_detail(candidate, response)
                 result = quality_decision(candidate, detail.text)
+                target = extracted_dir / (candidate.document_id + ".txt")
+                extracted = render_extracted(candidate, detail.text) if normalize_space(detail.text) else b""
+                body_hash = hashlib.sha256(normalize_space(detail.text).encode("utf-8")).hexdigest()
+                extracted_hash = hashlib.sha256(extracted).hexdigest() if extracted else ""
+                if phase_a_records and extracted:
+                    output_files[target] = extracted
+                    extracted_artifacts.add(target)
+                legacy_record = None  # type: Optional[Dict[str, Any]]
                 if result.decision in ACCEPTED_DECISIONS:
-                    target = extracted_dir / (candidate.document_id + ".txt")
-                    extracted = render_extracted(candidate, detail.text)
-                    body_hash = hashlib.sha256(normalize_space(detail.text).encode("utf-8")).hexdigest()
-                    extracted_hash = hashlib.sha256(extracted).hexdigest()
                     exact, warnings = duplicates.check(candidate, body_hash, extracted_hash, detail.text)
                     result.warnings.extend(warnings)
                     if exact:
                         result.decision = "rejected_duplicate"
                         result.reasons = exact
                     else:
-                        record = build_manifest_record(candidate, detail, target, result.decision, collected_at)
-                        records.append(record)
+                        legacy_record = build_manifest_record(
+                            candidate, detail, target, result.decision, collected_at
+                        )
                         output_files[target] = extracted
-                        duplicates.add_record(record)
+                        duplicates.add_record(legacy_record)
                         duplicates.add_body(detail.text)
                         per_source[candidate.source_id] = per_source.get(candidate.source_id, 0) + 1
+                        accepted_count += 1
+                if record_builder is not None:
+                    candidate_record = record_builder(
+                        candidate=candidate, detail=detail, response=response,
+                        raw_target=raw_target, extracted_target=(target if extracted else None),
+                        decision=result.decision, collected_at=collected_at,
+                        body_hash=body_hash, extracted_hash=extracted_hash,
+                        reasons=list(result.reasons), warnings=list(result.warnings),
+                    )
+                    records.append(candidate_record)
+                elif legacy_record is not None:
+                    records.append(legacy_record)
                 results.append(result)
             except (BatchError, ValueError, ET.ParseError) as exc:
                 source_errors[candidate.source_id] = source_errors.get(candidate.source_id, 0) + 1
-                results.append(CandidateResult(candidate.document_id, candidate.source_id, candidate.title,
-                                               "rejected_quality", [str(exc)]))
+                result = CandidateResult(candidate.document_id, candidate.source_id, candidate.title,
+                                         "rejected_quality", [str(exc)])
+                if record_builder is not None and response is not None:
+                    records.append(record_builder(
+                        candidate=candidate, detail=None, response=response,
+                        raw_target=raw_target, extracted_target=None,
+                        decision=result.decision, collected_at=collected_at,
+                        body_hash="", extracted_hash="", reasons=list(result.reasons), warnings=[],
+                    ))
+                results.append(result)
         counts = {decision: sum(1 for item in results if item.decision == decision) for decision in DECISIONS}
-        counts["stored"] = len(records)
+        counts["stored"] = accepted_count if phase_a_records else len(records)
+        if phase_a_records:
+            counts["manifested"] = len(records)
+            counts["raw_artifacts"] = len(raw_artifacts)
+            counts["extracted_artifacts"] = len(extracted_artifacts)
         report = {
             "batch_id": batch_id, "mode": "execute", "request_count": controller.request_count,
             "counts": counts, "results": [asdict(item) for item in results],
@@ -1280,16 +1457,20 @@ class BatchPipeline:
             raise BatchError("network controller is not configured")
         return self.controller
 
-    @staticmethod
-    def _validate_limits(limits: Mapping[str, Any]) -> None:
+    def _validate_limits(self, limits: Mapping[str, Any]) -> None:
         accepted = int(limits["max_accepted"])
         per_source = int(limits["max_per_source"])
         requests = int(limits["max_requests"])
         delay = float(limits["delay_seconds"])
-        if accepted < 1 or accepted > 10:
-            raise BatchError("max-accepted cannot exceed 10")
-        if per_source < 1 or per_source > 2:
-            raise BatchError("max-per-source cannot exceed 2")
+        accepted_ceiling = 50 if self.phase_a_authorized else 10
+        per_source_ceiling = 20 if self.phase_a_authorized else 2
+        if accepted < 1 or accepted > accepted_ceiling:
+            raise BatchError("max-accepted cannot exceed %d" % accepted_ceiling)
+        if per_source < 1 or per_source > per_source_ceiling:
+            raise BatchError("max-per-source cannot exceed %d" % per_source_ceiling)
+        for source, value in limits.get("per_source_limits", {}).items():
+            if int(value) < 1 or int(value) > per_source_ceiling:
+                raise BatchError("per-source limit is invalid: %s" % source)
         if requests < 1 or requests > 500:
             raise BatchError("max-requests is invalid")
         if delay < 1.2:

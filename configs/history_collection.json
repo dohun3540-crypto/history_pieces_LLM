@@ -1,0 +1,89 @@
+{
+  "phase_targets": {"A": 50, "B": 200, "C": 500, "D": 1000},
+  "gate_thresholds": {
+    "min_extraction_success_rate": 0.85,
+    "min_rights_known_rate": 0.60,
+    "min_mokpo_relevance_rate": 0.80,
+    "max_duplicate_rate": 0.20,
+    "max_noise_rate": 0.20,
+    "max_publisher_share": 0.40,
+    "max_topic_share": 0.45
+  },
+  "phase_a_request_budget": {
+    "preflight_maximum_requests": 16,
+    "collection_maximum_requests": 120,
+    "delay_seconds": 1.5,
+    "timeout_seconds": 15.0,
+    "max_response_bytes": 1048576
+  },
+  "phase_a_source_plan": [
+    {
+      "source_id": "national_archives_html", "publisher_family": "national_archives",
+      "unique_target": 10, "discovery_metadata_quota": 0, "source_tier": "tier_1",
+      "source_role": "primary_official", "readiness": "robots_policy_preflight_required",
+      "discovery_request_budget": 5, "detail_request_budget": 18, "minimum_delay_seconds": 1.5,
+      "robots_url": "https://www.archives.go.kr/robots.txt",
+      "robots_target_url": "https://www.archives.go.kr/next/newsearch/searchTotal.do?keyword=%EB%AA%A9%ED%8F%AC",
+      "policy_url": "https://www.archives.go.kr/next/neworgan/copyrightProtection.do",
+      "allowed_hosts": ["www.archives.go.kr", "theme.archives.go.kr"]
+    },
+    {
+      "source_id": "national_archives_api", "publisher_family": "national_archives",
+      "unique_target": 6, "discovery_metadata_quota": 0, "source_tier": "tier_1",
+      "source_role": "official_metadata_api", "readiness": "verified_endpoint_and_api_key_required",
+      "discovery_request_budget": 3, "detail_request_budget": 10, "minimum_delay_seconds": 1.5,
+      "api_docs_url": "https://contents.archives.go.kr/next/newsearch/openAPI01.do",
+      "api_key_environment": "NATIONAL_ARCHIVES_API_KEY",
+      "api_key_format_environment": "NATIONAL_ARCHIVES_API_KEY_FORMAT",
+      "allowed_hosts": ["contents.archives.go.kr", "apis.data.go.kr", "www.archives.go.kr"]
+    },
+    {
+      "source_id": "heritage_portal", "publisher_family": "heritage_agency",
+      "unique_target": 10, "discovery_metadata_quota": 0, "source_tier": "tier_1",
+      "source_role": "primary_official", "readiness": "robots_policy_preflight_required",
+      "discovery_request_budget": 5, "detail_request_budget": 18, "minimum_delay_seconds": 1.5,
+      "robots_url": "https://www.heritage.go.kr/robots.txt",
+      "robots_target_url": "https://www.heritage.go.kr/heri/cul/culSelectViewList.do?searchKeyword=%EB%AA%A9%ED%8F%AC",
+      "policy_url": "",
+      "allowed_hosts": ["www.heritage.go.kr", "heritage.go.kr"]
+    },
+    {
+      "source_id": "heritage_wfs", "publisher_family": "heritage_agency",
+      "unique_target": 4, "discovery_metadata_quota": 0, "source_tier": "tier_1",
+      "source_role": "official_spatial_metadata", "readiness": "verified_endpoint_required",
+      "discovery_request_budget": 2, "detail_request_budget": 6, "minimum_delay_seconds": 1.5,
+      "endpoint_environment": "HERITAGE_WFS_BASE_URL", "allowed_hosts": []
+    },
+    {
+      "source_id": "mokpo_official", "publisher_family": "mokpo_city",
+      "unique_target": 11, "discovery_metadata_quota": 0, "source_tier": "tier_1",
+      "source_role": "primary_official", "readiness": "robots_policy_preflight_required",
+      "discovery_request_budget": 5, "detail_request_budget": 20, "minimum_delay_seconds": 60.0,
+      "robots_url": "https://www.mokpo.go.kr/robots.txt",
+      "robots_target_url": "https://www.mokpo.go.kr/search/?query=%EB%AA%A9%ED%8F%AC",
+      "policy_url": "https://youth.mokpo.go.kr/www/operation_guide/copyright",
+      "allowed_hosts": ["www.mokpo.go.kr", "mokpo.go.kr", "youth.mokpo.go.kr"]
+    },
+    {
+      "source_id": "tour_api", "publisher_family": "tourism_organization",
+      "unique_target": 9, "discovery_metadata_quota": 0, "source_tier": "tier_1",
+      "source_role": "secondary_official_description", "readiness": "api_key_and_document_rights_required",
+      "discovery_request_budget": 4, "detail_request_budget": 15, "minimum_delay_seconds": 1.5,
+      "api_docs_url": "https://www.data.go.kr/data/15101578/openapi.do",
+      "api_key_environment": "TOUR_API_SERVICE_KEY",
+      "api_key_format_environment": "TOUR_API_SERVICE_KEY_FORMAT",
+      "allowed_hosts": ["www.data.go.kr", "apis.data.go.kr"]
+    },
+    {
+      "source_id": "data_portal", "publisher_family": "data_portal",
+      "unique_target": 0, "discovery_metadata_quota": 5, "source_tier": "tier_1",
+      "source_role": "metadata_discovery_only", "readiness": "metadata_discovery_only",
+      "discovery_request_budget": 5, "detail_request_budget": 0, "minimum_delay_seconds": 1.5,
+      "policy_url": "https://www.data.go.kr/ugs/selectPortalPolicyView.do",
+      "allowed_hosts": ["www.data.go.kr", "data.go.kr"]
+    }
+  ],
+  "priority_topics": ["OPENING_TRADE", "PORT_MARITIME", "RAIL_TRANSPORT", "URBAN_INFRASTRUCTURE", "COLONIAL_CITY", "ECONOMY_FINANCE", "ARCHITECTURE_HERITAGE", "EDUCATION_RELIGION", "POST_LIBERATION"],
+  "priority_queries": ["목포 개항", "목포 해관", "목포 거류지 조계지", "목포항 해운", "목포 철도 목포역", "목포 도시계획 상수도", "식민지기 목포 도시 변화", "목포 금융 상업", "동양척식주식회사 목포지점", "구 호남은행 목포지점", "구 목포 일본영사관", "목포 근대역사문화공간", "목포 교육 종교", "목포 광복 해방 이후"],
+  "deprioritized_topics": ["INDEPENDENCE_STUDENT_MOVEMENT", "PERSON_HISTORY"]
+}

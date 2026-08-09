@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/history_verified_document.schema.json",
+  "title": "Verified Mokpo history document",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["candidate_id", "verified_document_id", "verified_at", "verified_by", "source_url", "canonical_url", "source_title", "publisher", "publisher_family", "source_tier", "topic_categories", "historical_period", "location", "raw_path", "raw_sha256", "processed_path", "rights_status", "license", "kogl_type", "rights_evidence", "provenance", "total_quality_score", "fact_conflict", "conflicting_values", "review_status", "acceptance_status", "verification_notes"],
+  "properties": {
+    "candidate_id": {"type": "string", "minLength": 1}, "verified_document_id": {"type": "string", "minLength": 1},
+    "verified_at": {"type": "string", "minLength": 1}, "verified_by": {"type": "string", "minLength": 1},
+    "source_url": {"type": "string"}, "canonical_url": {"type": "string"}, "source_title": {"type": "string"},
+    "publisher": {"type": "string"}, "publisher_family": {"type": "string"},
+    "source_tier": {"enum": ["tier_1", "tier_2", "tier_3"]},
+    "topic_categories": {"type": "array", "items": {"type": "string"}},
+    "historical_period": {"type": "string"}, "location": {"type": "array", "items": {"type": "string"}},
+    "raw_path": {"type": "string"}, "raw_sha256": {"type": "string"}, "processed_path": {"type": "string"},
+    "rights_status": {"type": "string"}, "license": {"type": "string"}, "kogl_type": {"type": "string"},
+    "rights_evidence": {"type": "object", "required": ["publisher", "rights_holder", "policy_url", "document_rights_url", "license_text", "kogl_type", "commercial_use", "modification", "redistribution", "third_party_material_warning", "checked_at", "human_review_required"]}, "provenance": {"type": "object"},
+    "total_quality_score": {"type": "integer", "minimum": 75, "maximum": 100},
+    "fact_conflict": {"type": "boolean"}, "conflicting_values": {"type": "array"},
+    "review_status": {"const": "accepted"}, "acceptance_status": {"const": "accepted"},
+    "verification_notes": {"type": "string", "minLength": 1}
+  }
+}
