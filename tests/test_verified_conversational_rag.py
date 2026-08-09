@@ -4,7 +4,12 @@ import hashlib
 import json
 from pathlib import Path
 
-from history_chatbot.chat.context_resolver import ConversationContextResolver
+from history_chatbot.chat.context_resolver import (
+    ConversationContextResolver,
+    is_placeholder_context,
+)
+from history_chatbot.chat.orchestrator import ConversationalRagOrchestrator
+from history_chatbot.dialogue.persona import DOCENT_PROMPT
 from history_chatbot.chat.service import create_hackathon_orchestrator
 from history_chatbot.chat.session import SessionStore
 from history_chatbot.history_collection.verified_corpus import build_verified_corpus
@@ -80,7 +85,9 @@ def test_context_resolver_uses_place_and_recent_user_topic_only() -> None:
     assert "근거 기반 응답" not in resolved.search_query
 
 
-def test_hackathon_factory_uses_verified_lane_and_multiturn(tmp_path: Path) -> None:
+def test_hackathon_factory_uses_verified_lane_and_multiturn(
+    tmp_path: Path, monkeypatch,
+) -> None:
     rows = [_candidate(tmp_path, index) for index in range(100)]
     manifest = tmp_path / "candidates.jsonl"
     manifest.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows), encoding="utf-8")
@@ -92,12 +99,50 @@ def test_hackathon_factory_uses_verified_lane_and_multiturn(tmp_path: Path) -> N
         session_path=tmp_path / "sessions.json",
         llm=MockLLM("목포역 관련 기록을 근거로 설명합니다."),
     )
-    first = chat.ask("목포 학생운동은 어떻게 진행됐어?", current_place_id="mokpo-station")
-    second = chat.ask("그때 여기서는 무슨 일이 있었어?", session_id=first.session_id, current_place_id="mokpo-station")
-    assert second.status == "ok"
+    search_queries: list[str] = []
+    real_search = chat.retrieval.search
+
+    def capture_search(query: str):
+        search_queries.append(query)
+        return real_search(query)
+
+    monkeypatch.setattr(chat.retrieval, "search", capture_search)
+    first = chat.ask(
+        "목포역에 대해 설명해줘",
+        current_place_id="demo-place",
+        current_piece_id="demo-piece-1",
+    )
+    second = chat.ask(
+        "그 당시에는 어떤 사람들이 이용했어?",
+        session_id=first.session_id,
+        current_place_id="demo-place",
+        current_piece_id="demo-piece-1",
+    )
+    assert second.status == "insufficient_evidence"
     assert second.context_metadata["followup_resolved"] is True
     assert "목포역" in second.context_metadata["search_query"]
+    assert "demo" not in second.context_metadata["search_query"]
+    assert "추측" in second.answer
+    assert "demo" not in second.answer
+    assert len(search_queries) == 2
     assert chat.retrieval.store.metadata()["data_lane"] == "verified_hackathon"
+
+    def forbidden_complete(_request):
+        raise AssertionError("detail shortage must not call the LLM")
+
+    monkeypatch.setattr(chat.llm, "complete", forbidden_complete)
+    shortage = chat.ask(
+        "당시 목포역 내부 모습은 어땠어?",
+        session_id=first.session_id,
+        current_place_id="demo-place",
+        current_piece_id="demo-piece-1",
+    )
+    assert shortage.status == "insufficient_evidence"
+    assert shortage.source_sufficiency == "insufficient"
+    assert "확인하지 못했습니다" in shortage.answer
+    assert "추측" in shortage.answer
+    assert "demo" not in shortage.answer
+    assert len(search_queries) == 3
 
 
 def test_place_change_replaces_active_place() -> None:
@@ -110,3 +155,192 @@ def test_place_change_replaces_active_place() -> None:
     assert second.active_place == "목포항"
     assert second.search_query.startswith("목포항")
     assert "목포역" not in second.search_query
+
+
+def test_placeholder_context_never_overrides_explicit_or_conversational_place() -> None:
+    store = SessionStore(RuntimeMode.HACKATHON)
+    session = store.create()
+    resolver = ConversationContextResolver()
+    store.update_context(
+        session.session_id,
+        active_place="demo-place",
+        active_piece="demo-piece-1",
+        active_topic="test-place",
+        recent_entities=("demo-place",),
+        recent_event="placeholder",
+        recent_period="unknown",
+    )
+
+    first = resolver.resolve(
+        "목포역에 대해 설명해줘", session,
+        current_place_id="demo-place", current_piece_id="demo-piece-1",
+    )
+    store.update_context(
+        session.session_id,
+        active_place=first.active_place,
+        active_piece=first.active_piece,
+        active_topic=first.active_topic,
+        recent_entities=first.recent_entities,
+    )
+    store.add_turn(session.session_id, "목포역에 대해 설명해줘", "검색 근거 기반 응답")
+    second = resolver.resolve(
+        "그 당시에는 어떤 사람들이 이용했어?", session,
+        current_place_id="demo-place", current_piece_id="demo-piece-1",
+    )
+
+    assert is_placeholder_context("demo-place")
+    assert is_placeholder_context("demo-piece-12")
+    assert is_placeholder_context("test-place")
+    assert is_placeholder_context("placeholder")
+    assert is_placeholder_context("unknown")
+    assert second.active_place == "목포역"
+    assert second.active_piece == ""
+    assert second.active_topic == "목포역"
+    assert second.recent_event == ""
+    assert second.recent_period == ""
+    assert "목포역" in second.search_query
+    assert "어떤 사람들이 이용" in second.search_query
+    assert "demo" not in second.search_query
+
+
+def test_real_journey_place_resolves_here_but_placeholder_uses_conversation() -> None:
+    store = SessionStore(RuntimeMode.HACKATHON)
+    session = store.create()
+    store.add_turn(session.session_id, "목포 학생운동에 대해 알려줘", "근거 기반 응답")
+    store.update_context(
+        session.session_id,
+        active_place="목포역",
+        active_topic="학생운동",
+        recent_event="학생운동",
+        recent_entities=("목포 학생운동",),
+    )
+    resolver = ConversationContextResolver()
+
+    real = resolver.resolve(
+        "아까 말한 학생운동은 여기에서도 일어났어?", session,
+        current_place_id="mokpo-port", current_piece_id=None,
+    )
+    placeholder = resolver.resolve(
+        "아까 말한 학생운동은 여기에서도 일어났어?", session,
+        current_place_id="demo-place", current_piece_id="demo-piece-1",
+    )
+
+    assert real.active_place == "목포항"
+    assert "목포항" in real.search_query
+    assert "학생운동" in real.search_query
+    assert placeholder.active_place == "목포역"
+    assert "목포역" in placeholder.search_query
+    assert "학생운동" in placeholder.search_query
+    assert "demo" not in placeholder.search_query
+
+
+def test_recent_event_survives_place_question_and_resolves_then() -> None:
+    store = SessionStore(RuntimeMode.HACKATHON)
+    session = store.create()
+    resolver = ConversationContextResolver()
+    first = resolver.resolve(
+        "목포 학생운동에 대해 알려줘", session,
+        current_place_id=None, current_piece_id=None,
+    )
+    store.update_context(
+        session.session_id,
+        active_place=first.active_place,
+        active_topic=first.active_topic,
+        recent_entities=first.recent_entities,
+        recent_event=first.recent_event,
+    )
+    store.add_turn(session.session_id, "목포 학생운동에 대해 알려줘", "근거 기반 응답")
+    second = resolver.resolve(
+        "목포역과도 관련이 있어?", session,
+        current_place_id="demo-place", current_piece_id=None,
+    )
+    store.update_context(
+        session.session_id,
+        active_place=second.active_place,
+        active_topic=second.active_topic,
+        recent_entities=second.recent_entities,
+        recent_event=second.recent_event,
+    )
+    store.add_turn(session.session_id, "목포역과도 관련이 있어?", "근거 기반 응답")
+    third = resolver.resolve(
+        "그때 누가 참여했어?", session,
+        current_place_id="demo-place", current_piece_id=None,
+    )
+
+    assert third.active_place == "목포역"
+    assert third.recent_event == "학생운동"
+    assert "목포역" in third.search_query
+    assert "학생운동" in third.search_query
+    assert "누가 참여" in third.search_query
+    assert "demo" not in third.search_query
+
+
+def test_explicit_place_and_person_override_prior_context() -> None:
+    store = SessionStore(RuntimeMode.HACKATHON)
+    session = store.create()
+    store.update_context(
+        session.session_id,
+        active_place="목포역",
+        active_topic="목포역",
+        recent_entities=("목포역",),
+    )
+    resolver = ConversationContextResolver()
+
+    place = resolver.resolve(
+        "구 일본영사관은 어떤 곳이야?", session,
+        current_place_id="demo-place", current_piece_id=None,
+    )
+    assert place.active_place == "구 일본영사관"
+    assert "목포역" not in place.search_query
+
+    person = resolver.resolve(
+        "오상록은 어떤 사람이야?", session,
+        current_place_id="demo-place", current_piece_id=None,
+    )
+    store.update_context(
+        session.session_id,
+        active_topic=person.active_topic,
+        recent_entities=person.recent_entities,
+    )
+    store.add_turn(session.session_id, "오상록은 어떤 사람이야?", "검증 근거 기반 응답")
+    followup = resolver.resolve(
+        "그 사람은 이후 어떻게 됐어?", session,
+        current_place_id="demo-place", current_piece_id=None,
+    )
+    assert followup.recent_entities[0] == "오상록"
+    assert "오상록" in followup.search_query
+    assert "검증 근거 기반 응답" not in followup.search_query
+
+
+def test_placeholder_is_removed_from_historical_prompt_context() -> None:
+    contextual = ConversationalRagOrchestrator._contextualize_query(
+        "목포역에 대해 설명해줘",
+        current_place_id="demo-place",
+        current_piece_id="demo-piece-1",
+        completed_place_ids=("test-place",),
+        completed_piece_ids=("demo-piece-1",),
+    )
+    scoped = ConversationalRagOrchestrator._journey_scoped_query(
+        "여기에서도 일어났어?", "JOURNEY_CONTEXT_QUESTION", ("demo-piece-1",)
+    )
+    assert "demo" not in contextual
+    assert "test-place" not in contextual
+    assert "demo" not in scoped
+
+
+def test_narrow_interior_question_requires_matching_evidence() -> None:
+    chunk = type("Ranked", (), {
+        "chunk": type("Chunk", (), {"text": "목포역은 철도와 항만을 연결했다."})()
+    })()
+    assert not ConversationalRagOrchestrator._supports_requested_detail(
+        "당시 목포역 내부 모습은 어땠어?", [chunk]
+    )
+    assert ConversationalRagOrchestrator._supports_requested_detail(
+        "목포역의 역사적 역할은 무엇이야?", [chunk]
+    )
+
+
+def test_docent_prompt_prioritizes_relevance_over_unsolicited_chronology() -> None:
+    assert "역사적 역할과 장소의 의미를 먼저" in DOCENT_PROMPT
+    assert "연혁·연도별 정리·시기별 변화" in DOCENT_PROMPT
+    assert "연표식 답변을 피한다" in DOCENT_PROMPT

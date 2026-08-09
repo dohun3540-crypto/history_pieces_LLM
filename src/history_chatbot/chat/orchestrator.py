@@ -11,7 +11,10 @@ from difflib import SequenceMatcher
 from typing import Iterator
 
 from history_chatbot.chat.citation_builder import build_citations
-from history_chatbot.chat.context_resolver import ConversationContextResolver
+from history_chatbot.chat.context_resolver import (
+    ConversationContextResolver,
+    is_placeholder_context,
+)
 from history_chatbot.chat.interfaces import Citation
 from history_chatbot.chat.prompt_builder import (
     PROMPT_VERSION,
@@ -323,10 +326,15 @@ class ConversationalRagOrchestrator:
         )
         search_query = resolved_context.search_query
         results = self._place_aware_results(
-            self.retrieval.search(search_query), resolved_context.active_place
+            self.retrieval.search(search_query),
+            resolved_context.active_place
+            if resolved_context.active_place in search_query
+            else "",
         )
         chunks = self._select(results, top_k)
         self._assert_mode_boundary(chunks)
+        if not self._supports_requested_detail(query, chunks):
+            chunks = []
         conversation = self._conversation_lines(session)
         budget = self.budget.fit(
             system_prompt=SYSTEM_INSTRUCTIONS,
@@ -472,7 +480,9 @@ class ConversationalRagOrchestrator:
         self.sessions.add_turn(session.session_id, query, response.answer)
         if chunks:
             retrieved_entities = tuple(dict.fromkeys(
-                title for title in (item.chunk.title for item in chunks) if title
+                title
+                for title in (item.chunk.title for item in chunks)
+                if title and not is_placeholder_context(title)
             ))[:8]
             self.sessions.update_context(
                 session.session_id,
@@ -623,7 +633,10 @@ class ConversationalRagOrchestrator:
     def _journey_scoped_query(query: str, situation_id: str, visited_piece_ids: tuple[str, ...]) -> str:
         if situation_id != "JOURNEY_CONTEXT_QUESTION":
             return query
-        completed = ", ".join(visited_piece_ids) if visited_piece_ids else "없음"
+        historical_piece_ids = tuple(
+            value for value in visited_piece_ids if not is_placeholder_context(value)
+        )
+        completed = ", ".join(historical_piece_ids) if historical_piece_ids else "없음"
         return (
             f"{query}\n[게임 메타데이터] 실제 완료 조각 ID: {completed}. "
             "이 목록 밖의 조각을 완료했다고 말하지 마세요. 역사 관계는 검색 근거와 구분하세요."
@@ -639,14 +652,20 @@ class ConversationalRagOrchestrator:
         completed_piece_ids: tuple[str, ...],
     ) -> str:
         context: list[str] = []
-        if current_place_id:
+        if current_place_id and not is_placeholder_context(current_place_id):
             context.append(f"현재 장소 ID: {current_place_id}")
-        if current_piece_id:
+        if current_piece_id and not is_placeholder_context(current_piece_id):
             context.append(f"현재 조각 ID: {current_piece_id}")
-        if completed_place_ids:
-            context.append("완료 장소 ID: " + ", ".join(completed_place_ids))
-        if completed_piece_ids:
-            context.append("완료 조각 ID: " + ", ".join(completed_piece_ids))
+        safe_places = tuple(
+            value for value in completed_place_ids if not is_placeholder_context(value)
+        )
+        safe_pieces = tuple(
+            value for value in completed_piece_ids if not is_placeholder_context(value)
+        )
+        if safe_places:
+            context.append("완료 장소 ID: " + ", ".join(safe_places))
+        if safe_pieces:
+            context.append("완료 조각 ID: " + ", ".join(safe_pieces))
         if not context:
             return query
         return (
@@ -683,6 +702,22 @@ class ConversationalRagOrchestrator:
                 active_place in f"{item.chunk.title} {item.chunk.text}", item.score
             ),
             reverse=True,
+        )
+
+    @staticmethod
+    def _supports_requested_detail(
+        query: str, chunks: list[RankedChunk]
+    ) -> bool:
+        """Reject narrow visual/interior claims when retrieval lacks that detail."""
+
+        if not re.search(r"내부|실내|안쪽|건축\s*양식", query):
+            return True
+        evidence = " ".join(item.chunk.text for item in chunks)
+        return bool(
+            re.search(
+                r"내부|실내|대합실|매표소|승강장|평면|구조|건축\s*양식",
+                evidence,
+            )
         )
 
     @staticmethod

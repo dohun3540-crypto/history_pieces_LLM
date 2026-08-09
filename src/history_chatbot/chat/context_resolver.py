@@ -13,22 +13,50 @@ PLACE_LABELS = {
     "mokpo-port": "목포항", "mokpo_port": "목포항",
     "samhakdo": "삼학도", "yudalsan": "유달산",
 }
+_PLACEHOLDER_CONTEXT = re.compile(
+    r"^(?:(?:demo|test|dummy|placeholder)(?:[-_ ](?:place|piece))?"
+    r"|(?:place|piece)[-_ ](?:demo|test|dummy|placeholder))"
+    r"(?:[-_ ][a-z0-9]+)*$",
+    re.IGNORECASE,
+)
 FOLLOWUP = re.compile(
-    r"그\s*(?:때|당시|사람|사건|학교|건물|역|회사|뒤|과정|자료)|"
-    r"여기|이곳|아까|왜\s*그랬|누가\s*(?:참여|관여|주도)|그래서|그건|"
+    r"그\s*(?:때|당시|사람|사건|학교|건물|역|회사|곳|장소|뒤|과정|자료)|"
+    r"여기|이곳|거기|아까|방금|이후에는?|왜\s*그랬|"
+    r"누가\s*(?:참여|관여|주도)|그래서|그건|"
     r"관련(?:된)?\s*(?:인물|사람)"
 )
-EXPLICIT_TARGET = re.compile(
-    r"목포(?:역|항|부|진|해관|세관)?|삼학도|유달산|무안감리서|"
-    r"동양척식주식회사|호남은행|일본영사관"
+PLACE_REFERENCE = re.compile(r"여기|이곳|거기|그곳|그\s*장소|이\s*장소")
+PERSON_REFERENCE = re.compile(r"그\s*사람|그\s*인물")
+EXPLICIT_PLACE = re.compile(
+    r"구\s*일본영사관|목포(?:역|항|부|진|해관|세관)|삼학도|유달산|"
+    r"무안감리서|동양척식주식회사(?:\s*목포지점)?|호남은행|일본영사관|목포"
 )
+EXPLICIT_PERSON = re.compile(
+    r"(?<![가-힣])([가-힣]{2,4})(?=(?:은|는|이|가)\s*(?:어떤\s*사람|누구))"
+)
+GENERIC_PEOPLE_FOLLOWUP = re.compile(
+    r"관련(?:된)?\s*(?:인물|사람)(?:은|이)?\s*누구(?:인가요|예요|야)?[?.!]?$"
+)
+_PERSON_STOPWORDS = {"사람", "인물", "누구", "당시", "당시에", "그때"}
 EVENT = re.compile(r"(?:학생운동|독립운동|노동운동|개항|시위|파업|사건)")
 PERIOD = re.compile(r"(?:18|19|20)\d{2}년|일제강점기|대한제국|근대")
 
 
+def is_placeholder_context(value: str | None) -> bool:
+    """Return whether a journey identifier is non-authoritative demo/test state."""
+
+    if value is None:
+        return True
+    normalized = value.strip().casefold()
+    if not normalized or normalized == "unknown":
+        return True
+    return bool(_PLACEHOLDER_CONTEXT.fullmatch(normalized))
+
+
 def context_label(value: str | None) -> str:
-    if not value:
+    if is_placeholder_context(value):
         return ""
+    assert value is not None
     normalized = value.strip().casefold()
     direct = PLACE_LABELS.get(normalized)
     if direct:
@@ -60,52 +88,90 @@ class ConversationContextResolver:
         current_place_id: str | None,
         current_piece_id: str | None,
     ) -> ResolvedContext:
-        active_place = context_label(current_place_id) or session.active_place
-        active_piece = context_label(current_piece_id) or session.active_piece
-        explicit = EXPLICIT_TARGET.findall(query)
+        journey_place = context_label(current_place_id)
+        journey_piece = context_label(current_piece_id)
+        conversational_place = context_label(session.active_place)
+        conversational_piece = context_label(session.active_piece)
+        conversational_topic = (
+            "" if is_placeholder_context(session.active_topic) else session.active_topic
+        )
+        conversational_event = (
+            "" if is_placeholder_context(session.recent_event) else session.recent_event
+        )
+        conversational_period = (
+            "" if is_placeholder_context(session.recent_period) else session.recent_period
+        )
+        explicit_places = tuple(dict.fromkeys(EXPLICIT_PLACE.findall(query)))
+        explicit_people = tuple(
+            value
+            for value in dict.fromkeys(EXPLICIT_PERSON.findall(query))
+            if value not in _PERSON_STOPWORDS
+        )
+        explicit_entities = (*explicit_places, *explicit_people)
         is_followup = bool(session.turns and FOLLOWUP.search(query))
+        refers_to_place = bool(PLACE_REFERENCE.search(query))
+        generic_people_followup = bool(
+            session.turns and GENERIC_PEOPLE_FOLLOWUP.fullmatch(query.strip())
+        )
+
+        if explicit_places:
+            active_place = explicit_places[0]
+        elif journey_place and refers_to_place:
+            active_place = journey_place
+        else:
+            active_place = conversational_place or journey_place
+        active_piece = journey_piece or conversational_piece
         terms: list[str] = []
-        if explicit:
-            terms.extend(explicit)
-        elif active_place and (
-            is_followup
-            or re.search(r"여기|이곳|이\s*장소|왜\s*중요|무슨\s*일", query)
+        if generic_people_followup:
+            terms.append(session.turns[-1].user)
+        elif explicit_entities:
+            terms.extend(explicit_entities)
+        elif (
+            active_place
+            and (is_followup or refers_to_place)
+            and (not PERSON_REFERENCE.search(query) or refers_to_place)
         ):
             terms.append(active_place)
-        if active_piece and active_piece not in terms and (
-            is_followup or re.search(r"이\s*조각|현재\s*조각|방금\s*본", query)
+        if active_piece and active_piece not in terms and re.search(
+            r"이\s*조각|현재\s*조각|방금\s*본", query
         ):
             terms.append(active_piece)
-        if is_followup:
-            if re.search(r"그\s*(?:사람|사건|학교|건물|역|회사)|그건|여기|이곳", query):
+        if is_followup and not generic_people_followup:
+            if PERSON_REFERENCE.search(query):
                 terms.extend(session.recent_entities[:1])
-            if session.recent_event:
-                terms.append(session.recent_event)
-            if session.recent_period:
-                terms.append(session.recent_period)
-            if session.active_topic:
-                terms.append(session.active_topic)
+            if conversational_event:
+                terms.append(conversational_event)
+            if conversational_period:
+                terms.append(conversational_period)
+            if conversational_topic:
+                terms.append(conversational_topic)
             if not terms:
                 terms.append(session.turns[-1].user)
         ordered = tuple(dict.fromkeys(value for value in terms if value))
-        if explicit and ordered:
-            search_query = " ".join(ordered)
-        elif is_followup and ordered:
-            search_query = " ".join(ordered)
-            if len(ordered) == 1 and session.turns and ordered[0] == session.turns[-1].user:
-                search_query += " " + query
-        else:
-            search_query = " ".join((*ordered, query)) if ordered else query
+        search_query = " ".join((*ordered, query)) if ordered else query
         events = EVENT.findall(query)
         periods = PERIOD.findall(query)
-        topic = explicit[0] if explicit else (events[0] if events else session.active_topic)
+        topic = (
+            events[0]
+            if events
+            else explicit_entities[0]
+            if explicit_entities
+            else conversational_topic
+        )
+        recent_entities = tuple(
+            dict.fromkeys(
+                value
+                for value in (*explicit_entities, *session.recent_entities)
+                if value and not is_placeholder_context(value)
+            )
+        )[:8]
         return ResolvedContext(
             search_query=search_query,
             active_place=active_place,
             active_piece=active_piece,
             active_topic=topic,
-            recent_entities=tuple(dict.fromkeys((*explicit, *session.recent_entities)))[:8],
-            recent_event=events[0] if events else session.recent_event,
-            recent_period=periods[0] if periods else session.recent_period,
+            recent_entities=recent_entities,
+            recent_event=events[0] if events else conversational_event,
+            recent_period=periods[0] if periods else conversational_period,
             followup_resolved=is_followup,
         )
