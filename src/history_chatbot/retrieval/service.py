@@ -48,6 +48,7 @@ class RetrievalConfig:
     runtime_mode: str = "production"
     fixture_chunks_path: Path | None = None
     provisional_chunks_path: Path | None = None
+    verified_hackathon_chunks_path: Path | None = None
     development_chunks_path: Path | None = None
 
     def validate(self) -> None:
@@ -58,6 +59,8 @@ class RetrievalConfig:
             raise ProvisionalDataDetectedError(
                 "production 모드에는 provisional_hackathon 자료를 설정할 수 없습니다."
             )
+        if mode != RuntimeMode.HACKATHON and self.verified_hackathon_chunks_path is not None:
+            raise ValueError("verified_hackathon_chunks_path는 hackathon 모드에서만 사용할 수 있습니다.")
         if mode == RuntimeMode.PRODUCTION and self.development_chunks_path is not None:
             raise ValueError("production 모드에서는 development_real 자료를 설정할 수 없습니다.")
         if mode != RuntimeMode.HACKATHON and self.provisional_chunks_path is not None:
@@ -74,6 +77,7 @@ class RetrievalConfig:
             for path in (
                 self.fixture_chunks_path,
                 self.provisional_chunks_path,
+                self.verified_hackathon_chunks_path,
                 self.development_chunks_path,
             )
         )
@@ -119,6 +123,7 @@ class RetrievalConfig:
             elif key in {
                 "fixture_chunks_path",
                 "provisional_chunks_path",
+                "verified_hackathon_chunks_path",
                 "development_chunks_path",
             }:
                 values[key] = Path(value) if value else None
@@ -285,6 +290,38 @@ class ProvisionalReader:
         return chunks, stable_json_hash(records)
 
 
+class VerifiedHackathonReader:
+    """Load locally audited candidates without implying production approval."""
+
+    def __init__(self, path: Path, runtime_mode: RuntimeMode) -> None:
+        if runtime_mode != RuntimeMode.HACKATHON:
+            raise ValueError("verified_hackathon 자료는 hackathon 모드에서만 사용할 수 있습니다.")
+        self.path = path
+
+    def load(self) -> tuple[list[RetrievalChunk], str]:
+        if not self.path.is_file():
+            return [], ""
+        records = [
+            json.loads(line)
+            for line in self.path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+        chunks: list[RetrievalChunk] = []
+        for record in records:
+            if record.get("usage_status") != "verified_hackathon":
+                raise ValueError("verified hackathon chunk has an invalid usage_status")
+            if record.get("verification_status") != "VALID":
+                raise ValueError("non-VALID record found in verified hackathon chunks")
+            if record.get("production_approved") is not False:
+                raise ValueError("verified hackathon data must remain production_approved=false")
+            if record.get("human_review_required") is not True:
+                raise ValueError("verified hackathon data must preserve human_review_required=true")
+            if record.get("allowed_for_training") is not False:
+                raise ValueError("verified hackathon data cannot be used for training")
+            chunks.append(RetrievalChunk.from_record(record))
+        return chunks, stable_json_hash(records)
+
+
 class DevelopmentRealReader:
     """Load isolated, explicitly approved real-source development chunks."""
 
@@ -376,6 +413,10 @@ class HybridRetrievalService:
         if self.config.provisional_chunks_path is not None:
             return ProvisionalReader(
                 self.config.provisional_chunks_path, self.runtime_mode
+            )
+        if self.config.verified_hackathon_chunks_path is not None:
+            return VerifiedHackathonReader(
+                self.config.verified_hackathon_chunks_path, self.runtime_mode
             )
         if self.config.development_chunks_path is not None:
             return DevelopmentRealReader(
@@ -580,7 +621,9 @@ class HybridRetrievalService:
             "chunk_count": len(chunks),
             "document_count": len({chunk.document_id for chunk in chunks}),
             "data_lane": (
-                "provisional_hackathon"
+                "verified_hackathon"
+                if self.config.verified_hackathon_chunks_path is not None
+                else "provisional_hackathon"
                 if self.runtime_mode == RuntimeMode.HACKATHON
                 else (
                     "development_real"
@@ -602,6 +645,8 @@ class HybridRetrievalService:
             "mode": "hackathon",
             "provisional_document_count": len(source_ids),
             "provisional_chunk_count": len(chunks),
+            "verified_document_count": len({chunk.document_id for chunk in chunks})
+            if self.config.verified_hackathon_chunks_path is not None else 0,
             "corpus_fingerprint": self._reader().load()[1],
             "rights_scope": "unconfirmed_noncommercial_demo",
             "removable_source_ids": source_ids,

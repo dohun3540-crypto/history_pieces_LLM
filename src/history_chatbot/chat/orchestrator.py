@@ -11,6 +11,7 @@ from difflib import SequenceMatcher
 from typing import Iterator
 
 from history_chatbot.chat.citation_builder import build_citations
+from history_chatbot.chat.context_resolver import ConversationContextResolver
 from history_chatbot.chat.interfaces import Citation
 from history_chatbot.chat.prompt_builder import (
     PROMPT_VERSION,
@@ -151,6 +152,7 @@ class ConversationalRagOrchestrator:
         self.dialogue = dialogue or GiroksaeDialogueEngine()
         self.track_policy = ChatTrackPolicy()
         self.response_renderer = GiroksaeResponseRenderer()
+        self.context_resolver = ConversationContextResolver()
 
     def ask(
         self,
@@ -305,9 +307,25 @@ class ConversationalRagOrchestrator:
             )
             self.sessions.add_turn(session.session_id, query, response.answer)
             return response
-        previous = session.turns[-1].user if session.turns else ""
-        search_query = self._rewrite_followup(query, previous)
-        chunks = self._select(self.retrieval.search(search_query), top_k)
+        resolved_context = self.context_resolver.resolve(
+            query, session,
+            current_place_id=current_place_id,
+            current_piece_id=current_piece_id,
+        )
+        self.sessions.update_context(
+            session.session_id,
+            active_place=resolved_context.active_place,
+            active_piece=resolved_context.active_piece,
+            active_topic=resolved_context.active_topic,
+            recent_entities=resolved_context.recent_entities,
+            recent_event=resolved_context.recent_event,
+            recent_period=resolved_context.recent_period,
+        )
+        search_query = resolved_context.search_query
+        results = self._place_aware_results(
+            self.retrieval.search(search_query), resolved_context.active_place
+        )
+        chunks = self._select(results, top_k)
         self._assert_mode_boundary(chunks)
         conversation = self._conversation_lines(session)
         budget = self.budget.fit(
@@ -318,6 +336,13 @@ class ConversationalRagOrchestrator:
             max_new_tokens=self.max_new_tokens,
         )
         chunks = chunks[: len(budget.evidence)]
+        sufficiency = self._source_sufficiency(chunks)
+        if (
+            sufficiency == SourceSufficiency.SUFFICIENT
+            and len(chunks) == 1
+            and chunks[0].chunk.payload.get("usage_status") == "verified_hackathon"
+        ):
+            sufficiency = SourceSufficiency.PARTIAL
         contextual_query = self._contextualize_query(
             self._journey_scoped_query(
                 query, classification.primary_situation_id.value, visited_piece_ids
@@ -344,7 +369,9 @@ class ConversationalRagOrchestrator:
                 rag_used=True, source_sufficiency=SourceSufficiency.INSUFFICIENT.value,
             )
             response = ChatResponse(
-                self._insufficient_text(output_domain, locale),
+                self._insufficient_text(
+                    output_domain, locale, resolved_context.active_place
+                ),
                 "insufficient_evidence",
                 (),
                 0,
@@ -354,6 +381,9 @@ class ConversationalRagOrchestrator:
                 context_metadata={
                     "trimmed_evidence": budget.trimmed_evidence,
                     "trimmed_conversation": budget.trimmed_conversation,
+                    "followup_resolved": resolved_context.followup_resolved,
+                    "search_query": search_query,
+                    "active_place": resolved_context.active_place,
                 },
                 refusal_reason="insufficient_evidence",
                 latency_ms=round((time.perf_counter() - started) * 1000),
@@ -382,8 +412,10 @@ class ConversationalRagOrchestrator:
                 )
                 if self.llm.backend_name == "mock":
                     answer = render_mock_grounded(answer, domain=output_domain, locale=locale)
-                    if self._source_sufficiency(chunks) == SourceSufficiency.CONFLICTING:
+                    if sufficiency == SourceSufficiency.CONFLICTING:
                         answer = "자료마다 설명이 달라. 확인된 차이를 나눠서 볼게. " + answer
+                    elif sufficiency == SourceSufficiency.PARTIAL:
+                        answer = "확인되는 범위부터 말씀드리면, " + answer
                 if chat_mode == ConversationMode.PIECE_CHAT:
                     answer = self._limit_piece_answer(answer)
                 answer, style_warnings = self._guard_answer(
@@ -395,7 +427,7 @@ class ConversationalRagOrchestrator:
                 grounded_common = dict(common) | {
                     "request_state": "success", "ui_state": "showing_citations",
                     "rag_used": True,
-                    "source_sufficiency": self._source_sufficiency(chunks).value,
+                    "source_sufficiency": sufficiency.value,
                     "warnings": tuple(dict.fromkeys(common["warnings"] + style_warnings)),
                 }
                 response = ChatResponse(
@@ -406,7 +438,13 @@ class ConversationalRagOrchestrator:
                     session.session_id,
                     locale,
                     PROMPT_VERSION,
-                    context_metadata=request.metadata.get("context_budget"),  # type: ignore[arg-type]
+                    context_metadata={
+                        **dict(request.metadata.get("context_budget", {})),
+                        "followup_resolved": resolved_context.followup_resolved,
+                        "search_query": search_query,
+                        "active_place": resolved_context.active_place,
+                        "active_piece": resolved_context.active_piece,
+                    },
                     citations=tuple(asdict(item) for item in citations),
                     evidence=tuple(item.chunk.text for item in chunks),
                     grounded=True,
@@ -432,6 +470,16 @@ class ConversationalRagOrchestrator:
                     **common,
                 )
         self.sessions.add_turn(session.session_id, query, response.answer)
+        if chunks:
+            retrieved_entities = tuple(dict.fromkeys(
+                title for title in (item.chunk.title for item in chunks) if title
+            ))[:8]
+            self.sessions.update_context(
+                session.session_id,
+                recent_entities=tuple(dict.fromkeys(
+                    (*resolved_context.recent_entities, *retrieved_entities)
+                ))[:8],
+            )
         return response
 
     def stream(self, *args, **kwargs) -> Iterator[StreamEvent]:
@@ -624,6 +672,20 @@ class ConversationalRagOrchestrator:
         return selected
 
     @staticmethod
+    def _place_aware_results(
+        results: list[RankedChunk], active_place: str
+    ) -> list[RankedChunk]:
+        if not active_place:
+            return results
+        return sorted(
+            results,
+            key=lambda item: (
+                active_place in f"{item.chunk.title} {item.chunk.text}", item.score
+            ),
+            reverse=True,
+        )
+
+    @staticmethod
     def _conversation_lines(session: ChatSession) -> list[str]:
         lines = [session.summary] if session.summary else []
         lines.extend(
@@ -687,13 +749,15 @@ class ConversationalRagOrchestrator:
         )
 
     def _assert_mode_boundary(self, chunks: list[RankedChunk]) -> None:
-        provisional = any(
-            item.chunk.payload.get("usage_status") == "provisional_hackathon"
+        hackathon_only = any(
+            item.chunk.payload.get("usage_status") in {
+                "provisional_hackathon", "verified_hackathon"
+            }
             for item in chunks
         )
-        if provisional and self.mode != RuntimeMode.HACKATHON:
+        if hackathon_only and self.mode != RuntimeMode.HACKATHON:
             raise ValueError(
-                "provisional_hackathon 자료는 hackathon 모드 외 검색·프롬프트에 사용할 수 없습니다."
+                "hackathon 전용 자료는 hackathon 모드 외 검색·프롬프트에 사용할 수 없습니다."
             )
 
     @staticmethod
@@ -702,7 +766,9 @@ class ConversationalRagOrchestrator:
             dict.fromkeys(
                 str(item.chunk.payload.get("source_id", item.chunk.document_id))
                 for item in chunks
-                if item.chunk.payload.get("usage_status") == "provisional_hackathon"
+                if item.chunk.payload.get("usage_status") in {
+                    "provisional_hackathon", "verified_hackathon"
+                }
             )
         )
         if not source_ids:
@@ -727,7 +793,9 @@ class ConversationalRagOrchestrator:
         self, answer: str, chunks: list[RankedChunk]
     ) -> str:
         if not any(
-            item.chunk.payload.get("usage_status") == "provisional_hackathon"
+            item.chunk.payload.get("usage_status") in {
+                "provisional_hackathon", "verified_hackathon"
+            }
             for item in chunks
         ):
             return answer
@@ -840,11 +908,15 @@ class ConversationalRagOrchestrator:
         return "这段记录鸟角色回复尚未完成审核，暂时不作为正式台词。"
 
     @staticmethod
-    def _insufficient_text(domain: OutputDomain, locale: str) -> str:
+    def _insufficient_text(
+        domain: OutputDomain, locale: str, active_place: str = ""
+    ) -> str:
         if locale.lower() == "zh-cn":
             return ConversationalRagOrchestrator._pending_zh_text(domain)
         if domain == OutputDomain.CHARACTER_DIALOGUE:
-            return "지금 확인할 수 있는 자료가 부족해. 추측해서 말하지 않을게."
+            place = f" {active_place}에 관해서도" if active_place else ""
+            return f"현재 검증된 자료에서는 그 세부 내용을 확인하지 못했어.{place} 확인되지 않은 내용은 추측하지 않을게."
         if domain == OutputDomain.HISTORICAL_DOCENT:
-            return "현재 검수된 자료만으로는 확인할 수 없습니다."
+            place = f" {active_place}의" if active_place else ""
+            return f"현재 검증된 자료에서는 질문하신{place} 세부 내용을 확인하지 못했습니다. 확인되지 않은 부분은 추측하지 않고, 기록으로 확인되는 범위의 사건·인물·장소를 중심으로 다시 질문해 주세요."
         return "현재 확인 가능한 자료가 부족합니다."

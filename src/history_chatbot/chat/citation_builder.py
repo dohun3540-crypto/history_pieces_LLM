@@ -32,7 +32,9 @@ def build_citations(chunks: Sequence[RankedChunk]) -> tuple[Citation, ...]:
                 rights_status=str(payload.get("rights_status", "")),
                 usage_scope=str(payload.get("usage_scope", "")),
                 provisional_notice=(
-                    "해커톤 시연용 공식 참고자료"
+                    "로컬 엄격 감사 통과 해커톤 참고자료"
+                    if payload.get("usage_status") == "verified_hackathon"
+                    else "해커톤 시연용 공식 참고자료"
                     if payload.get("usage_status") == "provisional_hackathon"
                     else ""
                 ),

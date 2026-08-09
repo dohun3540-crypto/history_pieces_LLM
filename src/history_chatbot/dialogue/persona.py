@@ -31,6 +31,7 @@ class SpeechLevel(StrEnum):
 
 class SourceSufficiency(StrEnum):
     SUFFICIENT = "sufficient"
+    PARTIAL = "partial"
     CONFLICTING = "conflicting"
     INSUFFICIENT = "insufficient"
 

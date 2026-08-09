@@ -75,9 +75,8 @@ def test_v1_chat_falls_back_without_calling_llm_when_evidence_is_missing(
     )
 
     assert response.status_code == 200
-    assert response.json() == {
-        "answer": "제공된 역사 자료에서 충분한 근거를 찾지 못했습니다."
-    }
+    assert "확인하지 못했습니다" in response.json()["answer"]
+    assert "추측" in response.json()["answer"]
     assert llm.requests == []
 
 

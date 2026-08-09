@@ -22,6 +22,12 @@ class ChatSession:
     locale: str = "ko"
     turns: list[SessionTurn] = field(default_factory=list)
     summary: str = ""
+    active_place: str = ""
+    active_piece: str = ""
+    active_topic: str = ""
+    recent_entities: tuple[str, ...] = ()
+    recent_event: str = ""
+    recent_period: str = ""
 
 
 class SessionStore:
@@ -65,6 +71,16 @@ class SessionStore:
             session.summary = (session.summary + addition)[-self.max_summary_chars :]
         self._save()
 
+    def update_context(self, session_id: str, **values: object) -> None:
+        session = self._sessions[session_id]
+        for name in (
+            "active_place", "active_piece", "active_topic", "recent_entities",
+            "recent_event", "recent_period",
+        ):
+            if name in values:
+                setattr(session, name, values[name])
+        self._save()
+
     def reset(self, session_id: str) -> bool:
         removed = self._sessions.pop(session_id, None) is not None
         if removed:
@@ -83,6 +99,12 @@ class SessionStore:
                 locale=item.get("locale", "ko"),
                 turns=[SessionTurn(**turn) for turn in item.get("turns", [])],
                 summary=item.get("summary", ""),
+                active_place=item.get("active_place", ""),
+                active_piece=item.get("active_piece", ""),
+                active_topic=item.get("active_topic", ""),
+                recent_entities=tuple(item.get("recent_entities", ())),
+                recent_event=item.get("recent_event", ""),
+                recent_period=item.get("recent_period", ""),
             )
             self._sessions[session.session_id] = session
 
@@ -98,6 +120,12 @@ class SessionStore:
                     "locale": session.locale,
                     "turns": [asdict(turn) for turn in session.turns],
                     "summary": session.summary,
+                    "active_place": session.active_place,
+                    "active_piece": session.active_piece,
+                    "active_topic": session.active_topic,
+                    "recent_entities": list(session.recent_entities),
+                    "recent_event": session.recent_event,
+                    "recent_period": session.recent_period,
                 }
                 for session in self._sessions.values()
             ],

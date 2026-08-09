@@ -97,16 +97,24 @@ def create_development_real_service(
 def create_hackathon_orchestrator(
     *,
     runtime_dir: Path = Path(".runtime/hackathon"),
-    chunks_path: Path = Path("data/provisional_hackathon/processed/chunks.jsonl"),
+    chunks_path: Path = Path("data/history_verified/index_ready/chunks.jsonl"),
     session_path: Path | None = None,
     environ: Mapping[str, str] | None = None,
     llm: ChatCompletionBackend | None = None,
 ) -> ConversationalRagOrchestrator:
     mode = RuntimeMode.HACKATHON
+    verified_lane = False
+    if chunks_path.is_file():
+        first = next((line for line in chunks_path.read_text(encoding="utf-8").splitlines() if line.strip()), "")
+        verified_lane = '"usage_status": "verified_hackathon"' in first
     config = RetrievalConfig(
         runtime_mode=mode.value,
-        provisional_chunks_path=chunks_path,
-        local_storage_path=Path(".runtime/indexes/hackathon"),
+        provisional_chunks_path=None if verified_lane else chunks_path,
+        verified_hackathon_chunks_path=chunks_path if verified_lane else None,
+        local_storage_path=(
+            chunks_path.parent.parent / "retrieval_index"
+            if verified_lane else Path(".runtime/indexes/hackathon")
+        ),
         index_ready_path=Path("data/index_ready"),
         minimum_score=0.20,
         minimum_dense_score=0.72,
@@ -235,8 +243,6 @@ class HistoryChatService:
                 self.orchestrator.sessions.reset(session.session_id)
         grounded = response.get("grounded") is True
         answer = str(response.get("answer", ""))
-        if not grounded and response.get("status") == "insufficient_evidence":
-            answer = "제공된 역사 자료에서 충분한 근거를 찾지 못했습니다."
         sources = (
             [
                 {
@@ -245,6 +251,8 @@ class HistoryChatService:
                     "title": str(source.get("title", "")),
                     "source_name": str(source.get("institution", "")),
                     "source_url": str(source.get("source_url", "")),
+                    "canonical_url": str(source.get("source_url", "")),
+                    "rights_status": str(source.get("rights_status", "unknown")),
                     "score": float(source.get("retrieval_score", 0.0)),
                 }
                 for source in response.get("sources", [])
@@ -258,6 +266,8 @@ class HistoryChatService:
             "sources": sources,
             "grounded": grounded,
             "status": str(response.get("status", "")),
+            "source_sufficiency": str(response.get("source_sufficiency", "")),
+            "context_metadata": response.get("context_metadata") or {},
         }
 
     def readiness_v1(self) -> dict[str, object]:
@@ -316,15 +326,27 @@ class HistoryChatService:
         if mode == RuntimeMode.DEVELOPMENT:
             status = "development_ready" if not errors else "missing_index"
         elif mode == RuntimeMode.HACKATHON:
+            verified = [
+                chunk for chunk in chunks
+                if chunk.payload.get("usage_status") == "verified_hackathon"
+            ]
             provisional = [
                 chunk
                 for chunk in chunks
                 if chunk.payload.get("usage_status") == "provisional_hackathon"
             ]
-            if not self.orchestrator.retrieval.config.provisional_chunks_path.is_file():
+            configured_path = (
+                self.orchestrator.retrieval.config.verified_hackathon_chunks_path
+                or self.orchestrator.retrieval.config.provisional_chunks_path
+            )
+            if configured_path is None or not configured_path.is_file():
                 status = "hackathon_data_missing"
             elif errors:
                 status = "hackathon_index_missing"
+            elif verified and int(
+                self.orchestrator.retrieval.store.metadata().get("verified_document_count", 0)
+            ) >= 100:
+                status = "hackathon_verified_index_ready"
             elif not provisional:
                 status = "hackathon_data_partial"
             elif int(

@@ -196,7 +196,8 @@ def test_api_metadata_and_source_sufficiency(tmp_path) -> None:
     assert factual.source_sufficiency == SourceSufficiency.SUFFICIENT.value
     assert missing.source_sufficiency == SourceSufficiency.INSUFFICIENT.value
     assert missing.citations == ()
-    assert missing.answer == "현재 검수된 자료만으로는 확인할 수 없습니다."
+    assert "확인하지 못했습니다" in missing.answer
+    assert "추측" in missing.answer
     assert missing.speech_level == "formal_docent"
     conflict = SimpleNamespace(chunk=SimpleNamespace(payload={"source_conflict": True}))
     assert ConversationalRagOrchestrator._source_sufficiency([conflict]) == SourceSufficiency.CONFLICTING
