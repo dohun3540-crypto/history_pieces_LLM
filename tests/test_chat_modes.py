@@ -12,6 +12,8 @@ from history_chatbot.dialogue.track_models import (
     FreeChatUiState, ModeTransition, PieceChatUiState, RequestState,
     SharedSessionContext,
 )
+from history_chatbot.models.remote import RemoteLLMError
+from history_chatbot.retrieval.base import RankedChunk
 
 
 def chat(tmp_path: Path):
@@ -179,6 +181,56 @@ def test_historical_docent_generation_path_applies_repetition_guard(
     )
     assert response.output_domain == "historical_docent"
     assert response.answer == "목포의 역사 설명입니다."
+
+
+def test_grounded_history_answer_is_complete_and_has_no_machine_prefix(
+    tmp_path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = chat(tmp_path)
+    chunk = engine.retrieval.store.chunks()[0]
+    monkeypatch.setattr(
+        engine.retrieval, "search", lambda _query: [RankedChunk(chunk, 1.0, ("test",))],
+    )
+    monkeypatch.setattr(
+        engine.llm,
+        "complete",
+        lambda _request: SimpleNamespace(
+            generated_text=(
+                "[답변] 목포역은 근대 목포의 철도와 항만을 연결하는 역할을 했습니다. "
+                "검색된 기록에 나타난 범위에서 교통의 연결 지점을 설명할 수 있습니다."
+            ),
+            finish_reason="stop",
+        ),
+    )
+    response = engine.ask(
+        "목포역은 근대 목포의 철도와 항만 발전에 어떤 역할을 했나요?",
+        conversation_mode="free_chat",
+    )
+    assert response.status == "ok" and response.used_chunks == 1
+    assert response.request_state == "success"
+    assert not response.answer.startswith("[답변]")
+    assert response.answer.endswith(".")
+    assert response.context_metadata["finish_reason"] == "stop"
+
+
+def test_length_finish_reason_removes_incomplete_tail() -> None:
+    text, warnings = ConversationalRagOrchestrator._completion_text(
+        SimpleNamespace(
+            generated_text=(
+                "[답변] 첫 번째 근거 설명입니다. 두 번째 설명도 완결됐습니다. "
+                "이범석, 주한 미국 대사 존 무초(John J."
+            ),
+            finish_reason="length",
+        )
+    )
+    assert text == "첫 번째 근거 설명입니다. 두 번째 설명도 완결됐습니다."
+    assert "John J" not in text
+    assert warnings == ("generation_truncated_at_sentence_boundary",)
+
+    with pytest.raises(RemoteLLMError, match="길이 제한"):
+        ConversationalRagOrchestrator._completion_text(
+            SimpleNamespace(generated_text="완성되지 않은 한 문장", finish_reason="length")
+        )
 
 
 def test_free_chat_source_request_exposes_citation_panel_action(tmp_path) -> None:

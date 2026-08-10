@@ -41,7 +41,8 @@ img { max-width:100%; }
 .connection-pill { display:inline-flex; align-items:center; gap:.45rem; padding:.4rem .65rem; color:#e5d8c5; font-size:.78rem; border:1px solid rgba(255,255,255,.16); border-radius:999px; }
 .status-dot { width:.5rem; height:.5rem; flex:none; border-radius:50%; background:#bda58e; }
 .connection-pill[data-state="ready"] .status-dot,.free-state[data-state="success"] .status-dot { background:#65bd8e; box-shadow:0 0 0 4px rgba(101,189,142,.16); }
-.connection-pill[data-state="error"] .status-dot,.free-state[data-state="error"] .status-dot,.free-state[data-state="insufficient_evidence"] .status-dot { background:#e28966; }
+.connection-pill[data-state="error"] .status-dot,.free-state[data-state="error"] .status-dot { background:#e28966; }
+.free-state[data-state="insufficient_evidence"] .status-dot { background:#b78a45; box-shadow:0 0 0 4px rgba(183,138,69,.14); }
 .header-chat-button { min-height:42px; padding:.55rem .9rem; color:#2e1d12; background:linear-gradient(180deg,#f8dda1,#c7933f); border:1px solid #f4d58f; border-radius:999px; font-weight:800; }
 
 .journey-stage { --stage-image:url('/assets/backgrounds/background_06.png'); position:relative; min-height:clamp(520px,68vh,760px); isolation:isolate; color:#fff9ec; background-image:var(--stage-image); background-position:center 48%; background-size:cover; transition:background-image .2s ease-out; }

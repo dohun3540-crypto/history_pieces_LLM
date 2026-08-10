@@ -86,6 +86,7 @@ def test_environment_defaults_to_localhost_and_requires_model_path() -> None:
     selected = ServerConfig.from_environment({"GPU_LLM_MODEL_PATH": "cached-model"})
     assert selected.host == "127.0.0.1"
     assert selected.port == 8001
+    assert selected.max_new_tokens == 512
     protected = config(auth_token="fake-test-token-not-a-real-secret")
     assert "fake-test-token-not-a-real-secret" not in repr(protected)
 
@@ -172,6 +173,13 @@ def test_http_completion_has_openai_shape_and_hides_internal_exception() -> None
     assert status == 200
     assert response["object"] == "chat.completion"
     assert response["choices"][0]["finish_reason"] == "stop"
+
+    class LengthLimitedRuntime(FakeRuntime):
+        def generate(self, messages, options):
+            return "완성되지 않은 응답", 12, int(options["max_tokens"])
+
+    limited = InferenceApplication(config(), LengthLimitedRuntime()).complete(payload)
+    assert limited["choices"][0]["finish_reason"] == "length"
 
     failing = InferenceApplication(config(), FakeRuntime(error=RuntimeError("/private/model/path")))
     with running_server(failing) as base_url:

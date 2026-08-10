@@ -107,6 +107,11 @@ function appendMessage(role, text, extraClass = "", outputDomain = "character_di
   item.scrollIntoView({ block: "nearest" });
 }
 
+function responseError(result) {
+  if (result.request_state !== "error" && result.status !== "llm_error" && !result.error) return "";
+  return result.error?.message || "답변 생성 서비스에서 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+}
+
 function renderCitations(citations) {
   const panel = byId("citation-panel");
   const toggle = byId("citation-toggle");
@@ -206,6 +211,8 @@ async function sendPiece(message) {
       method: "POST",
       body: JSON.stringify({ session_id: state.session.session_id, user_message: normalized, ui_state: "awaiting_reflection" }),
     });
+    const failure = responseError(result);
+    if (failure) throw new Error(failure);
     byId("piece-response").textContent = result.response_text;
     byId("piece-response").dataset.outputDomain = result.output_domain;
     renderActionHint(result.next_action_code, result.mode_transition);
@@ -237,8 +244,10 @@ async function sendFree(message) {
       method: "POST",
       body: JSON.stringify({ session_id: state.session.session_id, user_message: normalized, ui_state: "active" }),
     });
+    const failure = responseError(result);
+    if (failure) throw new Error(failure);
     const insufficient = result.request_state === "insufficient_evidence";
-    appendMessage("assistant", result.response_text, insufficient ? "state" : "", result.output_domain);
+    appendMessage("assistant", result.response_text, "", result.output_domain);
     renderCitations(result.citations);
     renderSuggestions(result.suggested_questions);
     setRequestState(insufficient ? "insufficient_evidence" : "success");

@@ -30,7 +30,7 @@ class ServerConfig:
     max_messages: int = 8
     max_input_chars: int = 12_000
     max_input_tokens: int = 6_144
-    max_new_tokens: int = 256
+    max_new_tokens: int = 512
 
     @classmethod
     def from_environment(cls, environ: Optional[Mapping[str, str]] = None) -> "ServerConfig":
@@ -45,7 +45,7 @@ class ServerConfig:
             max_messages=_integer(values, "GPU_LLM_MAX_MESSAGES", 8),
             max_input_chars=_integer(values, "GPU_LLM_MAX_INPUT_CHARS", 12_000),
             max_input_tokens=_integer(values, "GPU_LLM_MAX_INPUT_TOKENS", 6_144),
-            max_new_tokens=_integer(values, "GPU_LLM_MAX_NEW_TOKENS", 256),
+            max_new_tokens=_integer(values, "GPU_LLM_MAX_NEW_TOKENS", 512),
         )
         config.validate()
         return config
@@ -166,6 +166,9 @@ class InferenceApplication:
     def complete(self, payload: Any) -> Dict[str, Any]:
         messages, options = _validate_payload(payload, self.config)
         text, prompt_tokens, completion_tokens = self.runtime.generate(messages, options)
+        finish_reason = (
+            "length" if completion_tokens >= int(options["max_tokens"]) else "stop"
+        )
         return {
             "id": "chatcmpl-" + uuid.uuid4().hex,
             "object": "chat.completion",
@@ -175,7 +178,7 @@ class InferenceApplication:
                 {
                     "index": 0,
                     "message": {"role": "assistant", "content": text},
-                    "finish_reason": "stop",
+                    "finish_reason": finish_reason,
                 }
             ],
             "usage": {

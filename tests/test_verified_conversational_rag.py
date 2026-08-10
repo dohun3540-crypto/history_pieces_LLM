@@ -11,7 +11,7 @@ from history_chatbot.chat.context_resolver import (
     is_placeholder_context,
 )
 from history_chatbot.chat.orchestrator import ConversationalRagOrchestrator
-from history_chatbot.dialogue.persona import DOCENT_PROMPT
+from history_chatbot.dialogue.persona import DOCENT_PROMPT, OutputDomain
 from history_chatbot.chat.service import create_hackathon_orchestrator
 from history_chatbot.chat.session import SessionStore
 from history_chatbot.history_collection.verified_corpus import build_verified_corpus
@@ -125,6 +125,8 @@ def test_hackathon_factory_uses_verified_lane_and_multiturn(
     assert "목포역" in second.context_metadata["search_query"]
     assert "demo" not in second.context_metadata["search_query"]
     assert "추측" in second.answer
+    assert any("목포역" in item for item in second.suggested_questions)
+    assert "기록에 등장하는 인물" in second.answer
     assert "demo" not in second.answer
     assert len(search_queries) == 2
     assert chat.retrieval.store.metadata()["data_lane"] == "verified_hackathon"
@@ -397,3 +399,26 @@ def test_resolved_followup_is_labeled_as_non_evidence_for_generation() -> None:
         search_query="유달산 유달산은 왜 유명해?",
         followup_resolved=False,
     ) == "유달산은 왜 유명해?"
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    (
+        ("이 장소는 언제 만들어졌나요?", "건립·형성 시점"),
+        ("관련 인물은 누구인가요?", "관련 인물을 확정할 근거"),
+    ),
+)
+def test_insufficient_guidance_uses_place_and_question_intent(
+    query: str, expected: str,
+) -> None:
+    answer, suggestions = ConversationalRagOrchestrator._insufficient_guidance(
+        query,
+        OutputDomain.HISTORICAL_DOCENT,
+        "ko",
+        active_place="목포역",
+    )
+    assert expected in answer
+    assert "목포역" in answer
+    assert "추측하지 않습니다" in answer
+    assert len(suggestions) == 3
+    assert all("목포역" in item for item in suggestions)

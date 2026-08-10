@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from history_chatbot.chat.api import create_app
 from history_chatbot.chat.demo_journey import InMemoryDemoJourneyProvider
 from history_chatbot.chat.service import ChatApplicationService, create_development_orchestrator
+from history_chatbot.models.remote import RemoteLLMError
 
 
 @pytest.fixture
@@ -127,6 +128,61 @@ def test_free_chat_rag_citations_greeting_and_insufficient_evidence(client: Test
     assert missing.status_code == 200
     assert missing.json()["request_state"] == "insufficient_evidence"
     assert missing.json()["citations"] == []
+    assert missing.json()["status"] == "insufficient_evidence"
+    assert missing.json()["suggested_questions"]
+    assert "추측하지 않습니다" in missing.json()["response_text"]
+
+
+def test_retrieval_empty_does_not_call_llm_or_become_application_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = create_development_orchestrator(
+        runtime_dir=tmp_path / "runtime", session_path=tmp_path / "sessions.json",
+    )
+    monkeypatch.setattr(
+        engine.llm,
+        "complete",
+        lambda _request: pytest.fail("retrieval-empty must not call the LLM"),
+    )
+    api = TestClient(create_app(ChatApplicationService(engine), InMemoryDemoJourneyProvider()))
+    session_id = new_session(api)["session_id"]
+    response = api.post("/api/chat/free", json={
+        "session_id": session_id,
+        "user_message": "양자컴퓨터의 큐비트 오류 정정 방법을 설명해 주세요.",
+    })
+    body = response.json()
+    assert response.status_code == 200
+    assert body["used_chunks"] == 0
+    assert body["request_state"] == "insufficient_evidence"
+    assert body["ui_state"] == "insufficient_evidence"
+    assert body["error"] is None
+    assert "역사" in body["response_text"] and body["suggested_questions"]
+
+
+def test_remote_backend_failure_is_explicit_application_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = create_development_orchestrator(
+        runtime_dir=tmp_path / "runtime", session_path=tmp_path / "sessions.json",
+    )
+    monkeypatch.setattr(
+        engine.llm,
+        "complete",
+        lambda _request: (_ for _ in ()).throw(
+            RemoteLLMError("connection_error", "원격 LLM 서버에 연결할 수 없습니다.")
+        ),
+    )
+    api = TestClient(create_app(ChatApplicationService(engine), InMemoryDemoJourneyProvider()))
+    session_id = new_session(api)["session_id"]
+    response = api.post("/api/chat/free", json={
+        "session_id": session_id,
+        "user_message": "붉은 등대 전시관은 언제 만들어졌어요?",
+    })
+    body = response.json()
+    assert response.status_code == 200
+    assert body["status"] == "llm_error"
+    assert body["request_state"] == "error" and body["ui_state"] == "error"
+    assert body["error"]["code"] == "connection_error"
 
 
 def test_free_chat_does_not_complete_piece_and_return_preserves_state(client: TestClient) -> None:
@@ -181,11 +237,16 @@ def test_unsupported_action_and_invalid_payload_are_structured(client: TestClien
 
 def test_client_state_uses_safe_dom_and_guarded_ui_logic(client: TestClient) -> None:
     script = client.get("/static/app.js").text
+    styles = client.get("/static/styles.css").text
     assert ".innerHTML" not in script and "textContent" in script
     assert 'state.request === "loading"' in script
     assert "renderCitations(result.citations)" in script
     assert 'toggle.hidden = valid.length === 0' in script
     assert "action_code: action" in script
+    assert 'appendMessage("assistant", result.response_text, "", result.output_domain)' in script
+    assert 'result.request_state !== "error"' in script
+    assert '.free-state[data-state="insufficient_evidence"] .status-dot' in styles
+    assert '.free-state[data-state="error"] .status-dot,.free-state[data-state="insufficient_evidence"]' not in styles
     assert 'to_mode: "game"' in script
     assert "IMAGE ASSET" not in script
 

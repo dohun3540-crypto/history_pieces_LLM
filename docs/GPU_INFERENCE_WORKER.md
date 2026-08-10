@@ -80,7 +80,7 @@ export GPU_LLM_MAX_REQUEST_BYTES="65536"
 export GPU_LLM_MAX_MESSAGES="8"
 export GPU_LLM_MAX_INPUT_CHARS="12000"
 export GPU_LLM_MAX_INPUT_TOKENS="6144"
-export GPU_LLM_MAX_NEW_TOKENS="256"
+export GPU_LLM_MAX_NEW_TOKENS="512"
 
 read -rsp "Temporary GPU worker token: " GPU_LLM_AUTH_TOKEN; echo
 export GPU_LLM_AUTH_TOKEN
@@ -142,7 +142,7 @@ $env:LLM_MODEL = "beomi/Llama-3-Open-Ko-8B-Instruct-preview"
 $env:LLM_API_KEY_REQUIRED = "true"
 $env:LLM_READINESS_PROBE = "true"
 $env:LLM_TIMEOUT_SECONDS = "60"
-$env:LLM_MAX_NEW_TOKENS = "256"
+$env:LLM_MAX_NEW_TOKENS = "512"
 $env:LLM_REMOTE_HISTORY_ENABLED = "false"
 $env:LLM_REMOTE_SANITIZE_ENABLED = "true"
 $env:LLM_API_KEY = Read-Host -MaskInput "Temporary GPU worker token"

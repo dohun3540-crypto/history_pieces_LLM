@@ -378,15 +378,26 @@ class ConversationalRagOrchestrator:
             conversation_stage=stage,
         )
         if not chunks:
+            fallback_place = (
+                resolved_context.active_place
+                if resolved_context.followup_resolved
+                or resolved_context.active_place in search_query
+                else ""
+            )
+            fallback_answer, fallback_suggestions = self._insufficient_guidance(
+                query,
+                output_domain,
+                locale,
+                active_place=fallback_place,
+            )
             insufficient_common = dict(common)
             insufficient_common.update(
                 request_state="insufficient_evidence", ui_state="insufficient_evidence",
                 rag_used=True, source_sufficiency=SourceSufficiency.INSUFFICIENT.value,
+                suggested_questions=fallback_suggestions,
             )
             response = ChatResponse(
-                self._insufficient_text(
-                    output_domain, locale, resolved_context.active_place
-                ),
+                fallback_answer,
                 "insufficient_evidence",
                 (),
                 0,
@@ -419,8 +430,9 @@ class ConversationalRagOrchestrator:
             try:
                 completion = self.llm.complete(request)
                 citations = build_citations(chunks)
+                completion_text, generation_warnings = self._completion_text(completion)
                 answer = self._apply_hackathon_policy(
-                    completion.generated_text, chunks
+                    completion_text, chunks
                 )
                 answer = self._apply_repetition_guard(
                     answer, output_domain=output_domain
@@ -443,7 +455,9 @@ class ConversationalRagOrchestrator:
                     "request_state": "success", "ui_state": "showing_citations",
                     "rag_used": True,
                     "source_sufficiency": sufficiency.value,
-                    "warnings": tuple(dict.fromkeys(common["warnings"] + style_warnings)),
+                    "warnings": tuple(dict.fromkeys(
+                        common["warnings"] + generation_warnings + style_warnings
+                    )),
                 }
                 response = ChatResponse(
                     answer,
@@ -459,6 +473,7 @@ class ConversationalRagOrchestrator:
                         "search_query": search_query,
                         "active_place": resolved_context.active_place,
                         "active_piece": resolved_context.active_piece,
+                        "finish_reason": getattr(completion, "finish_reason", "stop"),
                     },
                     citations=tuple(asdict(item) for item in citations),
                     evidence=tuple(item.chunk.text for item in chunks),
@@ -470,6 +485,8 @@ class ConversationalRagOrchestrator:
                     **self._provisional_metadata(chunks),
                 )
             except RemoteLLMError as error:
+                error_common = dict(common)
+                error_common.update(request_state="error", ui_state="error")
                 response = ChatResponse(
                     "",
                     "llm_error",
@@ -482,7 +499,7 @@ class ConversationalRagOrchestrator:
                     context_metadata=request.metadata.get("context_budget"),  # type: ignore[arg-type]
                     refusal_reason="llm_error",
                     latency_ms=round((time.perf_counter() - started) * 1000),
-                    **common,
+                    **error_common,
                 )
         self.sessions.add_turn(session.session_id, query, response.answer)
         if chunks:
@@ -522,8 +539,11 @@ class ConversationalRagOrchestrator:
         )
         chunks = chunks[: len(budget.evidence)]
         if not chunks:
+            fallback, suggestions = self._insufficient_guidance(
+                query, OutputDomain.CHARACTER_DIALOGUE, locale
+            )
             response = ChatResponse(
-                "확인 가능한 자료가 부족합니다.",
+                fallback,
                 "insufficient_evidence",
                 (),
                 0,
@@ -534,6 +554,10 @@ class ConversationalRagOrchestrator:
                     "trimmed_evidence": budget.trimmed_evidence,
                     "trimmed_conversation": budget.trimmed_conversation,
                 },
+                request_state="insufficient_evidence",
+                ui_state="insufficient_evidence",
+                source_sufficiency=SourceSufficiency.INSUFFICIENT.value,
+                suggested_questions=suggestions,
             )
             self.sessions.add_turn(session.session_id, query, response.answer)
             yield StreamEvent("completed", response.to_dict())
@@ -569,14 +593,25 @@ class ConversationalRagOrchestrator:
                     PROMPT_VERSION,
                     error=event.data,
                     context_metadata=request.metadata.get("context_budget"),  # type: ignore[arg-type]
+                    request_state="error",
+                    ui_state="error",
                 )
                 self.sessions.add_turn(session.session_id, query, "")
                 yield StreamEvent("error", response.to_dict())
                 return
             elif event.event == "completed":
-                answer = self._apply_hackathon_policy(
-                    str(event.data.get("generated_text", "")), chunks
-                )
+                try:
+                    completion_text, generation_warnings = self._completion_text_values(
+                        str(event.data.get("generated_text", "")),
+                        str(event.data.get("finish_reason", "stop")),
+                    )
+                except RemoteLLMError as error:
+                    yield StreamEvent("error", {
+                        "status": "llm_error", "request_state": "error",
+                        "ui_state": "error", "error": error.to_dict(),
+                    })
+                    return
+                answer = self._apply_hackathon_policy(completion_text, chunks)
                 response = ChatResponse(
                     answer,
                     "ok",
@@ -585,7 +620,11 @@ class ConversationalRagOrchestrator:
                     session.session_id,
                     locale,
                     PROMPT_VERSION,
-                    context_metadata=request.metadata.get("context_budget"),  # type: ignore[arg-type]
+                    context_metadata={
+                        **dict(request.metadata.get("context_budget", {})),
+                        "finish_reason": event.data.get("finish_reason", "stop"),
+                    },
+                    warnings=generation_warnings,
                     **self._provisional_metadata(chunks),
                 )
                 self.sessions.add_turn(session.session_id, query, answer)
@@ -857,8 +896,53 @@ class ConversationalRagOrchestrator:
         # 원격 모델이 근거를 장문 복원하는 경우에도 시연 응답 크기를 제한한다.
         normalized = answer.strip()
         if len(normalized) > 1200:
-            normalized = normalized[:1200].rstrip() + "…"
+            normalized = self._complete_sentence_prefix(normalized, max_chars=1200)
+            if not normalized:
+                return "답변이 지나치게 길어 안전하게 표시하지 못했습니다. 질문 범위를 좁혀 다시 질문해 주세요."
         return normalized
+
+    @staticmethod
+    def _completion_text(completion) -> tuple[str, tuple[str, ...]]:
+        """모델 출력의 종료 사유를 확인하고 미완성 꼬리를 노출하지 않는다."""
+
+        return ConversationalRagOrchestrator._completion_text_values(
+            str(completion.generated_text),
+            str(getattr(completion, "finish_reason", "stop")),
+        )
+
+    @staticmethod
+    def _completion_text_values(
+        generated_text: str, finish_reason: str
+    ) -> tuple[str, tuple[str, ...]]:
+        text = re.sub(r"^\s*\[답변\]\s*", "", generated_text, count=1)
+        finish_reason = finish_reason.casefold()
+        if finish_reason not in {"length", "max_tokens"}:
+            return text.strip(), ()
+        complete = ConversationalRagOrchestrator._complete_sentence_prefix(
+            text, discard_terminal_boundary=True
+        )
+        if not complete:
+            raise RemoteLLMError(
+                "generation_failed",
+                "원격 LLM 응답이 길이 제한으로 완성되기 전에 종료되었습니다.",
+                retryable=True,
+            )
+        return complete, ("generation_truncated_at_sentence_boundary",)
+
+    @staticmethod
+    def _complete_sentence_prefix(
+        text: str, *, max_chars: int | None = None,
+        discard_terminal_boundary: bool = False,
+    ) -> str:
+        normalized = text.strip()
+        limit = len(normalized) if max_chars is None else min(max_chars, len(normalized))
+        boundaries = [
+            match.end()
+            for match in re.finditer(r"[.!?。！？](?=\s|$)", normalized[:limit])
+        ]
+        if discard_terminal_boundary and boundaries and boundaries[-1] == len(normalized):
+            boundaries.pop()
+        return normalized[:boundaries[-1]].strip() if boundaries else ""
 
     @staticmethod
     def _apply_repetition_guard(
@@ -963,15 +1047,54 @@ class ConversationalRagOrchestrator:
         return "这段记录鸟角色回复尚未完成审核，暂时不作为正式台词。"
 
     @staticmethod
-    def _insufficient_text(
-        domain: OutputDomain, locale: str, active_place: str = ""
-    ) -> str:
+    def _insufficient_guidance(
+        query: str, domain: OutputDomain, locale: str, *, active_place: str = ""
+    ) -> tuple[str, tuple[str, ...]]:
         if locale.lower() == "zh-cn":
-            return ConversationalRagOrchestrator._pending_zh_text(domain)
+            return ConversationalRagOrchestrator._pending_zh_text(domain), ()
+
+        subject = active_place or "질문하신 역사 주제"
+        asks_people = bool(re.search(r"인물|사람|누구", query))
+        asks_date = bool(re.search(r"언제|건립|준공|만들|세워|생긴", query))
+        if asks_people:
+            limitation = f"현재 확보된 자료에서는 {subject} 관련 인물을 확정할 근거를 확인하지 못했습니다."
+            suggestions = (
+                f"{subject} 관련 기록에 등장하는 인물을 알려줘.",
+                f"{subject} 관련 주요 사건을 알려줘.",
+                f"{subject}에 관해 현재 자료에서 확인 가능한 내용을 알려줘.",
+            )
+        elif asks_date:
+            limitation = f"현재 확보된 자료만으로는 {subject}의 건립·형성 시점을 정확히 확인하지 못했습니다."
+            suggestions = (
+                f"{subject} 관련 기록에 나타난 주요 사건을 알려줘.",
+                f"{subject} 당시 교통이나 지역 변화에 관한 기록을 알려줘.",
+                f"{subject}에 관해 현재 자료에서 확인 가능한 내용을 알려줘.",
+            )
+        elif active_place:
+            limitation = f"현재 확보된 자료만으로는 {subject}에 관한 질문의 세부 내용을 확인하지 못했습니다."
+            suggestions = (
+                f"{subject} 관련 기록에 나타난 주요 사건을 알려줘.",
+                f"{subject} 관련 기록에 등장하는 인물을 알려줘.",
+                f"{subject}의 역사적 역할에 관해 확인 가능한 내용을 알려줘.",
+            )
+        else:
+            limitation = "현재 확보된 역사 자료에서는 질문하신 내용을 확인하지 못했습니다."
+            suggestions = (
+                "목포의 근대 역사에서 기록된 주요 사건을 알려줘.",
+                "현재 자료에서 확인 가능한 목포의 역사적 장소를 알려줘.",
+                "목포의 철도와 항만에 관해 확인 가능한 기록을 알려줘.",
+            )
+
+        examples = "\n".join(f"- {item}" for item in suggestions)
         if domain == OutputDomain.CHARACTER_DIALOGUE:
-            place = f" {active_place}에 관해서도" if active_place else ""
-            return f"현재 검증된 자료에서는 그 세부 내용을 확인하지 못했어.{place} 확인되지 않은 내용은 추측하지 않을게."
-        if domain == OutputDomain.HISTORICAL_DOCENT:
-            place = f" {active_place}의" if active_place else ""
-            return f"현재 검증된 자료에서는 질문하신{place} 세부 내용을 확인하지 못했습니다. 확인되지 않은 부분은 추측하지 않고, 기록으로 확인되는 범위의 사건·인물·장소를 중심으로 다시 질문해 주세요."
-        return "현재 확인 가능한 자료가 부족합니다."
+            answer = (
+                f"{limitation.replace('못했습니다.', '못했어.')} 확인되지 않은 내용은 추측하지 않을게. "
+                f"다음처럼 질문해 봐.\n\n{examples}\n\n확인 가능한 기록을 기준으로 답할게."
+            )
+        else:
+            answer = (
+                f"{limitation} 확인되지 않은 내용은 추측하지 않습니다. "
+                f"다음처럼 질문을 구체화해 주세요.\n\n{examples}\n\n"
+                "확인 가능한 기록을 기준으로 답변해 드리겠습니다."
+            )
+        return answer, suggestions
