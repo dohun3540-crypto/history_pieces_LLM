@@ -64,6 +64,8 @@ def test_v1_chat_uses_history_for_interpretation_and_retrieved_chunks_for_ground
         ("assistant", "자료를 확인해 볼게요."),
     ]
     assert "이전 대화는 후속 질문 해석에만 사용" in request.system_prompt
+    assert "대화 문맥 해석 | 역사적 사실의 근거가 아님" in request.user_prompt
+    assert "가상 해솔관" in request.user_prompt
     assert "demo-place" not in request.user_prompt
     assert "demo-piece" not in request.user_prompt
 

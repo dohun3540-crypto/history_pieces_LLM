@@ -335,10 +335,15 @@ class ConversationalRagOrchestrator:
         self._assert_mode_boundary(chunks)
         if not self._supports_requested_detail(query, chunks):
             chunks = []
+        interpreted_query = self._conversation_scoped_query(
+            query,
+            search_query=search_query,
+            followup_resolved=resolved_context.followup_resolved,
+        )
         conversation = self._conversation_lines(session)
         budget = self.budget.fit(
             system_prompt=SYSTEM_INSTRUCTIONS,
-            user_prompt=query,
+            user_prompt=interpreted_query,
             evidence=[item.chunk.text for item in chunks],
             conversation=conversation,
             max_new_tokens=self.max_new_tokens,
@@ -353,7 +358,9 @@ class ConversationalRagOrchestrator:
             sufficiency = SourceSufficiency.PARTIAL
         contextual_query = self._contextualize_query(
             self._journey_scoped_query(
-                query, classification.primary_situation_id.value, visited_piece_ids
+                interpreted_query,
+                classification.primary_situation_id.value,
+                visited_piece_ids,
             ),
             current_place_id=current_place_id,
             current_piece_id=current_piece_id,
@@ -628,6 +635,19 @@ class ConversationalRagOrchestrator:
         ):
             return f"{previous_query} {query}"
         return query
+
+    @staticmethod
+    def _conversation_scoped_query(
+        query: str, *, search_query: str, followup_resolved: bool
+    ) -> str:
+        """해석된 지시 대상을 대화 문맥으로 표시하되 역사 근거로 승격하지 않는다."""
+
+        if not followup_resolved or search_query.strip() == query.strip():
+            return query
+        return (
+            f"{query}\n[대화 문맥 해석 | 역사적 사실의 근거가 아님] "
+            f"{search_query}"
+        )
 
     @staticmethod
     def _journey_scoped_query(query: str, situation_id: str, visited_piece_ids: tuple[str, ...]) -> str:

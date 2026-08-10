@@ -4,6 +4,8 @@ import hashlib
 import json
 from pathlib import Path
 
+import pytest
+
 from history_chatbot.chat.context_resolver import (
     ConversationContextResolver,
     is_placeholder_context,
@@ -344,3 +346,54 @@ def test_docent_prompt_prioritizes_relevance_over_unsolicited_chronology() -> No
     assert "역사적 역할과 장소의 의미를 먼저" in DOCENT_PROMPT
     assert "연혁·연도별 정리·시기별 변화" in DOCENT_PROMPT
     assert "연표식 답변을 피한다" in DOCENT_PROMPT
+
+
+@pytest.mark.parametrize(
+    "followup",
+    ("왜?", "언제였어?", "그럼 결과는?", "좀 더 쉽게 설명해줘"),
+)
+def test_elliptical_followup_reuses_last_user_question(followup: str) -> None:
+    store = SessionStore(RuntimeMode.HACKATHON)
+    session = store.create()
+    store.add_turn(
+        session.session_id,
+        "목포 학생운동은 어떻게 전개됐어?",
+        "검색 근거에 따른 답변",
+    )
+    resolved = ConversationContextResolver().resolve(
+        followup, session,
+        current_place_id="demo-place", current_piece_id="demo-piece-1",
+    )
+    assert resolved.followup_resolved is True
+    assert resolved.search_query == f"목포 학생운동은 어떻게 전개됐어? {followup}"
+    assert "검색 근거에 따른 답변" not in resolved.search_query
+    assert "demo" not in resolved.search_query
+
+
+def test_explicit_short_question_does_not_inherit_previous_subject() -> None:
+    store = SessionStore(RuntimeMode.HACKATHON)
+    session = store.create()
+    store.add_turn(session.session_id, "목포역은 언제 생겼어?", "근거 기반 응답")
+    resolved = ConversationContextResolver().resolve(
+        "유달산은 왜 유명해?", session,
+        current_place_id=None, current_piece_id=None,
+    )
+    assert resolved.followup_resolved is False
+    assert resolved.search_query == "유달산 유달산은 왜 유명해?"
+    assert "목포역" not in resolved.search_query
+
+
+def test_resolved_followup_is_labeled_as_non_evidence_for_generation() -> None:
+    interpreted = ConversationalRagOrchestrator._conversation_scoped_query(
+        "왜?",
+        search_query="목포 학생운동은 어떻게 전개됐어? 왜?",
+        followup_resolved=True,
+    )
+    assert interpreted.startswith("왜?\n")
+    assert "대화 문맥 해석 | 역사적 사실의 근거가 아님" in interpreted
+    assert "목포 학생운동" in interpreted
+    assert ConversationalRagOrchestrator._conversation_scoped_query(
+        "유달산은 왜 유명해?",
+        search_query="유달산 유달산은 왜 유명해?",
+        followup_resolved=False,
+    ) == "유달산은 왜 유명해?"

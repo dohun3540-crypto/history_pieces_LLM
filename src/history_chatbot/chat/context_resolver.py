@@ -23,7 +23,19 @@ FOLLOWUP = re.compile(
     r"그\s*(?:때|당시|사람|사건|학교|건물|역|회사|곳|장소|뒤|과정|자료)|"
     r"여기|이곳|거기|아까|방금|이후에는?|왜\s*그랬|"
     r"누가\s*(?:참여|관여|주도)|그래서|그건|"
-    r"관련(?:된)?\s*(?:인물|사람)"
+    r"관련(?:된)?\s*(?:인물|사람)|"
+    r"그\s*(?:이유|결과|영향|의미|배경)|"
+    r"그럼|그러면|그렇다면|이어서|계속해서"
+)
+ELLIPTICAL_FOLLOWUP = re.compile(
+    r"(?:(?:그럼|그러면|그렇다면)\s*)?(?:좀\s*)?(?:더\s*)?"
+    r"(?:왜|언제|어디서|누가|누구|어떻게|무슨\s*이유(?:로)?|"
+    r"이유|결과|영향|의미|배경|그다음|다음)"
+    r"(?:은|는|이|가|부터|까지|였어|였어요|인가요|야|예요|지|요|"
+    r"\s*(?:알려\s*줘|설명해\s*줘|말해\s*줘))?[?.!]*|"
+    r"(?:좀\s*)?(?:더\s*)?(?:쉽게|자세히|짧게|간단히|다시)\s*"
+    r"(?:설명해|알려|말해|요약해)(?:\s*줘|\s*주세요|요)?[?.!]*",
+    re.IGNORECASE,
 )
 PLACE_REFERENCE = re.compile(r"여기|이곳|거기|그곳|그\s*장소|이\s*장소")
 PERSON_REFERENCE = re.compile(r"그\s*사람|그\s*인물")
@@ -108,7 +120,13 @@ class ConversationContextResolver:
             if value not in _PERSON_STOPWORDS
         )
         explicit_entities = (*explicit_places, *explicit_people)
-        is_followup = bool(session.turns and FOLLOWUP.search(query))
+        explicit_followup = bool(FOLLOWUP.search(query))
+        elliptical_followup = bool(
+            session.turns
+            and not explicit_entities
+            and ELLIPTICAL_FOLLOWUP.fullmatch(query.strip())
+        )
+        is_followup = bool(session.turns and (explicit_followup or elliptical_followup))
         refers_to_place = bool(PLACE_REFERENCE.search(query))
         generic_people_followup = bool(
             session.turns and GENERIC_PEOPLE_FOLLOWUP.fullmatch(query.strip())
@@ -122,7 +140,11 @@ class ConversationContextResolver:
             active_place = conversational_place or journey_place
         active_piece = journey_piece or conversational_piece
         terms: list[str] = []
-        if generic_people_followup:
+        if elliptical_followup:
+            # 짧은 재질문에는 주제가 없으므로 직전 사용자 질문만 결합한다.
+            # 어시스턴트 답변은 검색 근거나 검색어로 재사용하지 않는다.
+            terms.append(session.turns[-1].user)
+        elif generic_people_followup:
             terms.append(session.turns[-1].user)
         elif explicit_entities:
             terms.extend(explicit_entities)
@@ -136,7 +158,7 @@ class ConversationContextResolver:
             r"이\s*조각|현재\s*조각|방금\s*본", query
         ):
             terms.append(active_piece)
-        if is_followup and not generic_people_followup:
+        if is_followup and not generic_people_followup and not elliptical_followup:
             if PERSON_REFERENCE.search(query):
                 terms.extend(session.recent_entities[:1])
             if conversational_event:
