@@ -120,32 +120,27 @@ def test_hackathon_factory_uses_verified_lane_and_multiturn(
         current_place_id="demo-place",
         current_piece_id="demo-piece-1",
     )
-    assert second.status == "insufficient_evidence"
+    assert second.status == "ok"
     assert second.context_metadata["followup_resolved"] is True
     assert "목포역" in second.context_metadata["search_query"]
     assert "demo" not in second.context_metadata["search_query"]
-    assert "추측" in second.answer
-    assert any("목포역" in item for item in second.suggested_questions)
-    assert "기록에 등장하는 인물" in second.answer
-    assert "demo" not in second.answer
+    assert second.grounded is True
+    assert second.source_sufficiency == "partial"
+    assert second.context_metadata["retrieval_performed"] is True
+    assert second.sources
     assert len(search_queries) == 2
     assert chat.retrieval.store.metadata()["data_lane"] == "verified_hackathon"
 
-    def forbidden_complete(_request):
-        raise AssertionError("detail shortage must not call the LLM")
-
-    monkeypatch.setattr(chat.llm, "complete", forbidden_complete)
     shortage = chat.ask(
         "당시 목포역 내부 모습은 어땠어?",
         session_id=first.session_id,
         current_place_id="demo-place",
         current_piece_id="demo-piece-1",
     )
-    assert shortage.status == "insufficient_evidence"
-    assert shortage.source_sufficiency == "insufficient"
-    assert "확인하지 못했습니다" in shortage.answer
-    assert "추측" in shortage.answer
-    assert "demo" not in shortage.answer
+    assert shortage.status == "ok"
+    assert shortage.source_sufficiency == "partial"
+    assert shortage.context_metadata["requested_detail_supported"] is False
+    assert shortage.sources
     assert len(search_queries) == 3
 
 
@@ -352,7 +347,7 @@ def test_docent_prompt_prioritizes_relevance_over_unsolicited_chronology() -> No
 
 @pytest.mark.parametrize(
     "followup",
-    ("왜?", "언제였어?", "그럼 결과는?", "좀 더 쉽게 설명해줘"),
+    ("왜?", "언제였어?", "그럼 결과는?"),
 )
 def test_elliptical_followup_reuses_last_user_question(followup: str) -> None:
     store = SessionStore(RuntimeMode.HACKATHON)
@@ -372,6 +367,23 @@ def test_elliptical_followup_reuses_last_user_question(followup: str) -> None:
     assert "demo" not in resolved.search_query
 
 
+def test_answer_transformation_is_not_rewritten_as_a_new_search_question() -> None:
+    store = SessionStore(RuntimeMode.HACKATHON)
+    session = store.create()
+    store.add_turn(
+        session.session_id,
+        "목포 학생운동은 어떻게 전개됐어?",
+        "검색 근거에 따른 답변",
+    )
+    resolved = ConversationContextResolver().resolve(
+        "좀 더 쉽게 설명해줘", session,
+        current_place_id="demo-place", current_piece_id="demo-piece-1",
+    )
+    assert resolved.followup_resolved is True
+    assert resolved.search_query == "좀 더 쉽게 설명해줘"
+    assert resolved.needs_new_evidence is False
+
+
 def test_explicit_short_question_does_not_inherit_previous_subject() -> None:
     store = SessionStore(RuntimeMode.HACKATHON)
     session = store.create()
@@ -381,7 +393,7 @@ def test_explicit_short_question_does_not_inherit_previous_subject() -> None:
         current_place_id=None, current_piece_id=None,
     )
     assert resolved.followup_resolved is False
-    assert resolved.search_query == "유달산 유달산은 왜 유명해?"
+    assert resolved.search_query == "유달산은 왜 유명해?"
     assert "목포역" not in resolved.search_query
 
 
@@ -420,5 +432,5 @@ def test_insufficient_guidance_uses_place_and_question_intent(
     assert expected in answer
     assert "목포역" in answer
     assert "추측하지 않습니다" in answer
-    assert len(suggestions) == 3
+    assert len(suggestions) == 1
     assert all("목포역" in item for item in suggestions)

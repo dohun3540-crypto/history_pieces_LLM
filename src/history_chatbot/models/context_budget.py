@@ -56,21 +56,32 @@ class ContextBudgetManager:
         if available <= required:
             raise ValueError("context_length_exceeded: 시스템 지침과 현재 질문을 유지할 수 없습니다.")
 
-        kept_evidence: list[str] = []
         used = required
+        kept_conversation: list[str] = []
+        # The immediately previous exchange is needed to resolve ellipsis and
+        # answer-transformation requests. Reserve it before evidence, then keep
+        # high-score evidence ahead of older chat history.
+        recent = conversation[-1:] if conversation else ()
+        for item in recent:
+            cost = self.estimator.estimate(item)
+            if used + cost <= available:
+                kept_conversation.append(item)
+                used += cost
+
+        kept_evidence: list[str] = []
         for item in evidence:  # 이미 검색 점수 순
             cost = self.estimator.estimate(item)
             if used + cost <= available:
                 kept_evidence.append(item)
                 used += cost
 
-        kept_conversation: list[str] = []
-        for item in reversed(conversation):  # 최근 대화 우선
+        older_kept: list[str] = []
+        for item in reversed(conversation[:-1]):  # 최근 대화 우선
             cost = self.estimator.estimate(item)
             if used + cost <= available:
-                kept_conversation.append(item)
+                older_kept.append(item)
                 used += cost
-        kept_conversation.reverse()
+        kept_conversation = list(reversed(older_kept)) + kept_conversation
         return BudgetResult(
             system_prompt,
             user_prompt,

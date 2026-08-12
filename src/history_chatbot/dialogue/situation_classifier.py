@@ -108,9 +108,21 @@ class SituationClassifier:
 
     @staticmethod
     def _is_fact_request(text: str) -> bool:
-        return text.endswith(("?", "요?", "？")) or any(
+        explicit_history_request = bool(
+            re.search(
+                r"(?:역사|사건|인물|목포(?:역|항|진)|영사관|주식회사|학생운동|"
+                r"독립운동|건물).*(?:(?:이야기|얘기)(?:해\s*줘|\s*좀\s*해줘)?|넘어가자|돌아가자|살펴보자)",
+                text,
+            )
+        )
+        return explicit_history_request or text.endswith(("?", "요?", "？")) or any(
             x in text
-            for x in ("왜", "언제", "무엇", "어떤", "알려", "설명", "관계", "什么", "何时", "哪年", "哪里", "多少", "是谁", "为什么")
+            for x in (
+                "왜", "언제", "무엇", "어떤", "알려", "설명", "관계",
+                "이야기해줘", "이야기해 줘", "얘기해줘", "얘기 좀 해줘",
+                "什么", "何时", "哪年", "哪里",
+                "多少", "是谁", "为什么",
+            )
         )
 
     def _requires_rag(self, situation: S, text: str, secondary: list[S]) -> bool:

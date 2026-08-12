@@ -180,9 +180,11 @@ def test_prompt_has_all_boundaries_and_no_guessing_rule() -> None:
         locale="ko",
     )
     assert "[시스템 지침" in prompt
-    assert "[이전 대화 요약]" in prompt
-    assert "[검색 근거]" in prompt
-    assert "[사용자 질문]" in prompt
+    assert "[대화 문맥 | 역사적 사실의 근거가 아님]" in prompt
+    assert "[복원된 현재 질문 | 검색 근거가 아님]" in prompt
+    assert "[검색된 역사 근거 | 사실 판단의 유일한 근거]" in prompt
+    assert "[현재 사용자 메시지]" in prompt
+    assert "[답변 지시]" in prompt
     assert "근거에 없는 내용은 추측" in SYSTEM_INSTRUCTIONS
     assert "개발 fixture는 실제 역사 사실이 아니다" in prompt
 

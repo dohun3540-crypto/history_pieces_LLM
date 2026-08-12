@@ -16,6 +16,16 @@ class SessionTurn:
     assistant: str
 
 
+@dataclass(frozen=True, slots=True)
+class EvidenceTurn:
+    """A retrieval trace; assistant prose is deliberately excluded."""
+
+    user: str
+    active_place: str
+    active_topic: str
+    chunk_ids: tuple[str, ...]
+
+
 @dataclass(slots=True)
 class ChatSession:
     session_id: str
@@ -26,8 +36,10 @@ class ChatSession:
     active_piece: str = ""
     active_topic: str = ""
     recent_entities: tuple[str, ...] = ()
+    recent_people: tuple[str, ...] = ()
     recent_event: str = ""
     recent_period: str = ""
+    evidence_turns: list[EvidenceTurn] = field(default_factory=list)
 
 
 class SessionStore:
@@ -67,14 +79,42 @@ class SessionStore:
         session.turns.append(SessionTurn(user, assistant))
         if len(session.turns) > self.max_turns:
             removed = session.turns.pop(0)
-            addition = f"사용자: {removed.user}\n응답: {removed.assistant}\n"
-            session.summary = (session.summary + addition)[-self.max_summary_chars :]
+            addition = (
+                f"[USER]\n{removed.user}\n"
+                f"[ASSISTANT | 대화 문맥, 사실 근거 아님]\n{removed.assistant}"
+            )
+            entries = [
+                item for item in (*session.summary.split("\n---\n"), addition) if item
+            ]
+            while entries and len("\n---\n".join(entries)) > self.max_summary_chars:
+                entries.pop(0)
+            session.summary = "\n---\n".join(entries)
+        self._save()
+
+    def add_evidence_turn(
+        self,
+        session_id: str,
+        *,
+        user: str,
+        active_place: str,
+        active_topic: str,
+        chunk_ids: tuple[str, ...],
+    ) -> None:
+        """Persist only identifiers of chunks actually returned by retrieval."""
+
+        if not chunk_ids:
+            return
+        session = self._sessions[session_id]
+        session.evidence_turns.append(
+            EvidenceTurn(user, active_place, active_topic, chunk_ids)
+        )
+        session.evidence_turns = session.evidence_turns[-self.max_turns :]
         self._save()
 
     def update_context(self, session_id: str, **values: object) -> None:
         session = self._sessions[session_id]
         for name in (
-            "active_place", "active_piece", "active_topic", "recent_entities",
+            "active_place", "active_piece", "active_topic", "recent_entities", "recent_people",
             "recent_event", "recent_period",
         ):
             if name in values:
@@ -103,8 +143,18 @@ class SessionStore:
                 active_piece=item.get("active_piece", ""),
                 active_topic=item.get("active_topic", ""),
                 recent_entities=tuple(item.get("recent_entities", ())),
+                recent_people=tuple(item.get("recent_people", ())),
                 recent_event=item.get("recent_event", ""),
                 recent_period=item.get("recent_period", ""),
+                evidence_turns=[
+                    EvidenceTurn(
+                        user=value.get("user", ""),
+                        active_place=value.get("active_place", ""),
+                        active_topic=value.get("active_topic", ""),
+                        chunk_ids=tuple(value.get("chunk_ids", ())),
+                    )
+                    for value in item.get("evidence_turns", [])
+                ],
             )
             self._sessions[session.session_id] = session
 
@@ -124,8 +174,10 @@ class SessionStore:
                     "active_piece": session.active_piece,
                     "active_topic": session.active_topic,
                     "recent_entities": list(session.recent_entities),
+                    "recent_people": list(session.recent_people),
                     "recent_event": session.recent_event,
                     "recent_period": session.recent_period,
+                    "evidence_turns": [asdict(value) for value in session.evidence_turns],
                 }
                 for session in self._sessions.values()
             ],

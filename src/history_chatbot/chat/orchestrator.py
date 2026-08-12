@@ -12,7 +12,9 @@ from typing import Iterator
 
 from history_chatbot.chat.citation_builder import build_citations
 from history_chatbot.chat.context_resolver import (
+    ConversationRequestKind,
     ConversationContextResolver,
+    ResolvedContext,
     is_placeholder_context,
 )
 from history_chatbot.chat.interfaces import Citation
@@ -125,6 +127,18 @@ class ChatResponse:
 class StreamEvent:
     event: str
     data: dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedTurnEvidence:
+    resolved_context: ResolvedContext
+    chunks: tuple[RankedChunk, ...]
+    needs_new_evidence: bool
+    retrieval_performed: bool
+    memory_evidence_used: bool
+    partial_evidence_used: bool
+    detail_evidence_sufficient: bool | None
+    requested_detail_supported: bool
 
 
 class ConversationalRagOrchestrator:
@@ -310,39 +324,30 @@ class ConversationalRagOrchestrator:
             )
             self.sessions.add_turn(session.session_id, query, response.answer)
             return response
-        resolved_context = self.context_resolver.resolve(
-            query, session,
+        prepared = self._prepare_turn_evidence(
+            query,
+            session,
+            top_k=top_k,
             current_place_id=current_place_id,
             current_piece_id=current_piece_id,
         )
-        self.sessions.update_context(
-            session.session_id,
-            active_place=resolved_context.active_place,
-            active_piece=resolved_context.active_piece,
-            active_topic=resolved_context.active_topic,
-            recent_entities=resolved_context.recent_entities,
-            recent_event=resolved_context.recent_event,
-            recent_period=resolved_context.recent_period,
-        )
+        resolved_context = prepared.resolved_context
         search_query = resolved_context.search_query
-        results = self._place_aware_results(
-            self.retrieval.search(search_query),
-            resolved_context.active_place
-            if resolved_context.active_place in search_query
-            else "",
-        )
-        chunks = self._select(results, top_k)
-        self._assert_mode_boundary(chunks)
-        if not self._supports_requested_detail(query, chunks):
-            chunks = []
+        chunks = list(prepared.chunks)
+        memory_evidence_used = prepared.memory_evidence_used
+        detail_supported = prepared.requested_detail_supported
         interpreted_query = self._conversation_scoped_query(
             query,
             search_query=search_query,
             followup_resolved=resolved_context.followup_resolved,
         )
         conversation = self._conversation_lines(session)
+        runtime_system_prompt = SYSTEM_INSTRUCTIONS + "\n" + build_persona_prompt(
+            domain=output_domain, locale=locale, mode=chat_mode,
+            situation=classification.primary_situation_id, stage=stage,
+        )
         budget = self.budget.fit(
-            system_prompt=SYSTEM_INSTRUCTIONS,
+            system_prompt=runtime_system_prompt,
             user_prompt=interpreted_query,
             evidence=[item.chunk.text for item in chunks],
             conversation=conversation,
@@ -350,6 +355,15 @@ class ConversationalRagOrchestrator:
         )
         chunks = chunks[: len(budget.evidence)]
         sufficiency = self._source_sufficiency(chunks)
+        if chunks and (
+            not detail_supported
+            or (
+                prepared.partial_evidence_used
+                and resolved_context.request_kind
+                != ConversationRequestKind.TRANSFORM_PREVIOUS_ANSWER
+            )
+        ):
+            sufficiency = SourceSufficiency.PARTIAL
         if (
             sufficiency == SourceSufficiency.SUFFICIENT
             and len(chunks) == 1
@@ -367,8 +381,26 @@ class ConversationalRagOrchestrator:
             completed_place_ids=completed_place_ids,
             completed_piece_ids=visited_piece_ids,
         )
+        if chunks and not detail_supported:
+            contextual_query += (
+                "\n[근거 충족도] 질문한 세부사항은 검색 근거에 직접 없습니다. "
+                "그 세부사항은 확인하기 어렵다고 먼저 밝히고, 같은 주제에서 "
+                "근거로 확인되는 부분만 짧게 덧붙이세요."
+            )
+        if prepared.partial_evidence_used:
+            contextual_query += (
+                "\n[검증된 복합 근거] 아래 근거는 이전 turn에서 실제 검색된 chunk와 "
+                "현재 질문으로 새로 검색한 chunk를 중복 제거해 합친 것입니다. "
+                "assistant의 과거 문장은 근거로 사용하지 마세요."
+            )
+        elif memory_evidence_used:
+            contextual_query += (
+                "\n[검증된 대화 근거] 아래 근거는 이전 turn에서 "
+                "실제로 검색된 chunk입니다. assistant의 과거 문장은 근거로 사용하지 마세요."
+            )
         prompt = build_prompt(
-            user_query=contextual_query,
+            user_query=query,
+            resolved_question=contextual_query,
             conversation_summary="\n".join(budget.conversation),
             chunks=chunks,
             locale=locale,
@@ -376,6 +408,8 @@ class ConversationalRagOrchestrator:
             output_domain=output_domain,
             situation=classification.primary_situation_id,
             conversation_stage=stage,
+            include_system=False,
+            conversation_in_messages=True,
         )
         if not chunks:
             fallback_place = (
@@ -407,9 +441,7 @@ class ConversationalRagOrchestrator:
                 context_metadata={
                     "trimmed_evidence": budget.trimmed_evidence,
                     "trimmed_conversation": budget.trimmed_conversation,
-                    "followup_resolved": resolved_context.followup_resolved,
-                    "search_query": search_query,
-                    "active_place": resolved_context.active_place,
+                    **self._evidence_decision_metadata(prepared, chunks),
                 },
                 refusal_reason="insufficient_evidence",
                 latency_ms=round((time.perf_counter() - started) * 1000),
@@ -469,11 +501,9 @@ class ConversationalRagOrchestrator:
                     PROMPT_VERSION,
                     context_metadata={
                         **dict(request.metadata.get("context_budget", {})),
-                        "followup_resolved": resolved_context.followup_resolved,
-                        "search_query": search_query,
-                        "active_place": resolved_context.active_place,
                         "active_piece": resolved_context.active_piece,
                         "finish_reason": getattr(completion, "finish_reason", "stop"),
+                        **self._evidence_decision_metadata(prepared, chunks),
                     },
                     citations=tuple(asdict(item) for item in citations),
                     evidence=tuple(item.chunk.text for item in chunks),
@@ -503,6 +533,14 @@ class ConversationalRagOrchestrator:
                 )
         self.sessions.add_turn(session.session_id, query, response.answer)
         if chunks:
+            if prepared.retrieval_performed:
+                self.sessions.add_evidence_turn(
+                    session.session_id,
+                    user=query,
+                    active_place=resolved_context.active_place,
+                    active_topic=resolved_context.active_topic,
+                    chunk_ids=tuple(item.chunk.chunk_id for item in chunks),
+                )
             retrieved_entities = tuple(dict.fromkeys(
                 title
                 for title in (item.chunk.title for item in chunks)
@@ -513,6 +551,9 @@ class ConversationalRagOrchestrator:
                 recent_entities=tuple(dict.fromkeys(
                     (*resolved_context.recent_entities, *retrieved_entities)
                 ))[:8],
+                recent_people=self._recent_people(
+                    response.answer, resolved_context.recent_people
+                ),
             )
         return response
 
@@ -525,14 +566,28 @@ class ConversationalRagOrchestrator:
             raise TypeError(f"지원하지 않는 인자: {', '.join(kwargs)}")
         query = self._validate(user_query, locale, top_k)
         session = self.sessions.get_or_create(session_id, locale)
-        previous = session.turns[-1].user if session.turns else ""
-        chunks = self._select(
-            self.retrieval.search(self._rewrite_followup(query, previous)), top_k
+        prepared = self._prepare_turn_evidence(
+            query, session, top_k=top_k,
+            current_place_id=None, current_piece_id=None,
         )
-        self._assert_mode_boundary(chunks)
+        resolved_context = prepared.resolved_context
+        chunks = list(prepared.chunks)
+        memory_evidence_used = prepared.memory_evidence_used
+        interpreted_query = self._conversation_scoped_query(
+            query,
+            search_query=resolved_context.search_query,
+            followup_resolved=resolved_context.followup_resolved,
+        )
+        stream_system_prompt = SYSTEM_INSTRUCTIONS + "\n" + build_persona_prompt(
+            domain=OutputDomain.CHARACTER_DIALOGUE,
+            locale=locale,
+            mode=ConversationMode.FREE_CHAT,
+            situation=SituationId.HISTORY_FACT_QUESTION,
+            stage=None,
+        )
         budget = self.budget.fit(
-            system_prompt=SYSTEM_INSTRUCTIONS,
-            user_prompt=query,
+            system_prompt=stream_system_prompt,
+            user_prompt=interpreted_query,
             evidence=[item.chunk.text for item in chunks],
             conversation=self._conversation_lines(session),
             max_new_tokens=self.max_new_tokens,
@@ -553,6 +608,7 @@ class ConversationalRagOrchestrator:
                 context_metadata={
                     "trimmed_evidence": budget.trimmed_evidence,
                     "trimmed_conversation": budget.trimmed_conversation,
+                    **self._evidence_decision_metadata(prepared, chunks),
                 },
                 request_state="insufficient_evidence",
                 ui_state="insufficient_evidence",
@@ -564,16 +620,19 @@ class ConversationalRagOrchestrator:
             return
         prompt = build_prompt(
             user_query=query,
+            resolved_question=interpreted_query,
             conversation_summary="\n".join(budget.conversation),
             chunks=chunks,
             locale=locale,
+            include_system=False,
+            conversation_in_messages=True,
         )
         is_fixture = all(
             item.chunk.payload.get("data_classification") == "fictional_fixture"
             for item in chunks
         )
         request = self._llm_request(
-            query, prompt, session, chunks, is_fixture, budget,
+            interpreted_query, prompt, session, chunks, is_fixture, budget,
             locale=locale, conversation_mode=ConversationMode.FREE_CHAT,
             output_domain=OutputDomain.CHARACTER_DIALOGUE,
             situation=SituationId.HISTORY_FACT_QUESTION,
@@ -623,11 +682,26 @@ class ConversationalRagOrchestrator:
                     context_metadata={
                         **dict(request.metadata.get("context_budget", {})),
                         "finish_reason": event.data.get("finish_reason", "stop"),
+                        **self._evidence_decision_metadata(prepared, chunks),
                     },
                     warnings=generation_warnings,
                     **self._provisional_metadata(chunks),
                 )
                 self.sessions.add_turn(session.session_id, query, answer)
+                if chunks and prepared.retrieval_performed:
+                    self.sessions.add_evidence_turn(
+                        session.session_id,
+                        user=query,
+                        active_place=resolved_context.active_place,
+                        active_topic=resolved_context.active_topic,
+                        chunk_ids=tuple(item.chunk.chunk_id for item in chunks),
+                    )
+                self.sessions.update_context(
+                    session.session_id,
+                    recent_people=self._recent_people(
+                        answer, resolved_context.recent_people
+                    ),
+                )
                 yield StreamEvent(
                     "completed",
                     {
@@ -733,6 +807,187 @@ class ConversationalRagOrchestrator:
             + "; ".join(context)
         )
 
+    def _prepare_turn_evidence(
+        self,
+        query: str,
+        session: ChatSession,
+        *,
+        top_k: int,
+        current_place_id: str | None,
+        current_piece_id: str | None,
+    ) -> PreparedTurnEvidence:
+        """Share conversation resolution and evidence policy across generation modes."""
+
+        resolved = self.context_resolver.resolve(
+            query,
+            session,
+            current_place_id=current_place_id,
+            current_piece_id=current_piece_id,
+        )
+        self.sessions.update_context(
+            session.session_id,
+            active_place=resolved.active_place,
+            active_piece=resolved.active_piece,
+            active_topic=resolved.active_topic,
+            recent_entities=resolved.recent_entities,
+            recent_people=resolved.recent_people,
+            recent_event=resolved.recent_event,
+            recent_period=resolved.recent_period,
+        )
+        place_filter = (
+            resolved.active_place
+            if resolved.active_place in resolved.search_query else ""
+        )
+        reuses_memory = resolved.request_kind in {
+            ConversationRequestKind.TRANSFORM_PREVIOUS_ANSWER,
+            ConversationRequestKind.EXPAND_PREVIOUS_ANSWER,
+        }
+        remembered = (
+            self._remembered_evidence(
+                session,
+                active_place=resolved.active_place,
+                active_topic=resolved.active_topic,
+                top_k=top_k,
+                prefer_latest=True,
+            )
+            if reuses_memory else []
+        )
+        remembered = self._select(
+            self._place_aware_results(remembered, place_filter), top_k
+        )
+
+        detail_sufficient: bool | None = None
+        if resolved.request_kind == ConversationRequestKind.EXPAND_PREVIOUS_ANSWER:
+            detail_sufficient = self._detail_evidence_sufficient(
+                resolved.resolved_question, remembered
+            )
+            needs_new_evidence = not detail_sufficient
+        elif resolved.request_kind == ConversationRequestKind.TRANSFORM_PREVIOUS_ANSWER:
+            needs_new_evidence = not remembered
+        else:
+            needs_new_evidence = True
+
+        retrieval_performed = needs_new_evidence
+        retrieved: list[RankedChunk] = []
+        if retrieval_performed:
+            retrieved = self._select(
+                self._place_aware_results(
+                    self.retrieval.search(resolved.search_query), place_filter
+                ),
+                top_k,
+            )
+
+        partial_evidence_used = bool(remembered and retrieval_performed)
+        if partial_evidence_used:
+            chunks = self._compose_partial_evidence(remembered, retrieved, top_k)
+        elif remembered and not retrieval_performed:
+            chunks = remembered
+        else:
+            chunks = retrieved
+
+        if not chunks and (
+            resolved.followup_resolved
+            or not self._supports_requested_detail(query, chunks)
+        ):
+            chunks = self._remembered_evidence(
+                session,
+                active_place=resolved.active_place,
+                active_topic=resolved.active_topic,
+                top_k=top_k,
+            )
+            chunks = self._select(
+                self._place_aware_results(chunks, place_filter), top_k
+            )
+            remembered = chunks
+            partial_evidence_used = bool(chunks and retrieval_performed)
+
+        self._assert_mode_boundary(chunks)
+        remembered_ids = {item.chunk.chunk_id for item in remembered}
+        memory_evidence_used = any(
+            item.chunk.chunk_id in remembered_ids for item in chunks
+        )
+        return PreparedTurnEvidence(
+            resolved_context=resolved,
+            chunks=tuple(chunks),
+            needs_new_evidence=needs_new_evidence,
+            retrieval_performed=retrieval_performed,
+            memory_evidence_used=memory_evidence_used,
+            partial_evidence_used=partial_evidence_used,
+            detail_evidence_sufficient=detail_sufficient,
+            requested_detail_supported=self._supports_requested_detail(query, chunks),
+        )
+
+    def _compose_partial_evidence(
+        self,
+        remembered: list[RankedChunk],
+        retrieved: list[RankedChunk],
+        top_k: int,
+    ) -> list[RankedChunk]:
+        """Keep relevant prior provenance while adding new, deduplicated evidence."""
+
+        candidates = [*remembered[:1], *retrieved, *remembered[1:]]
+        return self._select(candidates, top_k)
+
+    @staticmethod
+    def _detail_evidence_sufficient(
+        resolved_question: str, chunks: list[RankedChunk]
+    ) -> bool:
+        if not chunks:
+            return False
+        evidence = " ".join(
+            f"{item.chunk.title} {item.chunk.text} "
+            f"{item.chunk.payload.get('keywords', '')} "
+            f"{item.chunk.payload.get('period', '')}"
+            for item in chunks
+        )
+        aspects = {
+            "background": (r"배경|이유|원인|계기", r"배경|이유|원인|계기|때문|위해|따라"),
+            "result": (r"결과|영향|이후|그\s*뒤", r"결과|영향|이후|이어졌|되었|됐다|남겼"),
+            "people": (r"인물|사람|누가|누구|참석자", r"인물|사람|참석|주도|대표|장관|교수"),
+            "time": (r"시점|언제|연도|날짜|당시", r"(?:18|19|20)\d{2}년|\d{1,2}월|\d{1,2}일|당시"),
+            "process": (r"과정|전개|구체적|어떻게", r"과정|전개|진행|도착|참석|개최|발생"),
+        }
+        requested = {
+            name for name, (query_pattern, _evidence_pattern) in aspects.items()
+            if re.search(query_pattern, resolved_question)
+        }
+        supported = {
+            name for name, (_query_pattern, evidence_pattern) in aspects.items()
+            if re.search(evidence_pattern, evidence)
+        }
+        if requested:
+            return requested <= supported and len(evidence) >= 160
+        return len(evidence) >= 220 and (
+            len(supported) >= 3 or (len(chunks) >= 2 and len(evidence) >= 350)
+        )
+
+    @staticmethod
+    def _evidence_decision_metadata(
+        prepared: PreparedTurnEvidence,
+        selected_chunks: list[RankedChunk] | None = None,
+    ) -> dict[str, object]:
+        resolved = prepared.resolved_context
+        return {
+            "followup_resolved": resolved.followup_resolved,
+            "search_query": resolved.search_query,
+            "resolved_question": resolved.resolved_question,
+            "request_kind": resolved.request_kind.value,
+            "needs_new_evidence": prepared.needs_new_evidence,
+            "retrieval_performed": prepared.retrieval_performed,
+            "memory_evidence_used": prepared.memory_evidence_used,
+            "partial_evidence_used": prepared.partial_evidence_used,
+            "detail_evidence_sufficient": prepared.detail_evidence_sufficient,
+            "requested_detail_supported": prepared.requested_detail_supported,
+            "selected_evidence_ids": tuple(
+                item.chunk.chunk_id
+                for item in (
+                    selected_chunks
+                    if selected_chunks is not None else prepared.chunks
+                )
+            ),
+            "active_place": resolved.active_place,
+        }
+
     def _select(self, results: list[RankedChunk], top_k: int) -> list[RankedChunk]:
         selected: list[RankedChunk] = []
         seen_chunks: set[str] = set()
@@ -749,19 +1004,53 @@ class ConversationalRagOrchestrator:
                 break
         return selected
 
+    def _remembered_evidence(
+        self,
+        session: ChatSession,
+        *,
+        active_place: str,
+        active_topic: str,
+        top_k: int,
+        prefer_latest: bool = False,
+    ) -> list[RankedChunk]:
+        """Recover only chunks that retrieval actually returned in an earlier turn."""
+
+        chosen_ids: tuple[str, ...] = ()
+        for turn in reversed(session.evidence_turns):
+            if prefer_latest:
+                chosen_ids = turn.chunk_ids
+                break
+            same_place = bool(active_place and turn.active_place == active_place)
+            same_topic = bool(active_topic and turn.active_topic == active_topic)
+            if same_place or same_topic or (not active_place and not active_topic):
+                chosen_ids = turn.chunk_ids
+                break
+        if not chosen_ids:
+            return []
+        by_id = {chunk.chunk_id: chunk for chunk in self.retrieval.store.chunks()}
+        return [
+            RankedChunk(by_id[chunk_id], 1.0, ("verified_conversation_memory",))
+            for chunk_id in chosen_ids[:top_k]
+            if chunk_id in by_id
+        ]
+
     @staticmethod
     def _place_aware_results(
         results: list[RankedChunk], active_place: str
     ) -> list[RankedChunk]:
         if not active_place:
             return results
-        return sorted(
-            results,
-            key=lambda item: (
-                active_place in f"{item.chunk.title} {item.chunk.text}", item.score
-            ),
-            reverse=True,
-        )
+        compact_place = re.sub(r"\s+", "", active_place)
+        if compact_place not in {"목포"}:
+            exact = [
+                item for item in results
+                if compact_place in re.sub(
+                    r"\s+", "", f"{item.chunk.title} {item.chunk.text}"
+                )
+            ]
+            if exact:
+                return exact
+        return results
 
     @staticmethod
     def _supports_requested_detail(
@@ -769,48 +1058,75 @@ class ConversationalRagOrchestrator:
     ) -> bool:
         """Reject narrow visual/interior claims when retrieval lacks that detail."""
 
-        if not re.search(r"내부|실내|안쪽|건축\s*양식", query):
+        if not re.search(r"내부|실내|안쪽|건축\s*양식|천장|색깔|색상", query):
             return True
         evidence = " ".join(item.chunk.text for item in chunks)
-        return bool(
-            re.search(
-                r"내부|실내|대합실|매표소|승강장|평면|구조|건축\s*양식",
-                evidence,
-            )
-        )
+        requested_terms = {
+            term
+            for term in ("천장", "색깔", "색상", "내부", "실내", "안쪽", "건축 양식")
+            if term in query
+        }
+        if requested_terms & {"천장", "색깔", "색상"}:
+            return bool(requested_terms & {"천장", "색깔", "색상"} & set(re.findall(r"천장|색깔|색상", evidence)))
+        return bool(re.search(r"내부|실내|대합실|매표소|승강장|평면|구조|건축\s*양식", evidence))
 
     @staticmethod
     def _conversation_lines(session: ChatSession) -> list[str]:
-        lines = [session.summary] if session.summary else []
+        lines = [f"[OLDER SUMMARY]\n{session.summary}"] if session.summary else []
         lines.extend(
-            f"사용자: {turn.user}\n응답: {turn.assistant}" for turn in session.turns[-3:]
+            ConversationalRagOrchestrator._turn_line(turn.user, turn.assistant)
+            for turn in session.turns[-4:]
         )
         return lines
+
+    @staticmethod
+    def _turn_line(user: str, assistant: str) -> str:
+        return (
+            f"[USER]\n{user}\n"
+            f"[ASSISTANT | 대화 문맥, 사실 근거 아님]\n{assistant}"
+        )
+
+    @staticmethod
+    def _recent_people(answer: str, existing: tuple[str, ...]) -> tuple[str, ...]:
+        """Capture discourse referents without promoting answer text to evidence."""
+
+        stopwords = {"자료", "기록", "사람", "인물", "당시", "질문", "내용", "범위", "사실"}
+        found = re.findall(
+            r"(?<![가-힣])([가-힣]{2,4})(?=(?:은|는|이|가|과|와)"
+            r"[^.!?]{0,30}(?:참석|도착|방문|왔다|왔습니다|장관|교수|인물|주도))",
+            answer,
+        )
+        people = tuple(item for item in dict.fromkeys(found) if item not in stopwords)
+        return (people or existing)[:4]
 
     def _llm_request(
         self, query, prompt, session, chunks, is_fixture, budget, *,
         locale, conversation_mode, output_domain, situation, stage,
     ):
         remote_config = getattr(self.llm, "config", None)
+        kept_conversation = set(budget.conversation)
         messages = tuple(
             message
-            for turn in session.turns[-3:]
+            for turn in session.turns[-4:]
+            if self._turn_line(turn.user, turn.assistant) in kept_conversation
             for message in (
                 LLMMessage("user", turn.user),
                 LLMMessage("assistant", turn.assistant),
             )
         )
-        system_prompt = SYSTEM_INSTRUCTIONS
+        system_prompt = (
+            SYSTEM_INSTRUCTIONS
+            + "\n"
+            + build_persona_prompt(
+                domain=output_domain, locale=locale,
+                mode=conversation_mode, situation=situation, stage=stage,
+            )
+        )
         user_prompt = prompt
         if self.llm.backend_name == "remote" and remote_config is not None:
             safe = serialize_remote_prompt(
                 system_prompt=(
-                    SYSTEM_INSTRUCTIONS
-                    + "\n"
-                    + build_persona_prompt(
-                        domain=output_domain, locale=locale,
-                        mode=conversation_mode, situation=situation, stage=stage,
-                    )
+                    system_prompt
                 ),
                 user_query=query,
                 chunks=chunks,
@@ -917,7 +1233,22 @@ class ConversationalRagOrchestrator:
         text = re.sub(r"^\s*\[답변\]\s*", "", generated_text, count=1)
         finish_reason = finish_reason.casefold()
         if finish_reason not in {"length", "max_tokens"}:
-            return text.strip(), ()
+            normalized = text.strip()
+            incomplete_at = ConversationalRagOrchestrator._unclosed_delimiter_position(
+                normalized
+            )
+            if incomplete_at is None:
+                return normalized, ()
+            complete = ConversationalRagOrchestrator._complete_sentence_prefix(
+                normalized[:incomplete_at]
+            )
+            if not complete:
+                raise RemoteLLMError(
+                    "generation_failed",
+                    "원격 LLM 응답에 열린 괄호나 미완성 구문이 남았습니다.",
+                    retryable=True,
+                )
+            return complete, ("generation_incomplete_tail_removed",)
         complete = ConversationalRagOrchestrator._complete_sentence_prefix(
             text, discard_terminal_boundary=True
         )
@@ -928,6 +1259,18 @@ class ConversationalRagOrchestrator:
                 retryable=True,
             )
         return complete, ("generation_truncated_at_sentence_boundary",)
+
+    @staticmethod
+    def _unclosed_delimiter_position(text: str) -> int | None:
+        pairs = {")": "(", "]": "[", "}": "{"}
+        stack: list[tuple[str, int]] = []
+        for index, character in enumerate(text):
+            if character in "([{":
+                stack.append((character, index))
+            elif character in pairs:
+                if stack and stack[-1][0] == pairs[character]:
+                    stack.pop()
+        return stack[0][1] if stack else None
 
     @staticmethod
     def _complete_sentence_prefix(
@@ -1058,43 +1401,26 @@ class ConversationalRagOrchestrator:
         asks_date = bool(re.search(r"언제|건립|준공|만들|세워|생긴", query))
         if asks_people:
             limitation = f"현재 확보된 자료에서는 {subject} 관련 인물을 확정할 근거를 확인하지 못했습니다."
-            suggestions = (
-                f"{subject} 관련 기록에 등장하는 인물을 알려줘.",
-                f"{subject} 관련 주요 사건을 알려줘.",
-                f"{subject}에 관해 현재 자료에서 확인 가능한 내용을 알려줘.",
-            )
+            suggestions = (f"{subject} 관련 기록에서 확인되는 사건을 알려줘.",)
         elif asks_date:
             limitation = f"현재 확보된 자료만으로는 {subject}의 건립·형성 시점을 정확히 확인하지 못했습니다."
-            suggestions = (
-                f"{subject} 관련 기록에 나타난 주요 사건을 알려줘.",
-                f"{subject} 당시 교통이나 지역 변화에 관한 기록을 알려줘.",
-                f"{subject}에 관해 현재 자료에서 확인 가능한 내용을 알려줘.",
-            )
+            suggestions = (f"{subject} 관련 기록에서 확인되는 사건을 알려줘.",)
         elif active_place:
             limitation = f"현재 확보된 자료만으로는 {subject}에 관한 질문의 세부 내용을 확인하지 못했습니다."
-            suggestions = (
-                f"{subject} 관련 기록에 나타난 주요 사건을 알려줘.",
-                f"{subject} 관련 기록에 등장하는 인물을 알려줘.",
-                f"{subject}의 역사적 역할에 관해 확인 가능한 내용을 알려줘.",
-            )
+            suggestions = (f"{subject}의 역사적 역할에 관해 확인 가능한 내용을 알려줘.",)
         else:
             limitation = "현재 확보된 역사 자료에서는 질문하신 내용을 확인하지 못했습니다."
-            suggestions = (
-                "목포의 근대 역사에서 기록된 주요 사건을 알려줘.",
-                "현재 자료에서 확인 가능한 목포의 역사적 장소를 알려줘.",
-                "목포의 철도와 항만에 관해 확인 가능한 기록을 알려줘.",
-            )
+            suggestions = ("목포의 철도와 항만에 관해 확인 가능한 기록을 알려줘.",)
 
         examples = "\n".join(f"- {item}" for item in suggestions)
         if domain == OutputDomain.CHARACTER_DIALOGUE:
             answer = (
-                f"{limitation.replace('못했습니다.', '못했어.')} 확인되지 않은 내용은 추측하지 않을게. "
-                f"다음처럼 질문해 봐.\n\n{examples}\n\n확인 가능한 기록을 기준으로 답할게."
+                f"{limitation.replace('습니다.', '어.')} 확인되지 않은 내용은 덧붙이지 않을게. "
+                f"원한다면 이렇게 이어갈 수 있어.\n\n{examples}"
             )
         else:
             answer = (
                 f"{limitation} 확인되지 않은 내용은 추측하지 않습니다. "
-                f"다음처럼 질문을 구체화해 주세요.\n\n{examples}\n\n"
-                "확인 가능한 기록을 기준으로 답변해 드리겠습니다."
+                f"원하시면 다음 기록으로 이어가겠습니다.\n\n{examples}"
             )
         return answer, suggestions
