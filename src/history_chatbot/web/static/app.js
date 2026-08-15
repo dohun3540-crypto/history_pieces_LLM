@@ -31,6 +31,7 @@ const ACTION_PRESENTATION = {
   OPEN_FREE_CHAT: { label: "자유대화 열기", description: "원래 질문과 현재 여정 문맥을 보존해 이어서 물어봅니다." },
   OFFER_MORE_HISTORY_IN_FREE_CHAT: { label: "자세히 물어보기", description: "출처가 필요한 설명은 자유대화에서 이어갈 수 있어요." },
 };
+const INITIAL_SUGGESTIONS = ["이 장소는 언제 만들어졌나요?", "관련 인물은 누구인가요?"];
 
 const byId = (id) => document.getElementById(id);
 const statusNode = byId("app-status");
@@ -202,6 +203,7 @@ function renderActionHint(action, transition = null) {
 async function sendPiece(message) {
   const normalized = message.trim();
   if (!normalized || state.request === "loading" || state.lastRequest === `piece:${normalized}`) return;
+  byId("piece-input").blur();
   state.lastRequest = `piece:${normalized}`;
   setRequestState("loading", "기록새가 답을 준비하고 있어요");
   let pendingTransition = null;
@@ -228,7 +230,6 @@ async function sendPiece(message) {
   } finally {
     state.lastRequest = "";
     if (state.request !== "error" && state.request !== "insufficient_evidence") setRequestState("idle");
-    byId("piece-input").focus();
   }
   if (pendingTransition) await openFree(pendingTransition, transitionNotice);
 }
@@ -236,6 +237,7 @@ async function sendPiece(message) {
 async function sendFree(message) {
   const normalized = message.trim();
   if (!normalized || state.request === "loading" || state.lastRequest === `free:${normalized}`) return;
+  byId("free-input").blur();
   state.lastRequest = `free:${normalized}`;
   appendMessage("user", normalized);
   setRequestState("loading");
@@ -257,7 +259,6 @@ async function sendFree(message) {
     setRequestState("error", error.message);
   } finally {
     state.lastRequest = "";
-    byId("free-input").focus();
   }
 }
 
@@ -355,6 +356,7 @@ async function initialize() {
     if (!session) session = await api("/api/session", { method: "POST", body: JSON.stringify({ locale: "ko" }) });
     sessionStorage.setItem("historyPiecesSession", session.session_id);
     renderSession(session);
+    renderSuggestions(INITIAL_SUGGESTIONS);
     state.app = "ready";
     setRequestState("idle");
   } catch (error) {
@@ -380,7 +382,7 @@ byId("free-form").addEventListener("submit", (event) => {
 document.querySelectorAll("[data-quick]").forEach((button) => button.addEventListener("click", () => sendPiece(button.dataset.quick)));
 document.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", () => journeyAction(button.dataset.action)));
 ["floating-chat", "open-free-chat", "header-free-chat"].forEach((id) => byId(id).addEventListener("click", () => openFree()));
-["close-free-chat", "return-to-game"].forEach((id) => byId(id).addEventListener("click", closeFree));
+byId("return-to-game").addEventListener("click", closeFree);
 byId("citation-toggle").addEventListener("click", () => {
   const panel = byId("citation-panel");
   panel.hidden = !panel.hidden;

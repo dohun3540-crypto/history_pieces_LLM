@@ -248,6 +248,14 @@ def test_client_state_uses_safe_dom_and_guarded_ui_logic(client: TestClient) -> 
     assert '.free-state[data-state="insufficient_evidence"] .status-dot' in styles
     assert '.free-state[data-state="error"] .status-dot,.free-state[data-state="insufficient_evidence"]' not in styles
     assert 'to_mode: "game"' in script
+    assert 'byId("piece-input").blur()' in script
+    assert 'byId("free-input").blur()' in script
+    assert 'byId("piece-input").focus()' not in script
+    assert 'byId("free-input").focus()' not in script
+    assert "autoFocus" not in script
+    assert "renderSuggestions(INITIAL_SUGGESTIONS)" in script
+    assert 'for="piece-input"' not in client.get("/").text
+    assert 'for="free-input"' not in client.get("/").text
     assert "IMAGE ASSET" not in script
 
 
@@ -258,6 +266,8 @@ def test_integrated_ui_has_accessible_mode_and_asset_contract(client: TestClient
     assert 'role="dialog"' in html and 'aria-modal="true"' in html
     assert 'aria-live="polite"' in html and 'aria-label="자유대화 메시지"' in html
     assert 'id="return-to-game"' in html and 'id="citation-toggle"' in html
+    assert 'id="close-free-chat"' not in html
+    assert html.count('class="return-button"') == 1
     assert "prefers-reduced-motion" in styles
     assert "@media (max-width:640px)" in styles
     assert 'event.key === "Escape"' in script

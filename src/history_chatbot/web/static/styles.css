@@ -87,7 +87,7 @@ img { max-width:100%; }
 .quick-actions button { min-height:40px; padding:.5rem .75rem; color:#60462d; background:#fffdf8; border:1px solid #d8c3a3; border-radius:999px; }
 .quick-actions button:hover { border-color:#a86a30; background:#fff4df; }
 .composer { margin-top:1.1rem; }
-.composer label { display:block; margin-bottom:.4rem; font-weight:800; font-size:.82rem; }
+.composer-label { display:block; margin-bottom:.4rem; font-weight:800; font-size:.82rem; }
 .input-row { display:flex; align-items:stretch; gap:.55rem; }
 .input-row input { min-width:0; flex:1; min-height:48px; padding:.7rem .9rem; color:var(--ink); background:#fff; border:1px solid #cdb99b; border-radius:12px; }
 .send-button { min-width:76px; color:#fff9eb; background:var(--brown); border:1px solid #4d230d; border-radius:12px; font-weight:800; }

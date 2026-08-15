@@ -93,9 +93,9 @@
           </div>
 
           <form id="piece-form" class="composer">
-            <label for="piece-input">감상 또는 궁금한 점</label>
+            <span class="composer-label">감상 또는 궁금한 점</span>
             <div class="input-row">
-              <input id="piece-input" maxlength="2000" autocomplete="off" placeholder="짧게 남겨도 괜찮아">
+              <input id="piece-input" maxlength="2000" autocomplete="off" aria-label="감상 또는 궁금한 점" placeholder="짧게 남겨도 괜찮아">
               <button class="send-button" type="submit" aria-label="조각 대화 보내기">보내기</button>
             </div>
           </form>
@@ -134,7 +134,6 @@
           <img class="bird-avatar" src="/assets/giroksae/giroksae_character.png" alt="기록 수집가 기록새">
           <div><span class="eyebrow">FREE CHAT</span><h2 id="free-chat-title">기록새에게 물어보기</h2></div>
         </div>
-        <button type="button" id="close-free-chat" class="icon-button" aria-label="자유대화를 닫고 게임으로 돌아가기">닫기</button>
       </header>
 
       <div class="free-context-card">
@@ -165,13 +164,13 @@
       </section>
 
       <form id="free-form" class="composer free-composer">
-        <label for="free-input">기록새에게 질문하기</label>
+        <span class="composer-label">기록새에게 질문하기</span>
         <div class="input-row">
-          <input id="free-input" maxlength="2000" autocomplete="off" placeholder="현재 장소의 역사나 출처를 물어보세요">
+          <input id="free-input" maxlength="2000" autocomplete="off" aria-label="기록새에게 질문하기" placeholder="현재 장소의 역사나 출처를 물어보세요">
           <button class="send-button" type="submit" aria-label="자유대화 보내기">보내기</button>
         </div>
       </form>
-      <button type="button" id="return-to-game" class="return-button">게임으로 돌아가기</button>
+      <button type="button" id="return-to-game" class="return-button" aria-label="자유대화를 닫고 게임으로 돌아가기">게임으로 돌아가기</button>
     </section>
   </div>
 
