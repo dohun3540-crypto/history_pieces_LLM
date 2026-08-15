@@ -227,10 +227,48 @@ def test_length_finish_reason_removes_incomplete_tail() -> None:
     assert "John J" not in text
     assert warnings == ("generation_truncated_at_sentence_boundary",)
 
-    with pytest.raises(RemoteLLMError, match="길이 제한"):
-        ConversationalRagOrchestrator._completion_text(
-            SimpleNamespace(generated_text="완성되지 않은 한 문장", finish_reason="length")
-        )
+    incomplete, warnings = ConversationalRagOrchestrator._completion_text(
+        SimpleNamespace(generated_text="완성되지 않은 한 문장", finish_reason="length")
+    )
+    assert incomplete == "완성되지 않은 한 문장"
+    assert warnings == ("generation_no_complete_sentence",)
+
+
+@pytest.mark.parametrize(
+    "leaked",
+    ("[사용자] 내부 질문을 복제했습니다.", "사용자: 내부 질문을 복제했습니다."),
+)
+def test_grounded_stabilizer_replaces_user_role_prompt_leak(leaked: str) -> None:
+    answer, warnings, replaced = ConversationalRagOrchestrator._stabilize_grounded_answer(
+        leaked, query="목포역은 언제 개통했어?", chunks=[],
+    )
+
+    assert replaced is True
+    assert warnings == ("generation_output_replaced_with_grounded_limit",)
+    assert "사용자" not in answer
+
+
+def test_grounded_stabilizer_removes_echo_sentences_but_keeps_answer() -> None:
+    query = "검색 자료에서 확인되는 내용만 말해 줘."
+    answer, warnings, replaced = ConversationalRagOrchestrator._stabilize_grounded_answer(
+        query + " 2001년 " + query + " 목포역은 1913년에 개통했습니다.",
+        query=query,
+        chunks=[],
+    )
+
+    assert replaced is False
+    assert answer == "목포역은 1913년에 개통했습니다."
+    assert warnings == ("generation_output_stabilized",)
+
+
+def test_grounded_stabilizer_replaces_short_exact_question_echo() -> None:
+    answer, warnings, replaced = ConversationalRagOrchestrator._stabilize_grounded_answer(
+        "두 번째 단체의 시기는?", query="두 번째 단체의 시기는?", chunks=[],
+    )
+
+    assert replaced is True
+    assert "두 번째 단체" not in answer
+    assert warnings == ("generation_output_replaced_with_grounded_limit",)
 
 
 def test_free_chat_source_request_exposes_citation_panel_action(tmp_path) -> None:

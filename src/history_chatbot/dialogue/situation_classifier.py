@@ -118,7 +118,7 @@ class SituationClassifier:
         return explicit_history_request or text.endswith(("?", "요?", "？")) or any(
             x in text
             for x in (
-                "왜", "언제", "무엇", "어떤", "알려", "설명", "관계",
+                "왜", "언제", "무엇", "어떤", "알려", "설명", "관계", "확인", "구분",
                 "이야기해줘", "이야기해 줘", "얘기해줘", "얘기 좀 해줘",
                 "什么", "何时", "哪年", "哪里",
                 "多少", "是谁", "为什么",

@@ -38,7 +38,13 @@ if ([string]::IsNullOrWhiteSpace($servedModel)) {
     throw "[PROJECT START FAILED] vLLM model discovery timed out."
 }
 
-$readinessProbeMessage = "연결 확인이라고 짧게 답해 주세요."
+# Windows PowerShell 5.1 can decode a BOM-less UTF-8 .ps1 file as ANSI.  Keep
+# the probe payload ASCII-safe while still sending the intended UTF-8 text.
+$readinessProbeMessage = [System.Text.Encoding]::UTF8.GetString(
+    [System.Convert]::FromBase64String(
+        "7Jew6rKwIO2ZleyduOydtOudvOqzoCDsp6fqsowg64u17ZW0IOyjvOyEuOyalC4="
+    )
+)
 $probeBody = @{
     model = $servedModel
     messages = @(@{ role = "user"; content = $readinessProbeMessage })
@@ -62,7 +68,8 @@ $env:HISTORY_LLM_BASE_URL = $baseUrl
 $env:HISTORY_LLM_MODEL_ID = $servedModel
 $env:HISTORY_LLM_ALLOWED_HOSTS = "127.0.0.1"
 $env:LLM_READINESS_PROBE = "true"
-$env:APP_MODE = "development"
+$env:LLM_MAX_NEW_TOKENS = "256"
+$env:APP_MODE = "hackathon"
 
 $existingListener = Get-NetTCPConnection -State Listen -LocalPort $AppPort -ErrorAction SilentlyContinue
 if ($existingListener) {

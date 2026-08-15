@@ -28,6 +28,8 @@ GENERIC_WORDS = frozenset(
         "발전",
         "방법",
         "설명",
+        "설명해",
+        "설명해줘",
         "공간",
         "사용",
         "알려",
@@ -40,6 +42,10 @@ GENERIC_WORDS = frozenset(
         "해줘",
         "넘어가자",
         "돌아가자",
+        "돌아가서",
+        "돌아와서",
+        "돌아오고",
+        "다시",
         "거야",
         "그럼",
         "그러면",
@@ -49,6 +55,60 @@ GENERIC_WORDS = frozenset(
         "지었어",
         "거지",
         "설치된",
+        "시기",
+        "사건",
+        "순서",
+        "인물",
+        "장소",
+        "사실",
+        "역사적",
+        "확인된",
+        "확인되는",
+        "확인",
+        "관련해",
+        "관련된",
+        "정확한",
+        "정확히",
+        "근거해",
+        "근거로",
+        "이번",
+        "이번에",
+        "돌아",
+        "특징",
+        "관계",
+        "역할",
+        "활동",
+        "형성",
+        "변화",
+        "영향",
+        "성격",
+        "정보",
+        "내용",
+        "구분해",
+        "배경",
+        "전개",
+        "결과",
+        "과정",
+        "주요",
+        "무엇이야",
+        "첫",
+        "두",
+        "번째",
+        "단체",
+        "둘",
+        "둘을",
+        "같은",
+        "보면",
+        "되는",
+        "이유",
+        "건립",
+        "설립",
+        "개통",
+        "준공",
+        "아까",
+        "말한",
+        "여기",
+        "일어났어",
     }
 )
 
@@ -80,6 +140,7 @@ _QUERY_SUFFIXES = (
     "에",
     "와",
     "과",
+    "로",
     "인",
 )
 
@@ -145,3 +206,53 @@ def normalize_query(text: str) -> NormalizedQuery:
         words,
         informative,
     )
+
+
+def explicit_subject_words(text: str) -> tuple[str, ...]:
+    """Extract grammatical subject anchors without a domain entity dictionary."""
+
+    normalized = normalize_korean(text)
+    if re.match(
+        r"\s*(?:그때|그\s*(?:때|당시|사람|인물|사건|장소|곳|역|단체|노선)|"
+        r"관련(?:된)?\s*|그럼|그러면|그렇다면|"
+        r"언제|왜|어디|누가|누구)",
+        normalized,
+    ):
+        return ()
+    captures: list[str] = []
+    captures.extend(
+        re.findall(
+            r"(?<![0-9A-Za-z가-힣·])([0-9A-Za-z가-힣·]{2,30})"
+            r"(?=(?:의|은|는|이|가|와|과|을|를|에서|(?:으)?로\s*(?:돌아|복귀)))",
+            normalized,
+        )
+    )
+    captures.extend(
+        re.findall(
+            r"(?<![0-9A-Za-z가-힣·])([0-9A-Za-z가-힣·]{2,30})(?=에\s*대해)",
+            normalized,
+        )
+    )
+    switch = re.search(
+        r"(?:이번에는?|이제는?)\s+(.{2,40}?)(?=(?:을|를|에\s*대해)\s*(?:알려|설명|말해))",
+        normalized,
+    )
+    if switch:
+        captures.append(switch.group(1))
+    returned = re.search(
+        r"(?:다시|아까)\s+(.{2,30}?)(?=(?:으)?로\s*(?:돌아|복귀))",
+        normalized,
+    )
+    if returned:
+        captures.append(returned.group(1))
+
+    captured_words = tuple(dict.fromkeys(
+        word
+        for capture in captures
+        for word in content_words(capture)
+        if not re.fullmatch(r"\d+(?:년|월|일)?", word)
+    ))
+    if captured_words:
+        return captured_words
+    informative = content_words(normalized)
+    return informative if len(informative) == 1 else ()

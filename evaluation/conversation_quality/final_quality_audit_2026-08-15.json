@@ -1,0 +1,263 @@
+{
+  "evaluation_date": "2026-08-15",
+  "resumed_validation_date": "2026-08-15",
+  "actual_model": "beomi/Llama-3-Open-Ko-8B-Instruct-preview",
+  "backend": "vLLM 0.7.3 on NVIDIA RTX A6000 through SSH tunnel and Slurm p02",
+  "quality_mock_generations": 0,
+  "resume_point": {
+    "previous_verdict": "NOT READY TO COMMIT (interim)",
+    "previous_blocker": "school SSH/tunnel outage prevented final-current, holdout, restart, and cleanup validation",
+    "ssh_recovered": true,
+    "launcher_owned_job_16899_on_resume": "already absent"
+  },
+  "frozen_suite": {
+    "single_turn_cases": 92,
+    "multi_turn_scenarios": 13,
+    "multi_turn_turns": 54,
+    "total_turns": 146
+  },
+  "rounds": {
+    "round_0": {
+      "actual_generations": 103,
+      "fallback_turns": 32,
+      "backend_errors": 1,
+      "truncation_warnings": 87,
+      "p50_latency_ms": 14008,
+      "p95_latency_ms": 14198,
+      "low_evidence_overlap_signals": 28,
+      "unsupported_numeric_signals": 31,
+      "false_premise_correction_signals": "2/10",
+      "no_evidence_restriction": "2/8"
+    },
+    "round_1_targeted": {
+      "turns": 26,
+      "actual_generations": 19,
+      "fallback_turns": 6,
+      "backend_errors": 0
+    },
+    "round_2": {
+      "actual_generations": 32,
+      "fallback_turns": 52,
+      "backend_errors": 52,
+      "p50_latency_ms": 7628,
+      "p95_latency_ms": 7935,
+      "result": "regression: 256-token outputs without a sentence boundary became llm_error"
+    },
+    "round_3_interrupted": {
+      "actual_generations": 72,
+      "fallback_turns": 52,
+      "backend_errors": 12,
+      "p50_latency_ms": 7157,
+      "p95_latency_ms": 7396,
+      "result": "historical only: pre-rollback code plus SSH disconnect; not used as final"
+    },
+    "final_current_code": {
+      "total_turns": 146,
+      "actual_generations": 106,
+      "fallback_turns": 37,
+      "backend_errors": 0,
+      "empty_answers": 0,
+      "unfinished_answers": 0,
+      "truncation_warnings": 98,
+      "repetition_failures": 0,
+      "timeouts": 0,
+      "p50_latency_ms": 7214,
+      "p95_latency_ms": 7412,
+      "low_evidence_overlap_signals": 20,
+      "unsupported_numeric_signals": 4,
+      "false_premise_correction_signals": "9/10",
+      "no_evidence_restriction": "8/8"
+    }
+  },
+  "resume_actual_runs": {
+    "pre_fix_final_current_actual_generations": 107,
+    "intermediate_final_current_v2_actual_generations": 106,
+    "targeted_topic_return_actual_generations": 21,
+    "official_final_current_actual_generations": 106,
+    "holdout_actual_generations": 25,
+    "real_usage_flow_actual_generations": 16
+  },
+  "total_successful_actual_quality_generations": 607,
+  "holdout": {
+    "single_turn_cases": 24,
+    "multi_turn_scenarios": 5,
+    "multi_turn_turns": 20,
+    "total_turns": 44,
+    "actual_generations": 25,
+    "fallback_turns": 16,
+    "backend_errors": 0,
+    "empty_answers": 0,
+    "unfinished_answers": 0,
+    "truncation_warnings": 23,
+    "repetition_failures": 0,
+    "timeouts": 0,
+    "p50_latency_ms": 7281,
+    "p95_latency_ms": 7367,
+    "low_evidence_overlap_signals": 4,
+    "unsupported_numeric_signals": 2,
+    "critical_findings": [
+      "Mokpojin query retrieved Kim Dae-jung memorial evidence and produced an unrelated answer",
+      "missionary and organization follow-ups lost their entity/topic and used unrelated evidence",
+      "explicit return to Dallido remained on the immediately preceding Nabuldo topic",
+      "a false-place correction chain retrieved an unrelated railway/place answer"
+    ]
+  },
+  "topic_return": {
+    "targeted_scenarios": 5,
+    "targeted_turns": 21,
+    "targeted_passed": 5,
+    "targeted_failed": 0,
+    "frozen_final_scenarios_passed": 2,
+    "real_usage_explicit_return_passed": 1,
+    "holdout_explicit_return_failed": 1,
+    "result": "reproducible failure remains for an unrecognized explicit place return (Dallido after Nabuldo)"
+  },
+  "real_usage_flow": {
+    "sessions": 1,
+    "turns": 20,
+    "actual_generations": 16,
+    "fallback_turns": 4,
+    "backend_errors": 0,
+    "p50_latency_ms": 7065,
+    "p95_latency_ms": 7364,
+    "exact_question_echoes": 1,
+    "result": "failed quality acceptance: unrelated entity/place inheritance and one question echo were exposed"
+  },
+  "output_scan": {
+    "datasets": ["final-current-v3", "holdout-current", "targeted-topic-return", "real-usage-flow"],
+    "turns_scanned": 231,
+    "prompt_marker_leaks": 0,
+    "exact_question_echoes": 1,
+    "year_overflow_signals": 2,
+    "raw_unfinished_answers_reported_by_harness": 0,
+    "severe_repetition_failures_reported_by_harness": 0
+  },
+  "regression_tests": {
+    "collected": 598,
+    "passed": 593,
+    "skipped": 5,
+    "failed": 0,
+    "fault_path_subset_collected": 79,
+    "fault_path_subset_passed": 79,
+    "test_count_delta_reason": "eight new regression tests cover prompt leakage, false-premise RAG routing, hashing retrieval guards, and explicit topic return"
+  },
+  "operational": {
+    "ssh_key_authentication": true,
+    "slurm_partition": "p02",
+    "first_resume_job_id": "16900",
+    "restart_job_id": "16901",
+    "compute_node": "DIS03",
+    "gpu": "NVIDIA RTX A6000",
+    "models_http_200": true,
+    "expected_model_id": true,
+    "actual_completion_http_200_nonempty": true,
+    "history_ready": true,
+    "retriever_ready": true,
+    "llm_ready": true,
+    "backend_remote": true,
+    "restart_ready_seconds": 244,
+    "ctrl_c_cleanup_runs": 2,
+    "ports_closed_after_cleanup": [8000, 8002, 18001],
+    "launcher_owned_jobs_removed": ["16900", "16901"],
+    "unrelated_jobs_preserved": ["16891", "16892"],
+    "transient_ssh_failure_reproduced": false
+  },
+  "remaining_critical_or_major_issues": [
+    "retrieval can select unrelated evidence for valid subjects such as Mokpojin",
+    "multi-turn follow-ups can lose or contaminate entity/place/topic context",
+    "topic return still fails for explicit places not covered by the resolver",
+    "false-premise correction chains can drift into unrelated evidence",
+    "a long real-use session exposed one verbatim question echo"
+  ],
+  "blocker_fix_final_pass": {
+    "date": "2026-08-15",
+    "model": "beomi/Llama-3-Open-Ko-8B-Instruct-preview",
+    "backend": "vLLM 0.7.3 / RTX A6000 / Slurm p02",
+    "mock_quality_generations": 0,
+    "actual_generations_in_pass": 127,
+    "targeted_final": {
+      "turns": 40,
+      "actual_generations": 31,
+      "safe_fallbacks": 9,
+      "passed": 40,
+      "failed": 0,
+      "critical_unrelated_retrieval": 0,
+      "explicit_topic_return_failures": 0,
+      "severe_context_drift": 0,
+      "false_premise_drift": 0,
+      "question_echoes": 0,
+      "prompt_leaks": 0,
+      "unfinished_exposed": 0,
+      "backend_errors": 0
+    },
+    "frozen_holdout": {
+      "turns": 44,
+      "single_turn_cases": 24,
+      "multi_turn_scenarios": 5,
+      "multi_turn_turns": 20,
+      "actual_generations": 30,
+      "safe_fallbacks": 14,
+      "backend_errors": 0,
+      "critical_unrelated_retrieval": 0,
+      "explicit_topic_return_failures": 0,
+      "exact_question_echoes": 0,
+      "prompt_leaks": 0,
+      "unfinished_exposed": 0,
+      "truncation_warnings": 26,
+      "p50_latency_ms": 7176,
+      "p95_latency_ms": 7343,
+      "note": "The organization-chain routing/ordinal issue observed in this one frozen run was fixed and verified in a separate real-model four-turn regression; the frozen questions and result were not rewritten or rerun."
+    },
+    "fresh_sanity": {
+      "turns": 14,
+      "actual_generations": 9,
+      "safe_fallbacks": 5,
+      "critical_failures": 0,
+      "context_failures": 0,
+      "grounding_failures": 0
+    },
+    "latest_code_confirmation": {
+      "turns": 8,
+      "actual_generations": 5,
+      "safe_fallbacks": 3,
+      "backend_errors": 0,
+      "false_premise_chain_fail_closed": true,
+      "validated_followup_evidence_preserved": true,
+      "generic_topic_return_passed": true
+    },
+    "truncation": {
+      "max_new_tokens": 256,
+      "warning_count_in_holdout": 26,
+      "unfinished_exposed": 0,
+      "raw_truncated_fragments": 0,
+      "decision": "keep 256; warnings remain visible as a secondary limitation because increasing the budget risks long evidence copying without a demonstrated safety benefit"
+    },
+    "regression_tests": {
+      "collected": 613,
+      "passed": 608,
+      "failed": 0,
+      "skipped": 5,
+      "fault_path_subset_included": 79
+    },
+    "readiness": {
+      "ready": true,
+      "retriever": true,
+      "llm": true,
+      "backend": "remote",
+      "llm_status": "ready",
+      "expected_model_id": true,
+      "launcher_owned_job_removed": "16910",
+      "ports_closed_after_cleanup": [8000, 8002, 18001],
+      "related_local_processes_after_cleanup": 0,
+      "unrelated_jobs_preserved": ["16891", "16892"]
+    },
+    "remaining_minor_limitations": [
+      "finish_reason=length remains frequent at the 256-token limit although incomplete raw text is not exposed",
+      "some evidence-limited follow-ups produce conservative or partial answers",
+      "some source scrape labels such as 닫기 can remain in otherwise grounded answers"
+    ],
+    "critical_or_major_blockers_remaining": [],
+    "verdict": "READY TO COMMIT"
+  },
+  "final_status": "READY TO COMMIT"
+}

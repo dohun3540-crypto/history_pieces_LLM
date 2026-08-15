@@ -84,6 +84,177 @@ def _resolve(user: str, followup: str, *, people: tuple[str, ...] = ()):
 
 
 @pytest.mark.parametrize(
+    ("return_query", "expected", "intervening"),
+    (
+        ("다시 목포역으로 돌아가서 개통 시기를 알려 줘.", "목포역", "광주학생운동"),
+        ("다시 고하도로 돌아가서 관련 인물을 알려 줘.", "고하도", "고인돌"),
+    ),
+)
+def test_explicit_topic_return_drops_intervening_context(
+    return_query: str, expected: str, intervening: str,
+) -> None:
+    store = SessionStore(RuntimeMode.HACKATHON)
+    session = store.create()
+    store.add_turn(session.session_id, f"{expected}에 대해 알려 줘.", "첫 답변")
+    store.add_evidence_turn(
+        session.session_id, user=f"{expected}에 대해 알려 줘.",
+        active_place="", active_topic=expected, chunk_ids=(f"{expected}-1",),
+    )
+    store.add_turn(session.session_id, f"{intervening}을 알려 줘.", "둘째 답변")
+    store.add_evidence_turn(
+        session.session_id, user=f"{intervening}을 알려 줘.",
+        active_place="", active_topic=intervening, chunk_ids=(f"{intervening}-1",),
+    )
+    store.update_context(
+        session.session_id, active_topic=intervening, recent_event=intervening,
+    )
+
+    resolved = ConversationContextResolver().resolve(
+        return_query, session, current_place_id=None, current_piece_id=None,
+    )
+
+    assert expected in resolved.search_query
+    assert intervening not in resolved.search_query
+
+
+def test_return_to_first_event_uses_first_retrieved_user_turn_only() -> None:
+    store = SessionStore(RuntimeMode.HACKATHON)
+    session = store.create()
+    store.add_turn(session.session_id, "세월호 참사를 설명해 줘.", "첫 답변")
+    store.add_evidence_turn(
+        session.session_id, user="세월호 참사를 설명해 줘.",
+        active_place="", active_topic="세월호 참사", chunk_ids=("sewol-1",),
+    )
+    store.add_turn(session.session_id, "목포대학교를 설명해 줘.", "둘째 답변")
+    store.update_context(session.session_id, active_topic="목포대학교")
+
+    resolved = ConversationContextResolver().resolve(
+        "다시 첫 사건으로 돌아가 장소를 알려 줘.", session,
+        current_place_id=None, current_piece_id=None,
+    )
+
+    assert "세월호 참사" in resolved.search_query
+    assert "장소" in resolved.search_query
+    assert "목포대학교" not in resolved.search_query
+    assert resolved.active_topic == "세월호 참사"
+
+
+def test_generic_place_return_uses_validated_subject_history() -> None:
+    store = SessionStore(RuntimeMode.HACKATHON)
+    session = store.create()
+    for topic in ("가람도", "누리도"):
+        user = f"{topic}의 역사를 알려 줘."
+        store.add_turn(session.session_id, user, "근거 기반 답변")
+        store.add_evidence_turn(
+            session.session_id, user=user, active_place="", active_topic=topic,
+            chunk_ids=(f"{topic}-1",),
+        )
+        store.update_context(session.session_id, active_topic=topic)
+
+    resolved = ConversationContextResolver().resolve(
+        "다시 가람도로 돌아가 장소 특징을 알려 줘.", session,
+        current_place_id=None, current_piece_id=None,
+    )
+
+    assert resolved.active_topic == "가람도"
+    assert "가람도" in resolved.search_query
+    assert "누리도" not in resolved.search_query
+
+
+def test_unvalidated_false_premise_topic_is_not_inherited() -> None:
+    store = SessionStore(RuntimeMode.HACKATHON)
+    session = store.create()
+    store.add_turn(session.session_id, "가람회가 2099년에 생겼지?", "확인할 수 없습니다.")
+    store.update_context(session.session_id, active_topic="가람회")
+
+    resolved = ConversationContextResolver().resolve(
+        "그럼 언제였어?", session, current_place_id=None, current_piece_id=None,
+    )
+
+    assert "가람회" not in resolved.search_query
+
+
+def test_current_explicit_subject_beats_validated_previous_topic() -> None:
+    store = SessionStore(RuntimeMode.HACKATHON)
+    session = store.create()
+    store.add_turn(session.session_id, "가람도의 역사를 알려 줘.", "근거 기반 답변")
+    store.add_evidence_turn(
+        session.session_id, user="가람도의 역사를 알려 줘.", active_place="",
+        active_topic="가람도", chunk_ids=("island-1",),
+    )
+    store.update_context(session.session_id, active_topic="가람도")
+
+    resolved = ConversationContextResolver().resolve(
+        "이번에는 누리도의 역사를 알려 줘.", session,
+        current_place_id=None, current_piece_id=None,
+    )
+
+    assert resolved.active_topic == "누리도"
+    assert "누리도" in resolved.search_query
+    assert "가람도" not in resolved.search_query
+
+
+@pytest.mark.parametrize(
+    ("followup", "expected"),
+    (("첫 단체의 인물은?", "가람회"), ("두 번째 단체의 시기는?", "누리회")),
+)
+def test_ordinal_group_reference_uses_validated_subjects(
+    followup: str, expected: str,
+) -> None:
+    store = SessionStore(RuntimeMode.HACKATHON)
+    session = store.create()
+    user = "가람회와 누리회를 구분해 줘."
+    store.add_turn(session.session_id, user, "근거 기반 답변")
+    store.add_evidence_turn(
+        session.session_id, user=user, active_place="", active_topic="가람회",
+        chunk_ids=("group-1",),
+    )
+    store.update_context(session.session_id, active_topic="가람회")
+
+    resolved = ConversationContextResolver().resolve(
+        followup, session, current_place_id=None, current_piece_id=None,
+    )
+
+    assert expected in resolved.search_query
+
+
+@pytest.mark.parametrize("followup", ("그 노선과 관련된 역은?", "관련 시기는?"))
+def test_relational_ellipsis_inherits_validated_topic(followup: str) -> None:
+    store = SessionStore(RuntimeMode.HACKATHON)
+    session = store.create()
+    store.add_turn(session.session_id, "가람선을 알려 줘.", "근거 기반 답변")
+    store.add_evidence_turn(
+        session.session_id, user="가람선을 알려 줘.", active_place="",
+        active_topic="가람선", chunk_ids=("rail-1",),
+    )
+    store.update_context(session.session_id, active_topic="가람선")
+
+    resolved = ConversationContextResolver().resolve(
+        followup, session, current_place_id=None, current_piece_id=None,
+    )
+
+    assert "가람선" in resolved.search_query
+
+
+def test_subject_aware_comparison_keeps_one_result_per_subject(
+    tmp_path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine = create_development_orchestrator(
+        runtime_dir=tmp_path / "runtime", session_path=tmp_path / "sessions.json",
+    )
+    first = _ranked("first-group", "가람회 활동 기록", title="가람회")
+    second = _ranked("second-group", "누리회 활동 기록", title="누리회")
+    monkeypatch.setattr(
+        engine.retrieval, "search",
+        lambda query: [first] if query == "가람회" else [second] if query == "누리회" else [],
+    )
+
+    results = engine._subject_aware_search("가람회와 누리회를 구분해 줘.", 3)
+
+    assert [item.chunk.title for item in results] == ["가람회", "누리회"]
+
+
+@pytest.mark.parametrize(
     "followup",
     (
         "좀 더 쉽게 설명해줘", "한 문장으로 말해줘", "정리해서 알려줘",
@@ -136,6 +307,10 @@ def test_temporal_reference_keeps_recent_event_and_period() -> None:
         active_place="목포역",
         active_topic="목포역",
         recent_period="1949년",
+    )
+    store.add_evidence_turn(
+        session.session_id, user="1949년 목포역에서 무슨 일이 있었어?",
+        active_place="목포역", active_topic="목포역", chunk_ids=("station-1",),
     )
     resolved = ConversationContextResolver().resolve(
         "그때 참석한 사람들은?", session,
@@ -346,6 +521,10 @@ def test_long_conversation_prefers_recent_topic() -> None:
     session = store.create()
     for index, topic in enumerate(("목포역", "유달산", "삼학도", "목포항", "학생운동")):
         store.add_turn(session.session_id, f"{topic} 질문 {index}", f"{topic} 답변 {index}")
+        store.add_evidence_turn(
+            session.session_id, user=f"{topic} 질문 {index}", active_place="",
+            active_topic=topic, chunk_ids=(f"topic-{index}",),
+        )
         store.update_context(session.session_id, active_topic=topic, recent_event=topic)
     resolved = ConversationContextResolver().resolve(
         "그때 결과는?", session, current_place_id=None, current_piece_id=None

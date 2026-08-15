@@ -52,6 +52,23 @@ def test_source_request_is_style_plus_evidence_and_rag() -> None:
     assert result.response_length_mode == ResponseLengthMode.SOURCE_VIEW
 
 
+@pytest.mark.parametrize(
+    "message",
+    (
+        "목포역은 1700년에 개통했지? 그 전제를 자료로 확인해 줘.",
+        "목포 양동교회가 서울 종로에 있다는 전제가 맞는지 확인해 줘.",
+    ),
+)
+def test_false_premise_verification_uses_history_rag(message: str) -> None:
+    result = classify(message)
+
+    assert result.requires_rag
+
+
+def test_historical_organization_comparison_uses_rag() -> None:
+    assert classify("가람회와 누리회를 구분해 줘.").requires_rag
+
+
 def test_cross_cultural_does_not_infer_country() -> None:
     result = classify("우리나라 역사와 비슷한 점이 있나요?")
     assert result.primary_situation_id == SituationId.CROSS_CULTURAL_COMPARISON

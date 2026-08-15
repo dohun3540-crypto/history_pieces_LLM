@@ -41,6 +41,7 @@ from history_chatbot.models.context_budget import ContextBudgetManager
 from history_chatbot.models.contract import ChatCompletionBackend, LLMMessage, LLMRequest
 from history_chatbot.models.remote import RemoteLLMError
 from history_chatbot.retrieval.base import RankedChunk
+from history_chatbot.retrieval.query_normalizer import explicit_subject_words
 from history_chatbot.retrieval.service import HybridRetrievalService
 from history_chatbot.runtime import RuntimeMode
 
@@ -334,7 +335,6 @@ class ConversationalRagOrchestrator:
         resolved_context = prepared.resolved_context
         search_query = resolved_context.search_query
         chunks = list(prepared.chunks)
-        memory_evidence_used = prepared.memory_evidence_used
         detail_supported = prepared.requested_detail_supported
         interpreted_query = self._conversation_scoped_query(
             query,
@@ -381,23 +381,9 @@ class ConversationalRagOrchestrator:
             completed_place_ids=completed_place_ids,
             completed_piece_ids=visited_piece_ids,
         )
-        if chunks and not detail_supported:
-            contextual_query += (
-                "\n[근거 충족도] 질문한 세부사항은 검색 근거에 직접 없습니다. "
-                "그 세부사항은 확인하기 어렵다고 먼저 밝히고, 같은 주제에서 "
-                "근거로 확인되는 부분만 짧게 덧붙이세요."
-            )
-        if prepared.partial_evidence_used:
-            contextual_query += (
-                "\n[검증된 복합 근거] 아래 근거는 이전 turn에서 실제 검색된 chunk와 "
-                "현재 질문으로 새로 검색한 chunk를 중복 제거해 합친 것입니다. "
-                "assistant의 과거 문장은 근거로 사용하지 마세요."
-            )
-        elif memory_evidence_used:
-            contextual_query += (
-                "\n[검증된 대화 근거] 아래 근거는 이전 turn에서 "
-                "실제로 검색된 chunk입니다. assistant의 과거 문장은 근거로 사용하지 마세요."
-            )
+        contextual_query = self._evidence_scoped_query(
+            contextual_query, prepared, selected_chunks=chunks
+        )
         prompt = build_prompt(
             user_query=query,
             resolved_question=contextual_query,
@@ -469,6 +455,11 @@ class ConversationalRagOrchestrator:
                 answer = self._apply_repetition_guard(
                     answer, output_domain=output_domain
                 )
+                answer, stabilization_warnings, output_limited = (
+                    self._stabilize_grounded_answer(answer, query=query, chunks=chunks)
+                )
+                if output_limited and sufficiency == SourceSufficiency.SUFFICIENT:
+                    sufficiency = SourceSufficiency.PARTIAL
                 if self.llm.backend_name == "mock":
                     answer = render_mock_grounded(answer, domain=output_domain, locale=locale)
                     if sufficiency == SourceSufficiency.CONFLICTING:
@@ -488,7 +479,8 @@ class ConversationalRagOrchestrator:
                     "rag_used": True,
                     "source_sufficiency": sufficiency.value,
                     "warnings": tuple(dict.fromkeys(
-                        common["warnings"] + generation_warnings + style_warnings
+                        common["warnings"] + generation_warnings
+                        + stabilization_warnings + style_warnings
                     )),
                 }
                 response = ChatResponse(
@@ -552,7 +544,7 @@ class ConversationalRagOrchestrator:
                     (*resolved_context.recent_entities, *retrieved_entities)
                 ))[:8],
                 recent_people=self._recent_people(
-                    response.answer, resolved_context.recent_people
+                    chunks, resolved_context.recent_people
                 ),
             )
         return response
@@ -572,7 +564,6 @@ class ConversationalRagOrchestrator:
         )
         resolved_context = prepared.resolved_context
         chunks = list(prepared.chunks)
-        memory_evidence_used = prepared.memory_evidence_used
         interpreted_query = self._conversation_scoped_query(
             query,
             search_query=resolved_context.search_query,
@@ -593,6 +584,9 @@ class ConversationalRagOrchestrator:
             max_new_tokens=self.max_new_tokens,
         )
         chunks = chunks[: len(budget.evidence)]
+        interpreted_query = self._evidence_scoped_query(
+            interpreted_query, prepared, selected_chunks=chunks
+        )
         if not chunks:
             fallback, suggestions = self._insufficient_guidance(
                 query, OutputDomain.CHARACTER_DIALOGUE, locale
@@ -671,6 +665,14 @@ class ConversationalRagOrchestrator:
                     })
                     return
                 answer = self._apply_hackathon_policy(completion_text, chunks)
+                answer = self._apply_repetition_guard(
+                    answer, output_domain=OutputDomain.CHARACTER_DIALOGUE
+                )
+                answer, stabilization_warnings, _output_limited = (
+                    self._stabilize_grounded_answer(
+                        answer, query=user_query, chunks=chunks
+                    )
+                )
                 response = ChatResponse(
                     answer,
                     "ok",
@@ -684,7 +686,9 @@ class ConversationalRagOrchestrator:
                         "finish_reason": event.data.get("finish_reason", "stop"),
                         **self._evidence_decision_metadata(prepared, chunks),
                     },
-                    warnings=generation_warnings,
+                    warnings=tuple(dict.fromkeys(
+                        generation_warnings + stabilization_warnings
+                    )),
                     **self._provisional_metadata(chunks),
                 )
                 self.sessions.add_turn(session.session_id, query, answer)
@@ -699,7 +703,7 @@ class ConversationalRagOrchestrator:
                 self.sessions.update_context(
                     session.session_id,
                     recent_people=self._recent_people(
-                        answer, resolved_context.recent_people
+                        chunks, resolved_context.recent_people
                     ),
                 )
                 yield StreamEvent(
@@ -872,7 +876,7 @@ class ConversationalRagOrchestrator:
         if retrieval_performed:
             retrieved = self._select(
                 self._place_aware_results(
-                    self.retrieval.search(resolved.search_query), place_filter
+                    self._subject_aware_search(resolved.search_query, top_k), place_filter
                 ),
                 top_k,
             )
@@ -885,7 +889,10 @@ class ConversationalRagOrchestrator:
         else:
             chunks = retrieved
 
-        if not chunks and (
+        explicit_topic_return = bool(
+            re.search(r"돌아가|돌아오|다시\s*(?:첫|처음)\s*(?:사건|주제)", query)
+        )
+        if not chunks and not explicit_topic_return and (
             resolved.followup_resolved
             or not self._supports_requested_detail(query, chunks)
         ):
@@ -916,6 +923,20 @@ class ConversationalRagOrchestrator:
             detail_evidence_sufficient=detail_sufficient,
             requested_detail_supported=self._supports_requested_detail(query, chunks),
         )
+
+    def _subject_aware_search(
+        self, search_query: str, top_k: int
+    ) -> list[RankedChunk]:
+        """Preserve one result per explicit subject in comparison questions."""
+
+        subjects = explicit_subject_words(search_query)
+        is_comparison = bool(re.search(r"구분|비교|차이|둘(?:을|은|이)|같은\s*단체", search_query))
+        if not is_comparison or not 2 <= len(subjects) <= 3:
+            return self.retrieval.search(search_query)
+        batches = [self.retrieval.search(subject) for subject in subjects]
+        primary = [batch[0] for batch in batches if batch]
+        remainder = [item for batch in batches for item in batch[1:]]
+        return self._select([*primary, *remainder], top_k)
 
     def _compose_partial_evidence(
         self,
@@ -987,6 +1008,32 @@ class ConversationalRagOrchestrator:
             ),
             "active_place": resolved.active_place,
         }
+
+    @staticmethod
+    def _evidence_scoped_query(
+        query: str,
+        prepared: PreparedTurnEvidence,
+        *,
+        selected_chunks: list[RankedChunk] | None = None,
+    ) -> str:
+        """Apply the same evidence-coverage guidance to sync and streaming prompts."""
+
+        evidence = prepared.chunks if selected_chunks is None else selected_chunks
+        if evidence and not prepared.requested_detail_supported:
+            query += (
+                "\n[근거 충족도] 질문한 세부사항은 검색 근거에 직접 없습니다. "
+                "그 세부사항은 확인하기 어렵다고 밝히고, 근거로 확인되는 부분은 답하세요."
+            )
+        if any(
+            item.chunk.payload.get("source_conflict") is True
+            or item.chunk.payload.get("fact_status") == "conflicting"
+            for item in evidence
+        ):
+            query += (
+                "\n[근거 상태] 선택된 자료 사이에 충돌 표시가 있습니다. "
+                "차이를 숨기거나 하나의 사실로 합치지 마세요."
+            )
+        return query
 
     def _select(self, results: list[RankedChunk], top_k: int) -> list[RankedChunk]:
         selected: list[RankedChunk] = []
@@ -1087,17 +1134,13 @@ class ConversationalRagOrchestrator:
         )
 
     @staticmethod
-    def _recent_people(answer: str, existing: tuple[str, ...]) -> tuple[str, ...]:
-        """Capture discourse referents without promoting answer text to evidence."""
+    def _recent_people(
+        chunks: list[RankedChunk], existing: tuple[str, ...]
+    ) -> tuple[str, ...]:
+        """Keep only user-resolved people; generated prose never creates referents."""
 
-        stopwords = {"자료", "기록", "사람", "인물", "당시", "질문", "내용", "범위", "사실"}
-        found = re.findall(
-            r"(?<![가-힣])([가-힣]{2,4})(?=(?:은|는|이|가|과|와)"
-            r"[^.!?]{0,30}(?:참석|도착|방문|왔다|왔습니다|장관|교수|인물|주도))",
-            answer,
-        )
-        people = tuple(item for item in dict.fromkeys(found) if item not in stopwords)
-        return (people or existing)[:4]
+        del chunks
+        return existing[:4]
 
     def _llm_request(
         self, query, prompt, session, chunks, is_fixture, budget, *,
@@ -1253,11 +1296,7 @@ class ConversationalRagOrchestrator:
             text, discard_terminal_boundary=True
         )
         if not complete:
-            raise RemoteLLMError(
-                "generation_failed",
-                "원격 LLM 응답이 길이 제한으로 완성되기 전에 종료되었습니다.",
-                retryable=True,
-            )
+            return text.strip(), ("generation_no_complete_sentence",)
         return complete, ("generation_truncated_at_sentence_boundary",)
 
     @staticmethod
@@ -1348,6 +1387,103 @@ class ConversationalRagOrchestrator:
     def _limit_piece_answer(answer: str) -> str:
         sentences = re.split(r"(?<=[.!?。！？])\s+", answer.strip())
         return " ".join(sentences[:2]).strip()
+
+    @staticmethod
+    def _stabilize_grounded_answer(
+        answer: str, *, query: str, chunks: list[RankedChunk]
+    ) -> tuple[str, tuple[str, ...], bool]:
+        """Bound weak-model output and replace prompt leakage with a scoped limitation."""
+
+        value = answer.strip()
+        value = re.sub(
+            r"^\s*(?:\[(?:답변|대화\s*문맥\s*해석|최종\s*답변)\]\s*)+",
+            "",
+            value,
+        )
+        raw_prompt_leak = bool(
+            re.search(
+                r"\[(?:검색\s*근거|자료\d+|사용자(?:\s*질문)?|USER)\]"
+                r"|(?:^|\n)\s*(?:사용자|USER)\s*[:：]",
+                value,
+                re.IGNORECASE,
+            )
+        )
+        suspicious_years = len(set(re.findall(r"(?:18|19|20|21|22|23|24)\d{2}년", value))) > 8
+        sentences = re.split(r"(?<=[.!?。！？])\s+", value)
+        echo_sentences = {
+            index for index, sentence in enumerate(sentences)
+            if ConversationalRagOrchestrator._is_question_echo(sentence, query)
+        }
+        if echo_sentences:
+            value = " ".join(
+                sentence.strip() for index, sentence in enumerate(sentences)
+                if index not in echo_sentences and sentence.strip()
+            )
+        no_complete_sentence = not bool(
+            re.search(r"[.!?。！？](?=\s|$)", value)
+        )
+        if raw_prompt_leak or suspicious_years or no_complete_sentence:
+            return (
+                ConversationalRagOrchestrator._grounded_limitation(query, chunks),
+                ("generation_output_replaced_with_grounded_limit",),
+                True,
+            )
+
+        sentences = re.split(r"(?<=[.!?。！？])\s+", value)
+        forbidden_fragments = (
+            "검색 근거에 직접 확인되는 부분은 답하세요",
+            "사실 확인 과정·판정표·초안",
+            "현재 사용자 메시지에 직접 자연스럽게 답하세요",
+        )
+        kept = [
+            sentence.strip()
+            for sentence in sentences
+            if sentence.strip()
+            and "�" not in sentence
+            and not any(fragment in sentence for fragment in forbidden_fragments)
+        ][:3]
+        stabilized = " ".join(kept).strip()
+        if not stabilized:
+            return (
+                ConversationalRagOrchestrator._grounded_limitation(query, chunks),
+                ("generation_output_replaced_with_grounded_limit",),
+                True,
+            )
+        warnings: tuple[str, ...] = ()
+        if stabilized != answer.strip() or echo_sentences:
+            warnings = ("generation_output_stabilized",)
+        return stabilized, warnings, False
+
+    @staticmethod
+    def _is_question_echo(answer_sentence: str, query: str) -> bool:
+        normalize = lambda item: re.sub(r"[\W_]+", "", item).casefold()
+        answer_value = normalize(answer_sentence)
+        query_value = normalize(query)
+        if len(query_value) < 6 or not answer_value:
+            return False
+        if query_value in answer_value:
+            return True
+        return SequenceMatcher(
+            None, answer_value, query_value, autojunk=False
+        ).ratio() >= 0.92
+
+    @staticmethod
+    def _grounded_limitation(query: str, chunks: list[RankedChunk]) -> str:
+        subject = (
+            chunks[0].chunk.title.split(" - ", 1)[0].strip()
+            if chunks else "질문하신 주제"
+        )
+        if re.search(r"인물|사람|누구", query):
+            detail = "관련된 특정 인물"
+        elif re.search(r"언제|시기|연도|날짜|건립|설립|개통|준공", query):
+            detail = "요청한 시점"
+        elif re.search(r"장소|어디", query):
+            detail = "요청한 장소"
+        elif re.search(r"결과|영향|원인|이유", query):
+            detail = "요청한 인과·결과"
+        else:
+            detail = "요청한 세부 내용"
+        return f"선택된 검색 근거에서는 {subject}의 {detail}을 직접 확인하기 어렵습니다."
 
     @staticmethod
     def _source_sufficiency(chunks: list[RankedChunk]) -> SourceSufficiency:

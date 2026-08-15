@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from history_chatbot.chat.session import ChatSession
+from history_chatbot.retrieval.query_normalizer import explicit_subject_words
 
 
 PLACE_LABELS = {
@@ -21,29 +22,32 @@ _PLACEHOLDER_CONTEXT = re.compile(
     re.IGNORECASE,
 )
 FOLLOWUP = re.compile(
-    r"그\s*(?:때|당시|사람|사건|학교|건물|역|회사|곳|장소|뒤|과정|자료)|"
+    r"그\s*(?:때|당시|사람|사건|학교|건물|역|노선|회사|곳|장소|뒤|과정|자료)|"
     r"여기|이곳|거기|아까|방금|이후에는?|왜\s*(?:그랬|왔|온)|"
     r"누가\s*(?:참여|관여|주도)|그래서|그건|"
     r"관련(?:된)?\s*(?:인물|사람)|"
+    r"관련\s*(?:시기|날짜|장소)|첫(?:\s*번째)?\s*단체|두\s*번째\s*단체|둘(?:을|은|이)|"
     r"그\s*(?:이유|결과|영향|의미|배경)|"
-    r"그럼|그러면|그렇다면|이어서|계속해서|또\s*있어|다른\s*건"
+    r"그럼|그러면|그렇다면|이어서|계속해서|또\s*있어|다른\s*건|"
+    r"돌아가|돌아오"
 )
 ELLIPTICAL_FOLLOWUP = re.compile(
     r"(?:(?:그럼|그러면|그렇다면)\s*)?(?:좀\s*)?(?:더\s*)?"
     r"(?:왜|언제|어디서|누가|누구|어떻게|무슨\s*이유(?:로)?|"
-    r"이유|결과|영향|의미|배경|그다음|다음)"
+    r"이유|결과|영향|의미|배경|그다음|다음|"
+    r"(?:건립|설립|개통|준공)\s*시기)"
     r"(?:은|는|이|가|부터|까지|였어|였어요|인가요|야|예요|지|요|"
     r"\s*(?:알려\s*줘|설명해\s*줘|말해\s*줘|지었어|만들었어|왔던\s*거야))?[?.!]*|"
     r"(?:좀\s*)?(?:더\s*)?(?:쉽게|자세히|짧게|간단히|다시)\s*"
     r"(?:설명해|알려|말해|요약해)(?:\s*줘|\s*주세요|요)?[?.!]*|"
-    r"(?:또\s*있어|다른\s*건|관련\s*(?:인물|사람)은?)[?.!]*",
+    r"(?:또\s*있어|다른\s*건|관련\s*(?:인물|사람|시기|날짜|장소)(?:은|는)?)[?.!]*",
     re.IGNORECASE,
 )
 PLACE_REFERENCE = re.compile(r"여기|이곳|거기|그곳|그\s*장소|이\s*장소")
 PERSON_REFERENCE = re.compile(r"(?:그|이|저)\s*(?:사람|인물)")
 EXPLICIT_PLACE = re.compile(
     r"구\s*목포\s*일본영사관|구\s*일본영사관|목포(?:역|항|부|진|해관|세관)|삼학도|유달산|"
-    r"무안감리서|동양척식주식회사(?:\s*목포지점)?|호남은행|일본영사관|목포"
+    r"고하도|무안감리서|동양척식주식회사(?:\s*목포지점)?|호남은행|일본영사관|목포"
 )
 EXPLICIT_PERSON = re.compile(
     r"(?<![가-힣])([가-힣]{2,4})(?=(?:은|는|이|가)"
@@ -164,6 +168,8 @@ class ConversationContextResolver:
             for value in dict.fromkeys(EXPLICIT_PERSON.findall(query))
             if value not in _PERSON_STOPWORDS
         )
+        if PERSON_REFERENCE.search(query):
+            explicit_people = ()
         if re.match(r"\s*(?:그럼|그러면|그렇다면)\s+", query):
             short_match = re.fullmatch(
                 r"(?:그럼|그러면|그렇다면)\s+([가-힣]{2,4}?)(?:은|는|이|가)[?.!]?",
@@ -185,7 +191,20 @@ class ConversationContextResolver:
                 value for value in dict.fromkeys((*short_people, *explicit_people))
                 if value not in _PERSON_STOPWORDS
             )
-        explicit_entities = (*explicit_places, *explicit_people)
+        generic_subjects = explicit_subject_words(query)
+        referenced_subjects = self._referenced_subjects(query, session)
+        explicit_entities = tuple(dict.fromkeys(
+            (*explicit_places, *explicit_people, *referenced_subjects, *generic_subjects)
+        ))
+        explicit_events = tuple(dict.fromkeys(EVENT.findall(query)))
+        return_target = self._return_target(query, session)
+        returns_to_named_topic = bool(
+            return_target
+        )
+        returns_to_first_topic = bool(
+            session.evidence_turns
+            and re.search(r"다시\s*(?:첫|처음)\s*(?:사건|주제)", query)
+        )
         is_transformation = bool(session.turns and TRANSFORMATION.fullmatch(query.strip()))
         is_expansion = bool(session.turns and DETAIL_EXPANSION.fullmatch(query.strip()))
         is_correction = bool(session.turns and CORRECTION.search(query))
@@ -210,6 +229,8 @@ class ConversationContextResolver:
         generic_people_followup = bool(
             session.turns and GENERIC_PEOPLE_FOLLOWUP.fullmatch(query.strip())
         )
+        validated_topic = self._validated_topic(session, conversational_topic)
+        validated_place = self._validated_place(session, conversational_place)
 
         if explicit_places:
             active_place = explicit_places[0]
@@ -221,7 +242,14 @@ class ConversationContextResolver:
         terms: list[str] = []
         parallel_question = self._parallel_question(query, session, explicit_people)
         referenced_person = self._referenced_person(session) if PERSON_REFERENCE.search(query) else ""
-        if is_transformation or is_expansion:
+        if returns_to_first_topic:
+            terms.append(session.evidence_turns[0].user)
+        elif returns_to_named_topic:
+            # An explicit return target replaces, rather than augments, the immediately
+            # preceding topic.  Conversation text only resolves the target; retrieved
+            # chunks remain the sole historical evidence.
+            terms.append(return_target)
+        elif is_transformation or is_expansion:
             # These requests operate on the immediately preceding answer. Its factual
             # claims remain non-evidence; the orchestrator reuses only retrieved chunks.
             terms.extend((active_place, conversational_event, conversational_topic))
@@ -230,15 +258,33 @@ class ConversationContextResolver:
         elif elliptical_followup:
             # Chain follow-ups keep stable structured context instead of recursively
             # appending the immediately previous wording. Assistant prose is never used.
-            terms.extend((active_place, conversational_event, conversational_topic))
-            if not any(terms):
+            evidence_anchor = self._validated_evidence_user(
+                session, validated_place, validated_topic
+            )
+            if evidence_anchor:
+                terms.append(evidence_anchor)
+            else:
+                terms.extend((validated_place, conversational_event, validated_topic))
+                if validated_place or validated_topic:
+                    terms.append(conversational_period)
+            if not any(terms) and self._last_turn_context_is_trusted(session):
                 terms.append(session.turns[-1].user)
         elif generic_people_followup:
-            terms.extend((active_place, conversational_event, conversational_topic))
-            if not any(terms):
+            evidence_anchor = self._validated_evidence_user(
+                session, validated_place, validated_topic
+            )
+            if evidence_anchor:
+                terms.append(evidence_anchor)
+            else:
+                terms.extend((validated_place, conversational_event, validated_topic))
+                if validated_place or validated_topic:
+                    terms.append(conversational_period)
+            if not any(terms) and self._last_turn_context_is_trusted(session):
                 terms.append(session.turns[-1].user)
         elif explicit_entities and is_followup:
-            terms.extend((*explicit_entities, conversational_event, conversational_topic))
+            terms.extend((active_place if refers_to_place else "", *explicit_entities))
+            if re.search(r"관련|와도|과도", query) and conversational_event:
+                terms.append(conversational_event)
         elif (
             active_place
             and (is_followup or refers_to_place)
@@ -252,16 +298,17 @@ class ConversationContextResolver:
         if (
             is_followup and not explicit_entities
             and not generic_people_followup and not elliptical_followup
+            and not returns_to_named_topic and not returns_to_first_topic
         ):
             if PERSON_REFERENCE.search(query):
                 terms.append(referenced_person)
-            if conversational_event:
+            if validated_topic:
+                terms.append(validated_topic)
+            if conversational_event and self._last_turn_context_is_trusted(session):
                 terms.append(conversational_event)
             if conversational_period:
                 terms.append(conversational_period)
-            if conversational_topic:
-                terms.append(conversational_topic)
-            if not terms:
+            if not terms and self._last_turn_context_is_trusted(session):
                 terms.append(session.turns[-1].user)
         ordered = tuple(dict.fromkeys(value for value in terms if value))
         resolved_question = parallel_question or query
@@ -275,23 +322,34 @@ class ConversationContextResolver:
             resolved_question = PERSON_REFERENCE.sub(referenced_person, resolved_question)
         if (is_correction or elliptical_followup) and resolved_question == query and ordered:
             resolved_question = " ".join((*ordered, query))
-        returns_to_named_topic = bool(
-            explicit_entities and re.search(r"(?:돌아가|돌아오|다시\s*이야기)", query)
-        )
         prefix_terms = tuple(
             value
             for value in ordered
             if value not in resolved_question
-            or (returns_to_named_topic and value in explicit_entities)
+            or (returns_to_named_topic and value == return_target)
         )
         search_query = (
             " ".join((*prefix_terms, resolved_question))
             if prefix_terms else resolved_question
         )
-        events = EVENT.findall(query)
+        if returns_to_first_topic:
+            detail = (
+                "장소" if re.search(r"장소|어디", query)
+                else "인물" if re.search(r"인물|사람|누구", query)
+                else "시기" if re.search(r"언제|시기|연도|날짜", query)
+                else ""
+            )
+            search_query = " ".join(
+                value for value in (session.evidence_turns[0].user, detail) if value
+            )
+        events = list(explicit_events)
         periods = PERIOD.findall(query)
         topic = (
-            events[0]
+            session.evidence_turns[0].active_topic
+            if returns_to_first_topic
+            else return_target
+            if returns_to_named_topic
+            else events[0]
             if events
             else explicit_entities[0]
             if explicit_entities
@@ -337,6 +395,84 @@ class ConversationContextResolver:
         )
 
     @staticmethod
+    def _validated_topic(session: ChatSession, topic: str) -> str:
+        if not topic:
+            return ""
+        if any(
+            turn.active_topic == topic and turn.chunk_ids
+            for turn in session.evidence_turns
+        ):
+            return topic
+        return topic if ConversationContextResolver._last_turn_context_is_trusted(session) else ""
+
+    @staticmethod
+    def _validated_place(session: ChatSession, place: str) -> str:
+        if not place:
+            return ""
+        if any(
+            turn.active_place == place and turn.chunk_ids
+            for turn in session.evidence_turns
+        ):
+            return place
+        return place if ConversationContextResolver._last_turn_context_is_trusted(session) else ""
+
+    @staticmethod
+    def _last_turn_context_is_trusted(session: ChatSession) -> bool:
+        if not session.turns:
+            return False
+        answer = session.turns[-1].assistant
+        return not bool(re.search(
+            r"확인하지\s*못|확인할\s*수\s*없|근거를\s*확인하지\s*못|"
+            r"추측하지\s*않|insufficient[_ ]evidence|llm[_ ]error",
+            answer,
+            re.IGNORECASE,
+        ))
+
+    @staticmethod
+    def _return_target(query: str, session: ChatSession) -> str:
+        if not re.search(r"다시|아까|돌아가|돌아오|복귀", query):
+            return ""
+        compact_query = re.sub(r"\s+", "", query)
+        candidates: list[str] = []
+        for turn in reversed(session.evidence_turns):
+            candidates.extend((turn.active_topic, turn.active_place))
+            candidates.extend(explicit_subject_words(turn.user))
+        for candidate in dict.fromkeys(value for value in candidates if value):
+            if re.sub(r"\s+", "", candidate) in compact_query:
+                return candidate
+        named = re.search(
+            r"(?:다시|아까)\s+([0-9A-Za-z가-힣·]{2,30})(?:으?로|\s*이야기)",
+            query,
+        )
+        if named:
+            return named.group(1)
+        return ""
+
+    @staticmethod
+    def _validated_evidence_user(
+        session: ChatSession, place: str, topic: str
+    ) -> str:
+        for turn in reversed(session.evidence_turns):
+            if (place and turn.active_place == place) or (topic and turn.active_topic == topic):
+                return turn.user
+        return ""
+
+    @staticmethod
+    def _referenced_subjects(query: str, session: ChatSession) -> tuple[str, ...]:
+        if not re.search(r"첫(?:\s*번째)?\s*단체|두\s*번째\s*단체|둘(?:을|은|이)", query):
+            return ()
+        for turn in reversed(session.evidence_turns):
+            subjects = explicit_subject_words(turn.user)
+            if len(subjects) < 2:
+                continue
+            if re.search(r"첫(?:\s*번째)?\s*단체", query):
+                return (subjects[0],)
+            if re.search(r"두\s*번째\s*단체", query):
+                return (subjects[1],)
+            return subjects[:2]
+        return ()
+
+    @staticmethod
     def _parallel_question(
         query: str, session: ChatSession, explicit_people: tuple[str, ...]
     ) -> str:
@@ -360,16 +496,10 @@ class ConversationContextResolver:
 
     @staticmethod
     def _referenced_person(session: ChatSession) -> str:
-        """Prefer the most recently focused entity; assistant prose is context only."""
+        """Use only evidence-derived referents, never generated assistant prose."""
 
         if len(session.recent_people) == 1:
             return session.recent_people[0]
         if len(session.recent_people) > 1:
             return ""
-        if not session.turns:
-            return ""
-        candidates = re.findall(
-            r"(?<![가-힣])([가-힣]{2,4})(?=(?:은|는|이|가|과|와)\s*)",
-            session.turns[-1].assistant,
-        )
-        return next((item for item in reversed(candidates) if item not in _PERSON_STOPWORDS), "")
+        return ""

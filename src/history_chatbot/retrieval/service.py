@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -13,7 +14,11 @@ from history_chatbot.retrieval.base import DenseEncoder, RankedChunk, RetrievalC
 from history_chatbot.retrieval.dense import DenseSearcher, HashingDenseEncoder, SentenceTransformerEncoder
 from history_chatbot.retrieval.fusion import reciprocal_rank_fusion
 from history_chatbot.retrieval.qdrant_store import LocalJsonVectorStore
-from history_chatbot.retrieval.query_normalizer import content_words, normalize_query
+from history_chatbot.retrieval.query_normalizer import (
+    content_words,
+    explicit_subject_words,
+    normalize_query,
+)
 from history_chatbot.retrieval.reranker import NoOpReranker
 from history_chatbot.retrieval.sparse import BM25Searcher
 from history_chatbot.retrieval.thresholds import apply_thresholds
@@ -520,8 +525,15 @@ class HybridRetrievalService:
         dense = DenseSearcher(self.encoder, self.store).search(
             query.normalized, self.config.dense_top_k
         )
+        hashing_guard = (
+            self.encoder.model_id == "hashing-v1"
+            and self.config.development_chunks_path is None
+            and self.config.fixture_chunks_path is None
+            and self.config.provisional_chunks_path is None
+        )
         sparse = BM25Searcher(self.store.chunks()).search(
-            query.normalized, self.config.sparse_top_k
+            query.normalized,
+            max(self.config.sparse_top_k, 50) if hashing_guard else self.config.sparse_top_k,
         )
         fused = reciprocal_rank_fusion(dense, sparse, rank_constant=self.config.rrf_k)
         reranked = self.reranker.rerank(query.normalized, fused)
@@ -533,18 +545,54 @@ class HybridRetrievalService:
                 item for item in reranked
                 if item.chunk.document_id in matched_documents
             ]
-        hashing_guard = (
-            self.encoder.model_id == "hashing-v1"
-            and self.config.development_chunks_path is None
-        )
         if hashing_guard:
             query_words = set(query.informative_words)
+            subject_words = set(explicit_subject_words(query.original))
+            for left, right in re.findall(
+                r"([0-9A-Za-z가-힣·]{2,30})(?:와|과)\s*"
+                r"([0-9A-Za-z가-힣·]{2,30})",
+                query.original,
+            ):
+                # Coordinated nouns are explicit facets of one question.  Keeping
+                # each facet avoids dropping a supporting chunk merely because the
+                # first named subject is absent from that chunk's opening.
+                subject_words.update(content_words(left))
+                subject_words.update(content_words(right))
+            if not subject_words:
+                return []
             reranked = [
                 item
                 for item in reranked
                 if query_words
                 & set(content_words(f"{item.chunk.title} {item.chunk.text}"))
             ]
+            content_candidates = [
+                item for item in reranked if not self._hashing_boilerplate_only(item)
+            ]
+            if content_candidates:
+                reranked = content_candidates
+            if subject_words:
+                reranked = [
+                    item for item in reranked
+                    if self._hashing_subject_agrees(subject_words, item)
+                ]
+                if not reranked:
+                    return []
+            title_matched = [
+                item
+                for item in reranked
+                if (subject_words or query_words) & set(content_words(item.chunk.title))
+            ]
+            if title_matched:
+                reranked = title_matched
+            elif re.search(r"존재하지\s*않|자료에\s*없는|가상\s*(?:인물|사건|장소)", query.original):
+                # The hashing fallback otherwise admits unrelated documents through
+                # generic body words when the user explicitly marks a fictional or
+                # absent subject (for example an unknown dynasty matching "왕조").
+                return []
+            reranked.sort(
+                key=lambda item: self._hashing_result_order(query_words, item)
+            )
         selected = apply_thresholds(
             query,
             reranked,
@@ -575,6 +623,103 @@ class HybridRetrievalService:
         matched = len(set(query_words) & searchable)
         required = 1 if len(query_words) <= 2 else len(query_words) // 2 + 1
         return matched >= required
+
+    @staticmethod
+    def _hashing_result_order(
+        query_words: set[str], result: RankedChunk
+    ) -> tuple[int, int, float, str]:
+        """Prefer subject-titled factual prose over scraped navigation/footer text."""
+
+        title_words = set(content_words(result.chunk.title))
+        title_matches = len(query_words & title_words)
+        text = result.chunk.text
+        noise_markers = (
+            "수정 의견 작성",
+            "비밀번호",
+            "파일선택",
+            "다운로드가 완료",
+            "콘텐츠 이용 안내",
+            "전체메뉴",
+            "사이드메뉴",
+            "미디어 자유이용",
+        )
+        noise = sum(text.count(marker) for marker in noise_markers)
+        factual_opening = int(
+            any(
+                marker in text[:160]
+                for marker in (
+                    "정의 닫기",
+                    "개설 닫기",
+                    "내용 닫기",
+                    "변천 닫기",
+                    "생애 및 활동사항 닫기",
+                )
+            )
+        )
+        return (-title_matches, noise - factual_opening, -result.score, result.chunk.chunk_id)
+
+    @classmethod
+    def _hashing_subject_agrees(
+        cls, subject_words: set[str], result: RankedChunk
+    ) -> bool:
+        """Require an explicit subject in a title or factual opening, not navigation."""
+
+        if subject_words & set(content_words(result.chunk.title)):
+            return True
+        if cls._hashing_boilerplate_only(result):
+            return False
+        opening = result.chunk.text[:180]
+        if any(
+            marker in opening
+            for marker in (
+                "코스 자세히 보기",
+                "관련 여행코스",
+                "위치 및 주변정보",
+                "관심콘텐츠 담기",
+                "동그라미",
+            )
+        ):
+            return False
+        for subject in subject_words:
+            match = re.search(
+                rf"(?<![0-9A-Za-z가-힣]){re.escape(subject)}"
+                r"(?:은|는|이|가|의|와|과|에서|에는)?",
+                opening,
+            )
+            if match is not None and match.start() <= 12:
+                return True
+        return False
+
+    @staticmethod
+    def _hashing_boilerplate_only(result: RankedChunk) -> bool:
+        text = result.chunk.text
+        if any(
+            marker in text[:160]
+            for marker in (
+                "정의 닫기",
+                "개설 닫기",
+                "내용 닫기",
+                "변천 닫기",
+                "생애 및 활동사항 닫기",
+            )
+        ):
+            return False
+        markers = (
+            "수정 의견 작성",
+            "비밀번호",
+            "파일선택",
+            "다운로드가 완료",
+            "콘텐츠 이용 안내",
+            "전체메뉴",
+            "사이드메뉴",
+            "미디어 자유이용",
+            "코스 자세히 보기",
+            "관련 여행코스",
+            "위치 및 주변정보",
+            "관심콘텐츠 담기",
+            "동그라미",
+        )
+        return sum(text.count(marker) for marker in markers) >= 2
 
     def _development_subject_documents(self, normalized_query: str) -> set[str]:
         matched: set[str] = set()

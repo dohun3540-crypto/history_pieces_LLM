@@ -168,6 +168,113 @@ def test_hashing_backend_keeps_multi_chunk_topic_coverage(tmp_path) -> None:
     assert {item.chunk.document_id for item in results} == {"rail", "port"}
 
 
+def test_hashing_backend_requires_the_longest_subject_anchor(tmp_path) -> None:
+    service = make_hashing_service(
+        tmp_path,
+        [chunk("roman", 0, "고대 로마 건축 인물에 관한 일반 기록")],
+    )
+    service.build_index()
+
+    assert service.search("고대 로마 콜로세움의 건립 인물을 알려 줘") == []
+
+
+def test_hashing_backend_rejects_unknown_subject_without_title_match(tmp_path) -> None:
+    service = make_hashing_service(
+        tmp_path,
+        [
+            chunk("admiral", 0, "조선 왕조의 인물과 임금에 관한 기록", title="이순신"),
+            chunk("river", 0, "마지막 구간과 지역의 역사 기록", title="영산강"),
+        ],
+    )
+    service.build_index()
+
+    assert service.search("존재하지 않는 해솔왕조의 마지막 임금은 누구야") == []
+
+
+def test_hashing_backend_filters_each_unrelated_result(tmp_path) -> None:
+    service = make_hashing_service(
+        tmp_path,
+        [
+            chunk("station", 0, "목포역은 호남선의 철도역이다", title="목포역"),
+            chunk("unrelated", 0, "다른 지역의 역사적 사건과 시기를 설명한다"),
+        ],
+    )
+    service.build_index()
+
+    results = service.search("목포역의 역사적 사건과 시기를 알려 줘")
+
+    assert [item.chunk.document_id for item in results] == ["station"]
+
+
+def test_hashing_backend_prefers_factual_chunk_over_scraped_footer(tmp_path) -> None:
+    service = make_hashing_service(
+        tmp_path,
+        [
+            chunk("station", 0, "정의 닫기 목포역은 1913년 영업을 시작했다", title="목포역"),
+            chunk("station", 1, "수정 의견 작성 비밀번호 파일선택 다운로드가 완료되었습니다", title="목포역"),
+        ],
+    )
+    service.build_index()
+
+    results = service.search("목포역을 알려 줘")
+
+    assert results[0].chunk.chunk_id == "station::chunk-0000"
+
+
+def test_hashing_backend_rejects_subject_only_in_navigation_breadcrumb(tmp_path) -> None:
+    service = make_hashing_service(
+        tmp_path,
+        [
+            chunk(
+                "memorial", 0,
+                "코스 자세히 보기 동그라미 유달산 > 목포진 > 기념관 "
+                "관련 여행코스 위치 및 주변정보 기념관의 전시 내용",
+                title="다른 인물 기념관",
+            ),
+        ],
+    )
+    service.build_index()
+
+    assert service.search("목포진의 역할과 시기를 알려 줘") == []
+
+
+def test_hashing_backend_keeps_subject_in_factual_opening_without_title_match(tmp_path) -> None:
+    service = make_hashing_service(
+        tmp_path,
+        [chunk("local", 0, "정의 닫기 가람도는 항구와 연결된 섬이다", title="섬 기록")],
+    )
+    service.build_index()
+
+    results = service.search("가람도의 역사적 특징을 알려 줘")
+
+    assert [item.chunk.document_id for item in results] == ["local"]
+
+
+def test_hashing_backend_rejects_incidental_subject_late_in_other_article(tmp_path) -> None:
+    service = make_hashing_service(
+        tmp_path,
+        [chunk(
+            "consulate", 0,
+            "이 건물은 외국 영사관으로 사용되었다. 여러 시설의 변천을 설명한 뒤 "
+            "과거에 폐지된 가람진을 잠시 빌렸다는 기록이 나온다.",
+            title="근대 영사관",
+        )],
+    )
+    service.build_index()
+
+    assert service.search("가람진의 역할과 시기를 알려 줘") == []
+
+
+def test_hashing_backend_rejects_followup_without_validated_subject(tmp_path) -> None:
+    service = make_hashing_service(
+        tmp_path,
+        [chunk("place", 0, "실제 장소는 전라남도의 섬이다", title="다른 장소")],
+    )
+    service.build_index()
+
+    assert service.search("그럼 실제 장소는 어디야") == []
+
+
 def test_korean_particle_and_spacing_variant_is_retrieved(tmp_path) -> None:
     service = make_service(
         tmp_path, [chunk("open-port", 0, "목포의 개항에 관한 테스트용 가상 설명")]
