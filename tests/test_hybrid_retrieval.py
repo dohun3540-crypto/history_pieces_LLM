@@ -250,6 +250,72 @@ def test_hashing_backend_keeps_subject_in_factual_opening_without_title_match(tm
     assert [item.chunk.document_id for item in results] == ["local"]
 
 
+def test_hashing_backend_keeps_entity_when_question_wording_differs(tmp_path) -> None:
+    service = make_hashing_service(
+        tmp_path,
+        [chunk("station", 0, "목포역은 1913년 5월 15일 영업을 시작했다", title="목포역")],
+    )
+    service.build_index()
+
+    results = service.search("목포역 언제 만들어졌어?")
+
+    assert [item.chunk.document_id for item in results] == ["station"]
+
+
+def test_compound_spacing_variant_preserves_subject(tmp_path) -> None:
+    service = make_hashing_service(
+        tmp_path,
+        [chunk("consulate", 0, "일본영사관은 1900년에 건립되었다", title="구 목포 일본영사관")],
+    )
+    service.build_index()
+
+    results = service.search("목포에 있던 일본 영사관 건물, 언제 다 지은 거야?")
+
+    assert [item.chunk.document_id for item in results] == ["consulate"]
+
+
+def test_japanese_consulate_does_not_rank_oriental_development_company_date_first(tmp_path) -> None:
+    service = make_hashing_service(
+        tmp_path,
+        [
+            chunk("consulate", 0, "일본영사관은 1900년에 완공되었다.", title="근대역사관1관"),
+            chunk("company", 0, "인근 동양척식주식회사 목포지점은 1921년에 건립되었다.", title="근대역사관2관"),
+        ],
+    )
+    service.build_index()
+
+    results = service.search("구 목포 일본영사관은 언제 지어졌어?")
+
+    assert results[0].chunk.document_id == "consulate"
+
+
+def test_oriental_development_company_direct_question_prefers_museum_two_alias(tmp_path) -> None:
+    service = make_hashing_service(
+        tmp_path,
+        [
+            chunk("direct", 0, "동양척식주식회사 목포지점 건물의 연혁을 설명한다.", title="근대역사관2관"),
+            chunk("mixed", 0, "일본영사관과 동양척식주식회사 목포지점이 함께 남아 있다.", title="근대 역사 공간"),
+        ],
+    )
+    service.build_index()
+
+    results = service.search("동양척식주식회사 목포지점은 뭐야?")
+
+    assert results[0].chunk.document_id == "direct"
+
+
+def test_hashing_backend_can_find_named_person_inside_factual_record(tmp_path) -> None:
+    service = make_hashing_service(
+        tmp_path,
+        [chunk("archive", 0, "행사 참석자는 이범석, 안호상 등이었다.", title="행사 기록")],
+    )
+    service.build_index()
+
+    results = service.search("이범석은 누구야?")
+
+    assert [item.chunk.document_id for item in results] == ["archive"]
+
+
 def test_hashing_backend_rejects_incidental_subject_late_in_other_article(tmp_path) -> None:
     service = make_hashing_service(
         tmp_path,

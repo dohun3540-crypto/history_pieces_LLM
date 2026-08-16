@@ -39,6 +39,24 @@ def test_clarification_blocks_retrieval_and_llm() -> None:
     assert result.follow_up_question
 
 
+def test_bare_interrogative_gets_intent_specific_clarification() -> None:
+    result = decide("언제?")
+    assert not result.should_retrieve and not result.should_call_llm
+    assert result.answer == "어떤 사건이나 장소의 시점을 알고 싶은가요?"
+
+
+def test_gratitude_gets_conversational_response_without_rag() -> None:
+    result = decide("고마워")
+    assert not result.should_retrieve
+    assert "천만에" in result.answer
+
+
+def test_out_of_scope_question_redirects_to_history_without_rag() -> None:
+    result = decide("오늘 날씨 어때?")
+    assert not result.should_retrieve
+    assert "역사 이야기를 중심" in result.answer
+
+
 def test_korean_character_answers_use_final_banmal_style() -> None:
     result = decide("안녕하세요")
     assert "기록새야" in result.answer

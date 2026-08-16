@@ -14,6 +14,26 @@ def test_simple_greeting_does_not_use_rag() -> None:
     assert not result.requires_rag
 
 
+@pytest.mark.parametrize("message", ("목포역", "이범석", "동양척식주식회사 목포지점"))
+def test_entity_only_input_uses_history_rag(message: str) -> None:
+    result = classify(message)
+    assert result.primary_situation_id == SituationId.HISTORY_FACT_QUESTION
+    assert result.requires_rag
+
+
+@pytest.mark.parametrize("message", ("왜", "언제?", "누구"))
+def test_bare_interrogative_without_context_clarifies(message: str) -> None:
+    result = classify(message)
+    assert result.requires_clarification
+    assert not result.requires_rag
+
+
+def test_non_history_question_does_not_use_history_retrieval() -> None:
+    result = classify("오늘 날씨 어때?")
+    assert result.classification_reason_code == "OUT_OF_HISTORY_SCOPE"
+    assert not result.requires_rag
+
+
 @pytest.mark.parametrize(
     ("message", "situation"),
     [

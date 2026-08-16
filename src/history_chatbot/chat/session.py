@@ -24,6 +24,9 @@ class EvidenceTurn:
     active_place: str
     active_topic: str
     chunk_ids: tuple[str, ...]
+    active_subject: str = ""
+    active_person: str = ""
+    answered_intent: str = ""
 
 
 @dataclass(slots=True)
@@ -35,6 +38,10 @@ class ChatSession:
     active_place: str = ""
     active_piece: str = ""
     active_topic: str = ""
+    active_subject: str = ""
+    active_person: str = ""
+    stable_evidence_anchor: str = ""
+    last_answered_intent: str = ""
     recent_entities: tuple[str, ...] = ()
     recent_people: tuple[str, ...] = ()
     recent_event: str = ""
@@ -99,6 +106,9 @@ class SessionStore:
         active_place: str,
         active_topic: str,
         chunk_ids: tuple[str, ...],
+        active_subject: str = "",
+        active_person: str = "",
+        answered_intent: str = "",
     ) -> None:
         """Persist only identifiers of chunks actually returned by retrieval."""
 
@@ -106,7 +116,10 @@ class SessionStore:
             return
         session = self._sessions[session_id]
         session.evidence_turns.append(
-            EvidenceTurn(user, active_place, active_topic, chunk_ids)
+            EvidenceTurn(
+                user, active_place, active_topic, chunk_ids,
+                active_subject, active_person, answered_intent,
+            )
         )
         session.evidence_turns = session.evidence_turns[-self.max_turns :]
         self._save()
@@ -114,8 +127,9 @@ class SessionStore:
     def update_context(self, session_id: str, **values: object) -> None:
         session = self._sessions[session_id]
         for name in (
-            "active_place", "active_piece", "active_topic", "recent_entities", "recent_people",
-            "recent_event", "recent_period",
+            "active_place", "active_piece", "active_topic", "active_subject",
+            "active_person", "stable_evidence_anchor", "last_answered_intent",
+            "recent_entities", "recent_people", "recent_event", "recent_period",
         ):
             if name in values:
                 setattr(session, name, values[name])
@@ -142,6 +156,10 @@ class SessionStore:
                 active_place=item.get("active_place", ""),
                 active_piece=item.get("active_piece", ""),
                 active_topic=item.get("active_topic", ""),
+                active_subject=item.get("active_subject", ""),
+                active_person=item.get("active_person", ""),
+                stable_evidence_anchor=item.get("stable_evidence_anchor", ""),
+                last_answered_intent=item.get("last_answered_intent", ""),
                 recent_entities=tuple(item.get("recent_entities", ())),
                 recent_people=tuple(item.get("recent_people", ())),
                 recent_event=item.get("recent_event", ""),
@@ -152,6 +170,9 @@ class SessionStore:
                         active_place=value.get("active_place", ""),
                         active_topic=value.get("active_topic", ""),
                         chunk_ids=tuple(value.get("chunk_ids", ())),
+                        active_subject=value.get("active_subject", ""),
+                        active_person=value.get("active_person", ""),
+                        answered_intent=value.get("answered_intent", ""),
                     )
                     for value in item.get("evidence_turns", [])
                 ],
@@ -173,6 +194,10 @@ class SessionStore:
                     "active_place": session.active_place,
                     "active_piece": session.active_piece,
                     "active_topic": session.active_topic,
+                    "active_subject": session.active_subject,
+                    "active_person": session.active_person,
+                    "stable_evidence_anchor": session.stable_evidence_anchor,
+                    "last_answered_intent": session.last_answered_intent,
                     "recent_entities": list(session.recent_entities),
                     "recent_people": list(session.recent_people),
                     "recent_event": session.recent_event,

@@ -124,6 +124,37 @@ def test_character_address_guard_is_context_aware() -> None:
     assert {item.code for item in guard.validate("이 감상은 100점이야.", **context)} >= {"user_rating"}
 
 
+def test_artifact_count_is_not_treated_as_user_rating() -> None:
+    guard = GiroksaeStyleGuard()
+    context = dict(
+        domain=OutputDomain.HISTORICAL_DOCENT,
+        situation=SituationId.HISTORY_FACT_QUESTION,
+        stage=ConversationStage.HISTORICAL_QUESTION,
+        locale="ko",
+    )
+
+    assert guard.validate(
+        "박물관에는 유물 1,030점과 자료 100여 점이 전시되어 있습니다.",
+        **context,
+    ) == ()
+
+
+def test_actual_rating_expression_remains_blocked() -> None:
+    guard = GiroksaeStyleGuard()
+    context = dict(
+        domain=OutputDomain.HISTORICAL_DOCENT,
+        situation=SituationId.HISTORY_FACT_QUESTION,
+        stage=ConversationStage.HISTORICAL_QUESTION,
+        locale="ko",
+    )
+
+    codes = {
+        item.code
+        for item in guard.validate("이 장소는 5점 만점에 4점입니다.", **context)
+    }
+    assert "user_rating" in codes
+
+
 def test_historical_docent_accepts_polite_endings_but_character_guard_remains() -> None:
     guard = GiroksaeStyleGuard()
     historical = dict(
@@ -196,8 +227,8 @@ def test_api_metadata_and_source_sufficiency(tmp_path) -> None:
     assert factual.source_sufficiency == SourceSufficiency.SUFFICIENT.value
     assert missing.source_sufficiency == SourceSufficiency.INSUFFICIENT.value
     assert missing.citations == ()
-    assert "확인하지 못했습니다" in missing.answer
-    assert "추측" in missing.answer
+    assert "직접 연결되는 인물" in missing.answer
+    assert "추측" not in missing.answer
     assert missing.speech_level == "formal_docent"
     conflict = SimpleNamespace(chunk=SimpleNamespace(payload={"source_conflict": True}))
     assert ConversationalRagOrchestrator._source_sufficiency([conflict]) == SourceSufficiency.CONFLICTING

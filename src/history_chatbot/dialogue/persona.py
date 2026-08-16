@@ -165,7 +165,11 @@ class GiroksaeStyleGuard:
     _POLITE_ENDINGS = re.compile(r"(?:습니다|합니다|드립니다|세요|해요|예요|이에요)(?:[.!?]|$)")
     _USER_ADDRESS = re.compile(r"(?:^|[\s,])(?:너(?:는|를|에게|랑)?|네가|너의|여행자님|고객님)(?:[\s,.!?]|$)")
     _COMMANDING = re.compile(r"(?:해라|하도록 해|해야 한다)(?:[.!?]|$)")
-    _RATING = re.compile(r"(?:100점|\d+점|합격|불합격|[A-F][+]?등급|다른 (?:여행자|사용자)보다)")
+    _RATING = re.compile(
+        r"(?:별점|평점|평가\s*점수|만족도\s*점수|"
+        r"\d+\s*점\s*(?:만점|중|이다|이야|입니다|으로\s*평가|을\s*주|를\s*주)|"
+        r"합격|불합격|[A-F][+]?등급|다른 (?:여행자|사용자)보다)"
+    )
     _OVERPRAISE = re.compile(r"(?:완벽해|최고야|100점이야)")
     _OMNISCIENT = re.compile(r"(?:전부 다 알아|모든 걸 알아|모르는 게 없어)")
     _CULTURAL_GENERALIZATION = re.compile(r"(?:중국인들은|중국 사람은 원래|한국인은 원래)")

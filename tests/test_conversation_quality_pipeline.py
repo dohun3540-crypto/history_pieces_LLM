@@ -108,15 +108,16 @@ def test_unanswerable_fallback() -> None:
         "책임자는 누구였어?", OutputDomain.HISTORICAL_DOCENT, "ko",
         active_place="목포진",
     )
-    assert "확인하지 못했습니다" in answer
-    assert "추측하지 않습니다" in answer
+    assert "직접 연결되는 인물" in answer
+    assert "추측" not in answer
     assert len(suggestions) == 1
 
 
 def test_out_of_scope(tmp_path: Path) -> None:
     chat = create_development_orchestrator(runtime_dir=tmp_path)
     response = chat.ask("목포에 양자컴퓨터 공장이 있었어?")
-    assert response.status == "insufficient_evidence"
+    assert response.status == "ok"
+    assert "역사 이야기를 중심" in response.answer
     assert not response.grounded and not response.sources
 
 
@@ -131,6 +132,11 @@ def test_answer_completeness() -> None:
         ConversationalRagOrchestrator._completion_text_values(
             "[답변] 주한 미국 대사 존 무초(John J.", "stop"
         )
+    answer, warnings = ConversationalRagOrchestrator._completion_text_values(
+        "이범석은 독립운동가였습니다. 행사에는 존 무초(John J.", "length"
+    )
+    assert answer == "이범석은 독립운동가였습니다."
+    assert warnings == ("generation_truncated_at_sentence_boundary",)
 
 
 def test_no_repeated_hard_fallback() -> None:

@@ -81,8 +81,8 @@ def test_v1_chat_falls_back_without_calling_llm_when_evidence_is_missing(
     )
 
     assert response.status_code == 200
-    assert "확인하지 못했습니다" in response.json()["answer"]
-    assert "추측" in response.json()["answer"]
+    assert "정확히 설명하기 어려워요" in response.json()["answer"]
+    assert "추측" not in response.json()["answer"]
     assert llm.requests == []
 
 

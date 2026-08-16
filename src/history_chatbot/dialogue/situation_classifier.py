@@ -27,7 +27,13 @@ class SituationClassifier:
         tags: list[str] = []
         length = self._length(text, value.existing_style_preferences)
 
-        if self._contains(text, ("계단", "휠체어", "경사로", "엘리베이터", "쉼터", "안전", "너무 더워", "쉬고 싶")):
+        if self._is_bare_interrogative(text) and not value.recent_turns:
+            return self._result(S.HISTORY_FACT_QUESTION, (), .72, "missing_subject", False, True, length, (), "명확화 질문", "MISSING_SUBJECT")
+        if self._is_unintelligible(text):
+            return self._result(S.PERSONAL_AND_LIGHT_CHAT, (), .30, "unintelligible", False, True, length, (), "명확화 질문", "UNINTELLIGIBLE_INPUT")
+        if self._is_out_of_scope(text):
+            primary, reason, confidence = S.PERSONAL_AND_LIGHT_CHAT, "OUT_OF_HISTORY_SCOPE", 0.98
+        elif self._contains(text, ("계단", "휠체어", "경사로", "엘리베이터", "쉼터", "안전", "너무 더워", "쉬고 싶")):
             primary, reason, confidence = S.SAFETY_ACCESSIBILITY, "SAFETY_CAPABILITY_OVERRIDE", 0.99
         elif self._contains(text, ("사진이 안 겹", "버튼이 안", "버튼 안", "소리가 안", "오디오가 안", "화면 오류")):
             primary, reason, confidence = S.TECHNICAL_HELP, "TECHNICAL_CAPABILITY_REQUEST", 0.98
@@ -50,7 +56,9 @@ class SituationClassifier:
             return self._result(S.EVIDENCE_AND_CORRECTION, (), .55, "ambiguous_reference", False, True, length, (), "명확화 질문", "AMBIGUOUS_NO_CONTEXT")
         elif self._contains(text, ("이전 조각", "아까 본 조각", "지금까지 본", "세 조각")):
             primary, reason, confidence = S.JOURNEY_CONTEXT_QUESTION, "JOURNEY_CONTEXT", 0.96
-        elif self._contains(text, ("쉽게", "간단히", "짧게", "자세히", "요약", "정리해")):
+        elif value.recent_turns and re.fullmatch(r"\s*(?:더|조금\s*더|자세히)[?.!]*\s*", text):
+            primary, reason, confidence = S.HISTORY_FACT_QUESTION, "CONTEXTUAL_DETAIL_REQUEST", 0.94
+        elif self._contains(text, ("쉽게", "간단히", "간단하게", "짧게", "자세히", "요약", "정리해", "풀어", "한 줄", "한 문장", "핵심만", "무슨 말", "초등학생")):
             primary, reason, confidence = S.RESPONSE_STYLE_REQUEST, "EXPLICIT_STYLE_REQUEST", 0.97
             tags.extend(self._style_tags(length))
         elif self._contains(text, ("피곤", "지쳤", "아무 얘기", "할머니", "할아버지", "처음 목포")):
@@ -86,6 +94,10 @@ class SituationClassifier:
             primary, reason, confidence = S.INTRO_GIROKSAE, "INTRO_SCREEN_CONTEXT", 0.92
         elif self._is_greeting(compact):
             primary, reason, confidence = S.FREE_CHAT_GREETING, "GREETING", 0.98
+        elif self._is_acknowledgement(text):
+            primary, reason, confidence = S.PERSONAL_AND_LIGHT_CHAT, "ACKNOWLEDGEMENT", 0.98
+        elif self._looks_like_entity(text):
+            primary, reason, confidence = S.HISTORY_FACT_QUESTION, "ENTITY_ONLY_HISTORY_QUERY", 0.78
         elif self._is_fact_request(text):
             primary, reason, confidence = S.HISTORY_FACT_QUESTION, "FACT_QUESTION", 0.82
         else:
@@ -93,6 +105,11 @@ class SituationClassifier:
 
         requires_clarification = primary == S.CROSS_CULTURAL_COMPARISON and "우리나라" in text
         requires_rag = self._requires_rag(primary, text, secondary)
+        if reason == "OUT_OF_HISTORY_SCOPE":
+            requires_rag = False
+        if primary == S.RESPONSE_STYLE_REQUEST and reason == "EXPLICIT_STYLE_REQUEST":
+            requires_clarification = not bool(value.recent_turns)
+            requires_rag = bool(value.recent_turns)
         if requires_clarification:
             requires_rag = False
         contract = self._capability_contract(primary, text)
@@ -105,6 +122,31 @@ class SituationClassifier:
     @staticmethod
     def _is_greeting(compact: str) -> bool:
         return compact.rstrip(".!?") in {"안녕", "안녕하세요", "반가워", "안녕기록새"}
+
+    @staticmethod
+    def _is_acknowledgement(text: str) -> bool:
+        compact = re.sub(r"\s+", "", text).rstrip(".!?")
+        return bool(re.fullmatch(r"(?:고마워|감사해|감사합니다|알겠어|알겠습니다|그렇구나|응|좋아|오케이)", compact))
+
+    @staticmethod
+    def _is_bare_interrogative(text: str) -> bool:
+        return bool(re.fullmatch(r"\s*(?:왜|언제|어디|누구|누가|무엇|뭐|어떻게)[?.!]*\s*", text))
+
+    @staticmethod
+    def _is_out_of_scope(text: str) -> bool:
+        return bool(re.search(r"(?:오늘|내일|이번\s*주)\s*(?:날씨|기온)|주가|환율|레시피|요리|컴퓨터|코딩|프로그래밍", text))
+
+    @staticmethod
+    def _is_unintelligible(text: str) -> bool:
+        compact = re.sub(r"\s+", "", text)
+        return bool(compact) and not re.search(r"[가-힣一-龥]", compact)
+
+    @staticmethod
+    def _looks_like_entity(text: str) -> bool:
+        return bool(re.fullmatch(
+            r"\s*[가-힣·]{1,30}(?:\s+[가-힣·]{2,30}){0,3}[?.!]*\s*",
+            text,
+        ))
 
     @staticmethod
     def _is_fact_request(text: str) -> bool:
@@ -132,7 +174,9 @@ class SituationClassifier:
             return True
         if S.EVIDENCE_AND_CORRECTION in secondary:
             return True
-        if situation in {S.INTEREST_ARCHITECTURE, S.JOURNEY_CONTEXT_QUESTION, S.COMPARISON_CONTEXT, S.EMOTION_NEGATIVE_HISTORY, S.PERSONAL_AND_LIGHT_CHAT, S.RESPONSE_STYLE_REQUEST}:
+        if situation == S.RESPONSE_STYLE_REQUEST and self._is_fact_request(text):
+            return True
+        if situation in {S.INTEREST_ARCHITECTURE, S.JOURNEY_CONTEXT_QUESTION, S.COMPARISON_CONTEXT, S.EMOTION_NEGATIVE_HISTORY, S.PERSONAL_AND_LIGHT_CHAT}:
             return self._is_fact_request(text) or "출처" in text
         return False
 

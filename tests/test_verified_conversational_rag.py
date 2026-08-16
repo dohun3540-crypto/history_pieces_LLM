@@ -120,12 +120,17 @@ def test_hackathon_factory_uses_verified_lane_and_multiturn(
         current_place_id="demo-place",
         current_piece_id="demo-piece-1",
     )
-    assert second.status == "ok"
+    # The verified fixture describes the station, but contains no evidence
+    # identifying its users.  Preserve the grounded limitation instead of
+    # presenting a nearby station fact as an answer about people.
+    assert second.status == "partial_evidence"
+    assert second.context_metadata["grounded_fact_count"] > 0
     assert second.context_metadata["followup_resolved"] is True
     assert "목포역" in second.context_metadata["search_query"]
     assert "demo" not in second.context_metadata["search_query"]
     assert second.grounded is True
     assert second.source_sufficiency == "partial"
+    assert second.context_metadata["evidence_support"] == "partial"
     assert second.context_metadata["retrieval_performed"] is True
     assert second.sources
     assert len(search_queries) == 2
@@ -142,6 +147,7 @@ def test_hackathon_factory_uses_verified_lane_and_multiturn(
     assert shortage.context_metadata["requested_detail_supported"] is False
     assert shortage.sources
     assert len(search_queries) == 3
+    assert shortage.context_metadata["retrieval_retry_performed"] is False
 
 
 def test_place_change_replaces_active_place() -> None:
@@ -416,8 +422,8 @@ def test_resolved_followup_is_labeled_as_non_evidence_for_generation() -> None:
 @pytest.mark.parametrize(
     ("query", "expected"),
     (
-        ("이 장소는 언제 만들어졌나요?", "건립·형성 시점"),
-        ("관련 인물은 누구인가요?", "관련 인물을 확정할 근거"),
+        ("이 장소는 언제 만들어졌나요?", "정확한 시점"),
+        ("관련 인물은 누구인가요?", "직접 연결되는 인물"),
     ),
 )
 def test_insufficient_guidance_uses_place_and_question_intent(
@@ -430,7 +436,8 @@ def test_insufficient_guidance_uses_place_and_question_intent(
         active_place="목포역",
     )
     assert expected in answer
+    assert "현재 확보된" not in answer
+    assert "추측하지" not in answer
     assert "목포역" in answer
-    assert "추측하지 않습니다" in answer
     assert len(suggestions) == 1
     assert all("목포역" in item for item in suggestions)

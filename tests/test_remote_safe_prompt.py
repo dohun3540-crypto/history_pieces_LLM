@@ -252,7 +252,7 @@ def test_final_openai_body_excludes_local_metadata_and_session_id() -> None:
 
     assert response["request_state"] == "success"
     assert {item["document_id"] for item in response["citations"]} == {"mokpo_hist_0005"}
-    assert "[자료1]" in body
+    assert "[PRIMARY FACT]" in body
     for forbidden in (
         "document_id",
         "chunk_id",
@@ -293,3 +293,27 @@ def test_sanitizer_does_not_expose_secret_assignment() -> None:
     cleaned = sanitize_remote_text("API_KEY=not-a-real-secret 일반 역사 문장")
     assert "not-a-real-secret" not in cleaned
     assert "일반 역사 문장" in cleaned
+
+
+def test_entity_only_prefers_identity_over_neighbor_context() -> None:
+    photo = ranked(
+        "photo", "photo-1",
+        "목포근대역사관 1관 앞 항공사진입니다. 정면 사진입니다. 좌측면 사진입니다.",
+        title="현대사 사진 아카이브",
+    )
+    identity = ranked(
+        "official", "official-1",
+        "목포근대역사관 1관은 구 목포 일본영사관 건물을 활용한 역사 전시 시설입니다.",
+        title="목포근대역사관 1관",
+    )
+
+    prompt = serialize_remote_prompt(
+        system_prompt="기록으로 답하세요.",
+        user_query="목포근대역사관 1관은 어떤 곳이야?",
+        chunks=(photo, identity),
+        question_subject="목포근대역사관 1관",
+        question_intent="overview",
+    )
+
+    assert "역사 전시 시설" in prompt.user_prompt
+    assert "좌측면 사진" not in prompt.user_prompt

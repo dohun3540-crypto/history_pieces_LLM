@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from dataclasses import asdict, dataclass
 
 from history_chatbot.dialogue.personalization_tags import observations
@@ -49,6 +51,10 @@ class GiroksaeDialogueEngine:
             question = "어느 부분을 말하는지 조금만 더 구체적으로 알려줄래?"
             if result.primary_situation_id == S.CROSS_CULTURAL_COMPARISON:
                 question = "어느 나라나 지역의 역사와 비교하고 싶은지 알려줄래?"
+            elif result.classification_reason_code == "MISSING_SUBJECT":
+                question = self._missing_subject_question(value.user_message)
+            elif result.classification_reason_code == "UNINTELLIGIBLE_INPUT":
+                question = "어떤 내용인지 조금만 더 알려줄래? 장소나 사건, 인물 이름을 함께 말해주면 찾아볼게."
             return PolicyDecision(result, question, question, False, False)
         if result.requires_rag:
             return PolicyDecision(result, "", None, True, True)
@@ -111,6 +117,13 @@ class GiroksaeDialogueEngine:
             q = "어떤 장면이 가장 먼저 떠올랐어?"
             return "그 장면이 기억에 남았구나. " + q, q
         if situation == S.PERSONAL_AND_LIGHT_CHAT:
+            if result.classification_reason_code == "OUT_OF_HISTORY_SCOPE":
+                return "나는 역사 이야기를 중심으로 안내하고 있어. 궁금한 장소나 사건, 인물이 있으면 물어봐 줘.", None
+            compact = re.sub(r"\s+", "", value.user_message).rstrip(".!?")
+            if re.fullmatch(r"(?:고마워|감사해|감사합니다)", compact):
+                return "천만에. 다른 역사 이야기도 궁금하면 이어서 물어봐 줘.", None
+            if re.fullmatch(r"(?:알겠어|알겠습니다|그렇구나|응|좋아|오케이)", compact):
+                return "좋아. 더 궁금한 내용이 있으면 이어서 물어봐 줘.", None
             if "지쳤" in value.user_message or "피곤" in value.user_message:
                 return "많이 걸었나 보네. 설명은 한두 문장으로 줄이고 천천히 갈게.", None
             return "그 이야기를 들려줘서 고마워. 여정과 억지로 엮지 않고 편하게 들을게.", None
@@ -120,6 +133,18 @@ class GiroksaeDialogueEngine:
             q = "어떤 점이 이어지거나 달라 보였어?"
             return q, q
         return "그렇게 바라봤구나. 이번 조각은 여기까지 두고 다음 흐름으로 이어갈 수 있어.", None
+
+    @staticmethod
+    def _missing_subject_question(message: str) -> str:
+        if re.search(r"왜", message):
+            return "어떤 사건이나 내용의 이유가 궁금한가요?"
+        if re.search(r"언제", message):
+            return "어떤 사건이나 장소의 시점을 알고 싶은가요?"
+        if re.search(r"누구|누가", message):
+            return "어떤 인물이나 사건에 대해 궁금한가요?"
+        if re.search(r"어디", message):
+            return "어떤 사건이나 장소의 위치가 궁금한가요?"
+        return "어떤 역사 주제를 말하는지 조금만 더 알려줄래?"
 
     def tag_candidates(self, result: ClassificationResult, *, turn_id: str, user_message: str) -> list[dict[str, object]]:
         return [asdict(item) | {"scope": item.scope.value} for item in observations(result.personalization_tag_candidates, turn_id=turn_id, user_message=user_message)]

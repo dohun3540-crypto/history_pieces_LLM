@@ -130,10 +130,11 @@ def test_free_chat_rag_citations_greeting_and_insufficient_evidence(client: Test
     assert missing.json()["citations"] == []
     assert missing.json()["status"] == "insufficient_evidence"
     assert missing.json()["suggested_questions"]
-    assert "추측하지 않습니다" in missing.json()["response_text"]
+    assert "직접 연결되는 인물" in missing.json()["response_text"]
+    assert "추측하지 않습니다" not in missing.json()["response_text"]
 
 
-def test_retrieval_empty_does_not_call_llm_or_become_application_error(
+def test_out_of_scope_question_does_not_call_retrieval_llm_or_become_error(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     engine = create_development_orchestrator(
@@ -153,10 +154,11 @@ def test_retrieval_empty_does_not_call_llm_or_become_application_error(
     body = response.json()
     assert response.status_code == 200
     assert body["used_chunks"] == 0
-    assert body["request_state"] == "insufficient_evidence"
-    assert body["ui_state"] == "insufficient_evidence"
+    assert body["request_state"] == "success"
+    assert body["ui_state"] == "active"
     assert body["error"] is None
-    assert "역사" in body["response_text"] and body["suggested_questions"]
+    assert "역사 이야기를 중심" in body["response_text"]
+    assert body["suggested_questions"]
 
 
 def test_remote_backend_failure_is_explicit_application_error(
@@ -276,3 +278,22 @@ def test_integrated_ui_has_accessible_mode_and_asset_contract(client: TestClient
         assert f"background_{index:02}.png" in script or f"background_{index:02}.png" in styles
     assert "result.next_action_code" in script
     assert "result.output_domain" in script
+
+
+def test_free_chat_opens_directly_without_appreciation_controls_or_image_text_background(
+    client: TestClient,
+) -> None:
+    html = client.get("/").text
+    styles = client.get("/static/styles.css").text
+    script = client.get("/static/app.js").text
+    panel = html.split('id="free-chat-panel"', 1)[1].split("</section>\n  </div>", 1)[0]
+
+    assert 'data-quick=' not in panel
+    assert 'data-action=' not in panel
+    assert "감상 건너뛰기" not in panel
+    assert "잠시 쉬기" not in panel
+    assert "다음 조각으로" not in panel
+    assert '["floating-chat", "open-free-chat", "header-free-chat"]' in script
+    assert '.journey-stage { --stage-image:' in styles
+    assert 'background:#321b0f;' in styles
+    assert 'background-image:var(--stage-image)' not in styles
